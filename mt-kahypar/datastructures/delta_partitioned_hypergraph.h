@@ -30,6 +30,8 @@
 #include "mt-kahypar/datastructures/sparse_map.h"
 #include "mt-kahypar/parallel/stl/scalable_vector.h"
 
+#include "robin_hood.h"
+
 namespace mt_kahypar {
 namespace ds {
 
@@ -217,8 +219,8 @@ class DeltaPartitionedHypergraph {
   // ! Returns the block of hypernode u
   PartitionID partID(const HypernodeID u) const {
     ASSERT(_phg);
-    const PartitionID* part_id = _part_ids_delta.get_if_contained(u);
-    return part_id ? *part_id : _phg->partID(u);
+    const auto it = _part_ids_delta.find(u);
+    return it != _part_ids_delta.cend() ? it->second : _phg->partID(u);
   }
 
   // ! Returns the total weight of block p
@@ -232,18 +234,17 @@ class DeltaPartitionedHypergraph {
   HypernodeID pinCountInPart(const HyperedgeID e, const PartitionID p) const {
     ASSERT(_phg);
     ASSERT(p != kInvalidPartition && p < _k);
-    const int32_t* pin_count_delta = _pins_in_part_delta.get_if_contained(e * _k + p);
+    const auto it = _pins_in_part_delta.find(e * _k + p);
     return std::max(static_cast<int32_t>(_phg->pinCountInPart(e, p)) +
-      ( pin_count_delta ? *pin_count_delta : 0 ), 0);
+      ( it != _pins_in_part_delta.cend() ? it->second : 0 ), 0);
   }
 
   // ! Returns the sum of all edges incident to u, where u is the last remaining
   // ! pin in its block
   HyperedgeWeight moveFromBenefit(const HypernodeID u) const {
     ASSERT(_phg);
-    const HyperedgeWeight* move_from_benefit_delta =
-      _move_from_benefit_delta.get_if_contained(u);
-    return _phg->moveFromBenefit(u) + ( move_from_benefit_delta ? *move_from_benefit_delta : 0 );
+    const auto it = _move_from_benefit_delta.find(u);
+    return _phg->moveFromBenefit(u) + ( it != _move_from_benefit_delta.cend() ? it->second : 0 );
   }
 
   // ! Returns the sum of all edges incident to u, where p is not part of
@@ -251,9 +252,8 @@ class DeltaPartitionedHypergraph {
   HyperedgeWeight moveToPenalty(const HypernodeID u, const PartitionID p) const {
     ASSERT(_phg);
     ASSERT(p != kInvalidPartition && p < _k);
-    const HyperedgeWeight* move_to_penalty_delta =
-      _move_to_penalty_delta.get_if_contained(u * _k + p);
-    return _phg->moveToPenalty(u, p) + ( move_to_penalty_delta ? *move_to_penalty_delta : 0 );
+    const auto it = _move_to_penalty_delta.find(penalty_index(u, p));
+    return _phg->moveToPenalty(u, p) + ( it != _move_to_penalty_delta.cend() ? it->second : 0 );
   }
 
   Gain km1Gain(const HypernodeID u, const PartitionID from, const PartitionID to) const {
@@ -281,18 +281,18 @@ class DeltaPartitionedHypergraph {
   void dropMemory() {
     if (!_memory_dropped) {
       _memory_dropped = true;
-      _part_ids_delta.freeInternalData();
-      _pins_in_part_delta.freeInternalData();
-      _move_to_penalty_delta.freeInternalData();
-      _move_from_benefit_delta.freeInternalData();
+      _part_ids_delta.clear(); _part_ids_delta.rehash(0);
+      _pins_in_part_delta.clear(); _pins_in_part_delta.rehash(0);
+      _move_to_penalty_delta.clear(); _move_to_penalty_delta.rehash(0);
+      _move_from_benefit_delta.clear(); _move_from_benefit_delta.rehash(0);
     }
   }
 
   size_t combinedMemoryConsumption() const {
-    return _pins_in_part_delta.size_in_bytes()
-           + _move_from_benefit_delta.size_in_bytes()
-           + _move_to_penalty_delta.size_in_bytes()
-           + _part_ids_delta.size_in_bytes();
+    return _part_ids_delta.calcNumBytesTotal(_part_ids_delta.size())
+            + _pins_in_part_delta.calcNumBytesTotal(_pins_in_part_delta.size())
+            + _move_to_penalty_delta.calcNumBytesTotal(_move_to_penalty_delta.size())
+            + _move_from_benefit_delta.calcNumBytesTotal(_move_from_benefit_delta.size());
   }
 
   PartitionID k() const {
@@ -306,13 +306,13 @@ class DeltaPartitionedHypergraph {
     utils::MemoryTreeNode* part_weights_node = delta_phg_node->addChild("Delta Part Weights");
     part_weights_node->updateSize(_part_weights_delta.capacity() * sizeof(HypernodeWeight));
     utils::MemoryTreeNode* part_ids_node = delta_phg_node->addChild("Delta Part IDs");
-    part_ids_node->updateSize(_part_ids_delta.size_in_bytes());
+    part_ids_node->updateSize(_part_ids_delta.calcNumBytesTotal(_part_ids_delta.size()));
     utils::MemoryTreeNode* pins_in_part_node = delta_phg_node->addChild("Delta Pins In Part");
-    pins_in_part_node->updateSize(_pins_in_part_delta.size_in_bytes());
+    pins_in_part_node->updateSize(_pins_in_part_delta.calcNumBytesTotal(_pins_in_part_delta.size()));
     utils::MemoryTreeNode* move_from_benefit_node = delta_phg_node->addChild("Delta Move From Benefit");
-    move_from_benefit_node->updateSize(_move_from_benefit_delta.size_in_bytes());
+    move_from_benefit_node->updateSize(_move_from_benefit_delta.calcNumBytesTotal(_move_from_benefit_delta.size()));
     utils::MemoryTreeNode* move_to_penalty_node = delta_phg_node->addChild("Delta Move To Penalty");
-    move_to_penalty_node->updateSize(_move_to_penalty_delta.size_in_bytes());
+    move_to_penalty_node->updateSize(_move_to_penalty_delta.calcNumBytesTotal(_move_to_penalty_delta.size()));
   }
 
  private:
@@ -346,19 +346,19 @@ class DeltaPartitionedHypergraph {
   vec< HypernodeWeight > _part_weights_delta;
 
   // ! Stores for each locally moved node, its new block id
-  DynamicSparseMap<HypernodeID, PartitionID> _part_ids_delta;
+  robin_hood::unordered_map<HypernodeID, PartitionID> _part_ids_delta;
 
   // ! Stores the delta of each locally touched pin count entry
   // ! relative to the _pins_in_part member in '_phg'
-  DynamicSparseMap<size_t, int32_t> _pins_in_part_delta;
+  robin_hood::unordered_map<size_t, int32_t> _pins_in_part_delta;
 
   // ! Stores the delta of each locally touched move to penalty entry
   // ! relative to the _move_to_penalty member in '_phg'
-  DynamicSparseMap<size_t, HyperedgeWeight> _move_to_penalty_delta;
+  robin_hood::unordered_map<size_t, HyperedgeWeight> _move_to_penalty_delta;
 
   // ! Stores the delta of each locally touched move from benefit entry
   // ! relative to the _move_from_benefit member in '_phg'
-  DynamicSparseMap<HypernodeID, HyperedgeWeight> _move_from_benefit_delta;
+  robin_hood::unordered_map<HypernodeID, HyperedgeWeight> _move_from_benefit_delta;
 };
 
 } // namespace ds
