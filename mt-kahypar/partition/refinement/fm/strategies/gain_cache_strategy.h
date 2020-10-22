@@ -159,7 +159,7 @@ public:
 
   template<typename PHG>
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  void updatePQs(const PHG& /*phg*/) {
+  void updatePQs(const PHG& /*phg*/) {    // TODO might actually be called before findNextMove(..) --> doesn't have to be in the interface
     for (PartitionID i = 0; i < context.partition.k; ++i) {
       updateBlock(i);
     }
