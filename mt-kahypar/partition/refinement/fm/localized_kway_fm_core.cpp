@@ -89,6 +89,8 @@ namespace mt_kahypar {
               if (sharedData.nodeTracker.canNodeBeAcquired(v)) {
                 // don't actually do the acquire but skip vertices that were already moved
                 fm_strategy.insertOrUpdate(phg, v, move);
+                // TODO we could remove v from the search if it can no longer be acquired
+                // but that incurs another PQ lookup every time --> lazy removal and move reject could be faster
               }
             } else {
               SearchID searchOfV = sharedData.nodeTracker.searchOfNode[v].load(std::memory_order_acq_rel);
