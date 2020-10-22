@@ -33,6 +33,7 @@ namespace mt_kahypar {
 
     static constexpr bool uses_gain_cache = false;
     static constexpr bool maintain_gain_cache_between_rounds = false;
+    static constexpr bool supports_vertex_sharing = false;
 
     RecomputeGainStrategy(const Context& context,
                       HypernodeID numNodes,

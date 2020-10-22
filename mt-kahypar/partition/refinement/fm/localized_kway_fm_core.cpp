@@ -34,7 +34,6 @@ namespace mt_kahypar {
         fm_strategy.insertIntoPQ(phg, seedNode, previousSearchOfSeedNode);
       }
     }
-    fm_strategy.updatePQs(phg);
 
     if (runStats.pushes > 0) {
       if (!context.refinement.fm.perform_moves_global
@@ -85,11 +84,19 @@ namespace mt_kahypar {
       if (phg.edgeSize(e) < context.partition.ignore_hyperedge_size_threshold) {
         for (HypernodeID v : phg.pins(e)) {
           if (neighborDeduplicator[v] != deduplicationTime) {
-            SearchID searchOfV = sharedData.nodeTracker.searchOfNode[v].load(std::memory_order_acq_rel);
-            if (searchOfV == thisSearch) {
-              fm_strategy.updateGain(phg, v, move);
-            } else if (sharedData.nodeTracker.tryAcquireNode(v, thisSearch)) {
-              fm_strategy.insertIntoPQ(phg, v, searchOfV);
+
+            if constexpr (FMStrategy::supports_vertex_sharing) {
+              if (sharedData.nodeTracker.canNodeBeAcquired(v)) {
+                // don't actually do the acquire but skip vertices that were already moved
+                fm_strategy.insertOrUpdate(phg, v, move);
+              }
+            } else {
+              SearchID searchOfV = sharedData.nodeTracker.searchOfNode[v].load(std::memory_order_acq_rel);
+              if (searchOfV == thisSearch) {
+                fm_strategy.updateGain(phg, v, move);
+              } else if (sharedData.nodeTracker.tryAcquireNode(v, thisSearch)) {
+                fm_strategy.insertIntoPQ(phg, v, searchOfV);
+              }
             }
             neighborDeduplicator[v] = deduplicationTime;
           }
@@ -148,9 +155,17 @@ namespace mt_kahypar {
            && sharedData.finishedTasks.load(std::memory_order_relaxed) < sharedData.finishedTasksLimit) {
 
       if constexpr (use_delta) {
+        fm_strategy.updatePQs(deltaPhg);
         if (!fm_strategy.findNextMove(deltaPhg, move)) break;
       } else {
+        fm_strategy.updatePQs(phg);
         if (!fm_strategy.findNextMove(phg, move)) break;
+      }
+
+      if constexpr (FMStrategy::supports_vertex_sharing) {
+        if (!sharedData.nodeTracker.tryAcquireNode(move.node, thisSearch)) {
+          continue;
+        }
       }
 
       sharedData.nodeTracker.deactivateNode(move.node, thisSearch);
@@ -196,11 +211,6 @@ namespace mt_kahypar {
         }
       }
 
-      if constexpr (use_delta) {
-        fm_strategy.updatePQs(deltaPhg);
-      } else {
-        fm_strategy.updatePQs(phg);
-      }
 
     }
 

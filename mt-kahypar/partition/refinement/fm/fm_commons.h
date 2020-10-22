@@ -123,7 +123,7 @@ struct NodeTracker {
     return search_id < deactivatedNodeMarker;
   }
 
-  bool canNodeStartNewSearch(HypernodeID u) const {
+  bool canNodeBeAcquired(HypernodeID u) const {
     return isSearchInactive( searchOfNode[u].load(std::memory_order_relaxed) );
   }
 

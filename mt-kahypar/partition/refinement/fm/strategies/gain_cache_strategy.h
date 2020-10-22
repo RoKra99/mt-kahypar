@@ -49,6 +49,8 @@ public:
   static constexpr bool uses_gain_cache = true;
   static constexpr bool maintain_gain_cache_between_rounds = true;
 
+  static constexpr bool supports_vertex_sharing = true;
+
   GainCacheStrategy(const Context& context,
                     HypernodeID numNodes,
                     FMSharedData& sharedData,
@@ -92,6 +94,17 @@ public:
 
     sharedData.targetPart[v] = newTarget;
     vertexPQs[pv].adjustKey(v, gain);
+  }
+
+  template<typename PHG>
+  void insertOrUpdate(const PHG& phg, const HypernodeID v, const Move& move) {
+    const PartitionID pv = phg.partID(v); // this is actually a race condition though it is benign
+                                          // when we try to perform the move, it will fail --> some overhead but no errors
+    if (vertexPQs[pv].contains(v)) {
+      updateGain(phg, v, move);
+    } else {
+      insertIntoPQ(phg, v, 0);
+    }
   }
 
   template<typename PHG>

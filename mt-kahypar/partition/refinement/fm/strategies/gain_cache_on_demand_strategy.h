@@ -30,6 +30,8 @@ namespace mt_kahypar {
 
     static constexpr bool maintain_gain_cache_between_rounds = false;
 
+    static constexpr bool supports_vertex_sharing = false;
+
     GainCacheOnDemandStrategy(const Context& context,
                               HypernodeID numNodes,
                               FMSharedData& sharedData,
