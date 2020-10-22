@@ -43,7 +43,8 @@ class GainCacheStrategy {
 public:
 
   using BlockPriorityQueue = ds::ExclusiveHandleHeap< ds::MaxHeap<Gain, PartitionID> >;
-  using VertexPriorityQueue = ds::MaxHeap<Gain, HypernodeID>;    // these need external handles
+  //using VertexPriorityQueue = ds::MaxHeap<Gain, HypernodeID>;    // these need external handles
+  using VertexPriorityQueue = ds::ExclusiveHandleHeap< ds::MaxHeap<Gain, HypernodeID> >;
 
   static constexpr bool uses_gain_cache = true;
   static constexpr bool maintain_gain_cache_between_rounds = true;
@@ -57,7 +58,7 @@ public:
       sharedData(sharedData),
       blockPQ(static_cast<size_t>(context.partition.k)),
       vertexPQs(static_cast<size_t>(context.partition.k),
-                VertexPriorityQueue(sharedData.vertexPQHandles.data(), numNodes))
+                VertexPriorityQueue(numNodes))
       { }
 
   template<typename PHG>

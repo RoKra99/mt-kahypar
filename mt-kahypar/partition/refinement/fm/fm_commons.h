@@ -217,6 +217,8 @@ struct FMSharedData {
   size_t getNumberOfPQHandles(const Context& context, size_t numNodes) {
     if (context.refinement.fm.algorithm == FMAlgorithm::fm_gain_delta) {
       return numNodes * context.partition.k;
+    } else if (context.refinement.fm.algorithm == FMAlgorithm::fm_gain_cache) {
+      return 0;   /* for now every thread generates its own handles. if it works well, we'll work on reducing memory footprint */
     } else {
       return numNodes;
     }
