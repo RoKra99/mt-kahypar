@@ -43,8 +43,9 @@ class GainCacheStrategy {
 public:
 
   using BlockPriorityQueue = ds::ExclusiveHandleHeap< ds::MaxHeap<Gain, PartitionID> >;
-  //using VertexPriorityQueue = ds::MaxHeap<Gain, HypernodeID>;    // these need external handles
+
   using VertexPriorityQueue = ds::ExclusiveHandleHeap< ds::MaxHeap<Gain, HypernodeID> >;
+  //using VertexPriorityQueue = ds::MaxHeap<Gain, HypernodeID>;    // these need external handles   //support_vertex_sharing = false
 
   static constexpr bool uses_gain_cache = true;
   static constexpr bool maintain_gain_cache_between_rounds = true;
@@ -58,9 +59,11 @@ public:
       context(context),
       runStats(runStats),
       sharedData(sharedData),
+      //targetPart(sharedData.targetPart),        // ref    //support_vertex_sharing = false
+      targetPart(numNodes, kInvalidPartition),    // owned
       blockPQ(static_cast<size_t>(context.partition.k)),
-      vertexPQs(static_cast<size_t>(context.partition.k),
-                VertexPriorityQueue(numNodes))
+      vertexPQs(static_cast<size_t>(context.partition.k), VertexPriorityQueue(numNodes))
+      //vertexPQs(static_cast<size_t>(context.partition.k), VertexPriorityQueue(sharedData.vertexPQHandles.data(), numNodes)) //support_vertex_sharing = false
       { }
 
   template<typename PHG>
@@ -68,7 +71,7 @@ public:
   void insertIntoPQ(const PHG& phg, const HypernodeID v, const SearchID ) {
     const PartitionID pv = phg.partID(v);
     auto [target, gain] = computeBestTargetBlock(phg, v);
-    sharedData.targetPart[v] = target;
+    targetPart[v] = target;
     vertexPQs[pv].insert(v, gain);  // blockPQ updates are done later, collectively.
     runStats.pushes++;
   }
@@ -78,7 +81,7 @@ public:
   void updateGain(const PHG& phg, const HypernodeID v, const Move& move) {
     const PartitionID pv = phg.partID(v);
     ASSERT(vertexPQs[pv].contains(v));
-    const PartitionID designatedTargetV = sharedData.targetPart[v];
+    const PartitionID designatedTargetV = targetPart[v];
     Gain gain = 0;
     PartitionID newTarget = kInvalidPartition;
 
@@ -92,7 +95,7 @@ public:
       std::tie(newTarget, gain) = bestOfThree(phg, v, pv, { designatedTargetV, move.from, move.to });
     }
 
-    sharedData.targetPart[v] = newTarget;
+    targetPart[v] = newTarget;
     vertexPQs[pv].adjustKey(v, gain);
   }
 
@@ -128,7 +131,7 @@ public:
       } else {
         runStats.retries++;
         vertexPQs[from].adjustKey(u, gain);
-        sharedData.targetPart[u] = to;
+        targetPart[u] = to;
         if (vertexPQs[from].topKey() != blockPQ.keyOf(from)) {
           blockPQ.adjustKey(from, vertexPQs[from].topKey());
         }
@@ -257,6 +260,9 @@ protected:
   FMSharedData& sharedData;
 
 private:
+
+  //vec<PartitionID>& targetPart;   // support_vertex_sharing = false
+  vec<PartitionID> targetPart;
 
   // ! Priority Queue that contains for each block of the partition
   // ! the vertex with the best gain value
