@@ -29,9 +29,16 @@ namespace mt_kahypar {
 
     HypernodeID seedNode;
     while (runStats.pushes < numSeeds && sharedData.refinementNodes.try_pop(seedNode, taskID)) {
-      SearchID previousSearchOfSeedNode = sharedData.nodeTracker.searchOfNode[seedNode].load(std::memory_order_relaxed);
-      if (sharedData.nodeTracker.tryAcquireNode(seedNode, thisSearch)) {
-        fm_strategy.insertIntoPQ(phg, seedNode, previousSearchOfSeedNode);
+
+      if constexpr (FMStrategy::supports_vertex_sharing) {
+        if (sharedData.nodeTracker.canNodeBeAcquired(seedNode)) {
+          fm_strategy.insertIntoPQ(phg, seedNode, 0);
+        }
+      } else {
+        SearchID previousSearchOfSeedNode = sharedData.nodeTracker.searchOfNode[seedNode].load(std::memory_order_relaxed);
+        if (sharedData.nodeTracker.tryAcquireNode(seedNode, thisSearch)) {
+          fm_strategy.insertIntoPQ(phg, seedNode, previousSearchOfSeedNode);
+        }
       }
     }
 
@@ -157,10 +164,8 @@ namespace mt_kahypar {
            && sharedData.finishedTasks.load(std::memory_order_relaxed) < sharedData.finishedTasksLimit) {
 
       if constexpr (use_delta) {
-        fm_strategy.updatePQs(deltaPhg);
         if (!fm_strategy.findNextMove(deltaPhg, move)) break;
       } else {
-        fm_strategy.updatePQs(phg);
         if (!fm_strategy.findNextMove(phg, move)) break;
       }
 

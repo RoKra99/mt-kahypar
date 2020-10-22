@@ -95,11 +95,6 @@ namespace mt_kahypar {
       pq.clear();
     }
 
-    template<typename PHG>
-    MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-    void updatePQs(const PHG& /* phg */) {
-
-    }
 
     template<typename PHG>
     MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE

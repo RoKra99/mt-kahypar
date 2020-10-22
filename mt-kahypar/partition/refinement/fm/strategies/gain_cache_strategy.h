@@ -113,6 +113,9 @@ public:
   template<typename PHG>
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
   bool findNextMove(const PHG& phg, Move& m) {
+    for (PartitionID i = 0; i < context.partition.k; ++i) {
+      updateBlock(i);
+    }
     if (blockPQ.empty()) {
       return false;
     }
@@ -141,8 +144,11 @@ public:
 
   void clearPQs(const size_t /* bestImprovementIndex */ ) {
     // release all nodes that were not moved
+
+    /*
     const bool release = sharedData.release_nodes
                          && runStats.moves > 0;
+
 
     if (release) {
       // Release all nodes contained in PQ
@@ -153,19 +159,12 @@ public:
         }
       }
     }
+    */
 
     for (PartitionID i = 0; i < context.partition.k; ++i) {
       vertexPQs[i].clear();
     }
     blockPQ.clear();
-  }
-
-  template<typename PHG>
-  MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  void updatePQs(const PHG& /*phg*/) {    // TODO might actually be called before findNextMove(..) --> doesn't have to be in the interface
-    for (PartitionID i = 0; i < context.partition.k; ++i) {
-      updateBlock(i);
-    }
   }
 
   // We're letting the FM details implementation decide what happens here, since some may not want to do gain cache updates,
