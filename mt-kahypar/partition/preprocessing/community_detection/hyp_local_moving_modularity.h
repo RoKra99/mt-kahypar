@@ -2,7 +2,6 @@
 
 #include "mt-kahypar/datastructures/community_hypergraph.h"
 #include "mt-kahypar/definitions.h"
-#include <algorithm>
 
 namespace mt_kahypar::metrics {
 double hyp_modularity(const ds::CommunityHypergraph& hypergraph);
@@ -12,27 +11,28 @@ namespace mt_kahypar::community_detection {
 
 class HypLocalMovingModularity {
 
-
-
 public:
-    HypLocalMovingModularity(ds::CommunityHypergraph& hypergraph) : _hg(&hypergraph), _weight_to_community(hypergraph.initialNumNodes(), std::numeric_limits<double>::max()) {}
+    HypLocalMovingModularity(ds::CommunityHypergraph& hypergraph) : _hg(&hypergraph) {
+        _weight_to_community.resize("Preprocessing", "clearlist_array", hypergraph.initialNumNodes());
+        _weight_to_community.assign(hypergraph.initialNumNodes(), std::numeric_limits<double>::max());
+    }
+
+    ~HypLocalMovingModularity() {
+        parallel::free(_weight_to_community);
+    }
 
     // ! try to move the given node into a neighbouring community
     // ! returns the change in modularity (0.0 if the node was not moved)
     double tryMove(const HypernodeID v) {
-        std::cout << "ignore me" << std::endl;
         const PartitionID comm_v = _hg->communityID(v);
         // calculate delta for all neighbouring communities
         for (const HyperedgeID& he : _hg->incidentEdges(v)) {
-            std::cout << "ignore me2" << std::endl;
             for (const HypernodeID& hn : _hg->pins(he)) {
-                std::cout << "ignore me3" << std::endl;
                 const PartitionID comm_hn = _hg->communityID(hn);
                 // if the node hn belonges to a different community which we see for the first time
                 if (hn != v && comm_hn != comm_v && !(_weight_to_community[comm_hn] < std::numeric_limits<double>::max())) {
                     _weight_to_community[comm_hn] = calculateDelta(v, comm_hn);
                     _neigh_communities.emplace_back(comm_hn);
-                    std::cout << "move to: " << comm_hn << ", delta: " << _weight_to_community[comm_hn] << std::endl;
                 }
             }
         }
@@ -69,9 +69,11 @@ private:
     // ! calculates the change in modularity if the given node would be moved to the given community
     double calculateDelta(const HypernodeID v, const PartitionID destination) {
         const PartitionID comm_v = _hg->communityID(v);
+        // move to the same community
         if (comm_v == destination) {
             return 0.0;
         }
+        // edge contibution
         double edge_contribution = 0.0;
         for (const HyperedgeID& he : _hg->incidentEdges(v)) {
             bool pins_in_comm_v = false;
@@ -83,10 +85,12 @@ private:
                     pins_in_destination |= comm_hn == destination;
                 }
             }
+            // only contribute if the edge has no other pins in the community
             edge_contribution -= pins_in_comm_v ? 0 : _hg->edgeWeight(he);
             edge_contribution += pins_in_destination ? 0 : _hg->edgeWeight(he);
         }
 
+        // expected edge contibution
         const HyperedgeWeight vol_total = _hg->totalVolume();
         const HyperedgeWeight vol_v = _hg->nodeVolume(v);
         const HyperedgeWeight vol_c = _hg->communityVolume(comm_v);
@@ -102,7 +106,7 @@ private:
     ds::CommunityHypergraph* _hg;
 
     // clearlist to find neighbouring community with best modularity value
-    std::vector<double> _weight_to_community;
+    ds::Array<double> _weight_to_community;
     std::vector<PartitionID> _neigh_communities;
 };
 }
