@@ -5,7 +5,7 @@
 #include <algorithm>
 
 namespace mt_kahypar::metrics {
-double hyp_modularity(const ds::CommunityHypergraph& hypergraph, const ds::Clustering& communities);
+double hyp_modularity(const ds::CommunityHypergraph& hypergraph);
 }
 
 namespace mt_kahypar::community_detection {

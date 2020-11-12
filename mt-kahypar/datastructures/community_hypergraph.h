@@ -19,8 +19,10 @@ namespace ds {
 class CommunityHypergraph {
 public:
 
+    using CommunityVolumes = Array<HyperedgeWeight>;
     using HyperedgeIterator = typename Hypergraph::HyperedgeIterator;
     using IncidenceIterator = typename Hypergraph::IncidenceIterator;
+    using CommunityVolumeIterator = typename CommunityVolumes::const_iterator;
 
     CommunityHypergraph() = default;
 
@@ -29,6 +31,8 @@ public:
             _node_volumes.resize("Preprocessing", "node_volumes", hypergraph.initialNumNodes(), true, true);
                              }, [&] {
                                  _community_volumes.resize("Preprocessing", "community_volumes", hypergraph.initialNumNodes(), true, true);
+                             }, [&] {
+                                 _d_edge_weights.resize("Preprocessing", "d_edge_weights", hypergraph.maxEdgeSize() + 1, true, true);
                              });
         // Initialize the communities as Singletons
         for (const HypernodeID& hn : _hg->nodes()) {
@@ -71,6 +75,11 @@ public:
         return _hg->pins(he);
     }
 
+    // ! Returns a range of the community volumes
+    IteratorRange<CommunityVolumeIterator> communityVolumes() const {
+        return IteratorRange<CommunityVolumeIterator>(_community_volumes.cbegin(), _community_volumes.cend());
+    }
+
 
     // ######################## Community ########################
 
@@ -92,15 +101,29 @@ public:
         return _total_edge_weight;
     }
 
+    // ! Sum of all edweights of size d
+    HyperedgeWeight dEdgeWeight(const HypernodeID d) const {
+        return _d_edge_weights[d];
+    }
+
     // ! Number of pins of a hyperedge
     HypernodeID edgeSize(const HyperedgeID e) const {
         return _hg->edgeSize(e);
     }
 
+    HypernodeID maxEdgeSize() const {
+        return _hg->maxEdgeSize();
+    }
+
+    // ! Initial number of hypernodes
+    HypernodeID initialNumNodes() const {
+        return _hg->initialNumNodes();
+    }
+
 private:
 
     void freeInternalData() {
-        parallel::parallel_free(_node_volumes, _community_volumes);
+        parallel::parallel_free(_node_volumes, _community_volumes, _d_edge_weights);
         _vol_v = 0;
         _total_edge_weight = 0;
     }
@@ -123,6 +146,7 @@ private:
     void computeAndSetTotalEdgeWeight() {
         for (const HyperedgeID& hn : _hg->edges()) {
             _total_edge_weight += edgeWeight(hn);
+            _d_edge_weights[edgeSize(hn)] += edgeWeight(hn);
         }
     }
 
@@ -133,10 +157,13 @@ private:
     Array<HyperedgeWeight> _node_volumes;
 
     // ! volume for each community
-    Array <HyperedgeWeight> _community_volumes;
+    Array<HyperedgeWeight> _community_volumes;
 
     // ! total volume
     HyperedgeWeight _vol_v;
+
+    // ! summed edgeweight for each edgesize
+    Array<HyperedgeWeight> _d_edge_weights;
 
     // ! sum of all edgeweights
     HyperedgeWeight _total_edge_weight;

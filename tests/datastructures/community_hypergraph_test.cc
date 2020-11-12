@@ -6,6 +6,7 @@
 #include "mt-kahypar/datastructures/static_hypergraph.h"
 #include "mt-kahypar/datastructures/static_hypergraph_factory.h"
 #include "mt-kahypar/datastructures/community_hypergraph.h"
+#include "mt-kahypar/partition/preprocessing/community_detection/hyp_local_moving_modularity.h"
 
 using ::testing::Test;
 
@@ -78,5 +79,18 @@ TYPED_TEST(ACommunityHypergraph, SingletonCommunityInitialization) {
     ASSERT_EQ(5, this->community_hypergraph.communityID(5));
     ASSERT_EQ(6, this->community_hypergraph.communityID(6));
 }
+
+TYPED_TEST(ACommunityHypergraph, SumOfEdgeWeights) {
+    ASSERT_EQ(4, this->community_hypergraph.totalEdgeWeight());
+    ASSERT_EQ(0, this->community_hypergraph.dEdgeWeight(0));
+    ASSERT_EQ(0, this->community_hypergraph.dEdgeWeight(1));
+    ASSERT_EQ(1, this->community_hypergraph.dEdgeWeight(2));
+    ASSERT_EQ(2, this->community_hypergraph.dEdgeWeight(3));
+    ASSERT_EQ(1, this->community_hypergraph.dEdgeWeight(4));
+}
+
+// TYPED_TEST(ACommunityHypergraph, InitialModularityCalculation) {
+//     ASSERT_EQ(10, mt_kahypar::metrics::hyp_modularity(this->community_hypergraph));
+// }
 }
 }
