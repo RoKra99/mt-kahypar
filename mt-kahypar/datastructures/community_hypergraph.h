@@ -24,7 +24,7 @@ public:
 
     CommunityHypergraph() = default;
 
-    explicit CommunityHypergraph(Hypergraph& hypergraph) : _hg(&hypergraph), _vol_v(0) {
+    explicit CommunityHypergraph(Hypergraph& hypergraph) : _hg(&hypergraph), _vol_v(0), _total_edge_weight(0) {
         tbb::parallel_invoke([&] {
             _node_volumes.resize("Preprocessing", "node_volumes", hypergraph.initialNumNodes(), true, true);
                              }, [&] {
@@ -34,13 +34,14 @@ public:
         for (const HypernodeID& hn : _hg->nodes()) {
             _hg->setCommunityID(hn, hn);
         };
+        computeAndSetTotalEdgeWeight();
         computeAndSetInitialVolumes();
     }
 
     ~CommunityHypergraph() {
         freeInternalData();
     }
-    // ######################## Volumes ###########################
+    // ######################## Volumes ########################
 
     // ! returns the volume (weighted degreee) of the given node
     HyperedgeWeight nodeVolume(const NodeID hn) const {
@@ -57,6 +58,9 @@ public:
         return _vol_v;
     }
 
+
+    // ######################## Iterators ########################
+
     // ! Returns an iterator over the set of active edges of the hypergraph
     IteratorRange<HyperedgeIterator> edges() const {
         return _hg->edges();
@@ -67,9 +71,30 @@ public:
         return _hg->pins(he);
     }
 
+
+    // ######################## Community ########################
+
     // ! Community id which hypernode u is assigned to
     PartitionID communityID(const HypernodeID u) const {
         return _hg->communityID(u);
+    }
+
+
+    // ######################## Hyperedges ########################
+
+    // ! Weight of a hyperedge
+    HypernodeWeight edgeWeight(const HyperedgeID e) const {
+        return _hg->edgeWeight(e);
+    }
+
+    // ! Sum of all edgeweights
+    HyperedgeWeight totalEdgeWeight() const {
+        return _total_edge_weight;
+    }
+
+    // ! Number of pins of a hyperedge
+    HypernodeID edgeSize(const HyperedgeID e) const {
+        return _hg->edgeSize(e);
     }
 
 private:
@@ -77,6 +102,7 @@ private:
     void freeInternalData() {
         parallel::parallel_free(_node_volumes, _community_volumes);
         _vol_v = 0;
+        _total_edge_weight = 0;
     }
 
     // ! computes the volumes (weighted degrees) of each node.
@@ -93,6 +119,13 @@ private:
         }
     }
 
+    // ! computes and sets the total edgeweight
+    void computeAndSetTotalEdgeWeight() {
+        for (const HyperedgeID& hn : _hg->edges()) {
+            _total_edge_weight += edgeWeight(hn);
+        }
+    }
+
     // ! Hypergraph this datastructure is wrapped around
     Hypergraph* _hg;
 
@@ -104,6 +137,9 @@ private:
 
     // ! total volume
     HyperedgeWeight _vol_v;
+
+    // ! sum of all edgeweights
+    HyperedgeWeight _total_edge_weight;
 
 
 };
