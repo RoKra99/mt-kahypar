@@ -60,14 +60,23 @@ TYPED_TEST(ACommunityHypergraph, HasCorrectInitialVolumes) {
     ASSERT_EQ(2, this->community_hypergraph.nodeVolume(4));
     ASSERT_EQ(1, this->community_hypergraph.nodeVolume(5));
     ASSERT_EQ(2, this->community_hypergraph.nodeVolume(6));
-     ASSERT_EQ(2, this->community_hypergraph.communityVolume(0));
+    ASSERT_EQ(2, this->community_hypergraph.communityVolume(0));
     ASSERT_EQ(1, this->community_hypergraph.communityVolume(1));
     ASSERT_EQ(2, this->community_hypergraph.communityVolume(2));
     ASSERT_EQ(2, this->community_hypergraph.communityVolume(3));
     ASSERT_EQ(2, this->community_hypergraph.communityVolume(4));
     ASSERT_EQ(1, this->community_hypergraph.communityVolume(5));
     ASSERT_EQ(2, this->community_hypergraph.communityVolume(6));
+}
 
+TYPED_TEST(ACommunityHypergraph, SingletonCommunityInitialization) {
+    ASSERT_EQ(0, this->community_hypergraph.communityID(0));
+    ASSERT_EQ(1, this->community_hypergraph.communityID(1));
+    ASSERT_EQ(2, this->community_hypergraph.communityID(2));
+    ASSERT_EQ(3, this->community_hypergraph.communityID(3));
+    ASSERT_EQ(4, this->community_hypergraph.communityID(4));
+    ASSERT_EQ(5, this->community_hypergraph.communityID(5));
+    ASSERT_EQ(6, this->community_hypergraph.communityID(6));
 }
 }
 }
