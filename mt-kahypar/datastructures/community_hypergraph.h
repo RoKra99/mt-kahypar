@@ -22,6 +22,7 @@ public:
     using CommunityVolumes = Array<HyperedgeWeight>;
     using HyperedgeIterator = typename Hypergraph::HyperedgeIterator;
     using IncidenceIterator = typename Hypergraph::IncidenceIterator;
+    using IncidentNetsIterator = typename Hypergraph::IncidentNetsIterator;
     using CommunityVolumeIterator = typename CommunityVolumes::const_iterator;
 
     CommunityHypergraph() = default;
@@ -48,7 +49,7 @@ public:
     // ######################## Volumes ########################
 
     // ! returns the volume (weighted degreee) of the given node
-    HyperedgeWeight nodeVolume(const NodeID hn) const {
+    HyperedgeWeight nodeVolume(const HypernodeID hn) const {
         return _node_volumes[hn];
     }
 
@@ -60,6 +61,21 @@ public:
     // ! returns the volume (weighted degreee) of the whole hypergraph
     HyperedgeWeight totalVolume() const {
         return _vol_v;
+    }
+
+    // ! sets the volume of a community to the spectified value
+    void setCommunityVolume(const PartitionID community_id, const HyperedgeWeight volume) {
+        _community_volumes[community_id] = volume;
+    }
+
+    // ! adds the volume of the node to the volume of the community
+    void addCommunityVolume(const HypernodeID v, const PartitionID community_id) {
+        _community_volumes[community_id] += _node_volumes[v];
+    }
+
+    // ! subtracts the volume of the node from the volume of the community
+    void subtractCommunityVolume(const HypernodeID v, const PartitionID community_id) {
+        _community_volumes[community_id] -= _node_volumes[v];
     }
 
 
@@ -75,6 +91,11 @@ public:
         return _hg->pins(he);
     }
 
+    // ! Returns a range to loop over the incident nets of hypernode u.
+    IteratorRange<IncidentNetsIterator> incidentEdges(const HypernodeID u) const {
+        return _hg->incidentEdges(u);
+    }
+
     // ! Returns a range of the community volumes
     IteratorRange<CommunityVolumeIterator> communityVolumes() const {
         return IteratorRange<CommunityVolumeIterator>(_community_volumes.cbegin(), _community_volumes.cend());
@@ -86,6 +107,11 @@ public:
     // ! Community id which hypernode u is assigned to
     PartitionID communityID(const HypernodeID u) const {
         return _hg->communityID(u);
+    }
+
+    // ! Assign a community to a hypernode
+    void setCommunityID(const HypernodeID u, const PartitionID community_id) {
+        _hg->setCommunityID(u, community_id);
     }
 
 
