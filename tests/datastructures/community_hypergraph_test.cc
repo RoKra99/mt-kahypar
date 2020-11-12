@@ -89,8 +89,52 @@ TYPED_TEST(ACommunityHypergraph, SumOfEdgeWeights) {
     ASSERT_EQ(1, this->community_hypergraph.dEdgeWeight(4));
 }
 
-// TYPED_TEST(ACommunityHypergraph, InitialModularityCalculation) {
-//     ASSERT_EQ(10, mt_kahypar::metrics::hyp_modularity(this->community_hypergraph));
-// }
+
+// TODO: Move Tests for HypLocalMovingModularity to it's own file
+TYPED_TEST(ACommunityHypergraph, MoveNode0) {
+    mt_kahypar::community_detection::HypLocalMovingModularity hlmm(this->community_hypergraph);
+    ASSERT_GT(0.0, hlmm.tryMove(0));
+}
+
+TYPED_TEST(ACommunityHypergraph, MoveNode1) {
+    mt_kahypar::community_detection::HypLocalMovingModularity hlmm(this->community_hypergraph);
+    ASSERT_GT(0.0, hlmm.tryMove(1));
+}
+
+TYPED_TEST(ACommunityHypergraph, MoveNode2) {
+    mt_kahypar::community_detection::HypLocalMovingModularity hlmm(this->community_hypergraph);
+    ASSERT_GT(0.0, hlmm.tryMove(2));
+}
+
+TYPED_TEST(ACommunityHypergraph, MoveNode3) {
+    mt_kahypar::community_detection::HypLocalMovingModularity hlmm(this->community_hypergraph);
+    ASSERT_GT(0.0, hlmm.tryMove(3));
+}
+
+TYPED_TEST(ACommunityHypergraph, MoveNode4) {
+    mt_kahypar::community_detection::HypLocalMovingModularity hlmm(this->community_hypergraph);
+    ASSERT_GT(0.0, hlmm.tryMove(4));
+}
+
+TYPED_TEST(ACommunityHypergraph, MoveNode5) {
+    mt_kahypar::community_detection::HypLocalMovingModularity hlmm(this->community_hypergraph);
+    ASSERT_GT(0.0, hlmm.tryMove(5));
+}
+
+TYPED_TEST(ACommunityHypergraph, MoveNode6) {
+    mt_kahypar::community_detection::HypLocalMovingModularity hlmm(this->community_hypergraph);
+    ASSERT_GT(0.0, hlmm.tryMove(6));
+}
+
+TYPED_TEST(ACommunityHypergraph, InitializingWeightToVector) {
+    mt_kahypar::community_detection::HypLocalMovingModularity hlmm(this->community_hypergraph);
+    ASSERT_EQ(std::numeric_limits<double>::max(), hlmm.weightTOCommunity(0));
+    ASSERT_EQ(std::numeric_limits<double>::max(), hlmm.weightTOCommunity(1));
+    ASSERT_EQ(std::numeric_limits<double>::max(), hlmm.weightTOCommunity(2));
+    ASSERT_EQ(std::numeric_limits<double>::max(), hlmm.weightTOCommunity(3));
+    ASSERT_EQ(std::numeric_limits<double>::max(), hlmm.weightTOCommunity(4));
+    ASSERT_EQ(std::numeric_limits<double>::max(), hlmm.weightTOCommunity(5));
+    ASSERT_EQ(std::numeric_limits<double>::max(), hlmm.weightTOCommunity(6));
+}
 }
 }
