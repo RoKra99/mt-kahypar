@@ -46,6 +46,9 @@ using Gain = HyperedgeWeight;
 using NodeID = uint32_t;
 using ArcWeight = double;
 
+//Community Hypergraph
+using Volume = long double;
+
 struct Arc {
   NodeID head;
   ArcWeight weight;

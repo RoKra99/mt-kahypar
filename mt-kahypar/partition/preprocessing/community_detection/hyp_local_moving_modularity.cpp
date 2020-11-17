@@ -2,10 +2,10 @@
 #include <iostream>
 
 namespace mt_kahypar::metrics {
-double hyp_modularity(const ds::CommunityHypergraph& hypergraph) {
+Volume hyp_modularity(const ds::CommunityHypergraph& hypergraph) {
     const HyperedgeWeight vol_V = hypergraph.totalVolume();
-    double edge_contribution = 0.0;
-    double exp_edge_contribution = 0.0;
+    Volume edge_contribution = 0.0;
+    Volume exp_edge_contribution = 0.0;
     // zero indicates, that this community is not a neighbour
     std::vector<HyperedgeWeight> weight_to_community(hypergraph.initialNumNodes(), 0);
     std::vector<PartitionID> neigh_communities;
@@ -24,9 +24,9 @@ double hyp_modularity(const ds::CommunityHypergraph& hypergraph) {
         neigh_communities.clear();
     }
     for (HypernodeID d = 0; d < hypergraph.maxEdgeSize(); ++d) {
-        double d_chance = 0.0;
+        Volume d_chance = 0.0;
         for (const HyperedgeWeight& vol_c : hypergraph.communityVolumes()) {
-            d_chance += 1 - pow(1.0 - static_cast<double>(vol_c) / vol_V, d);
+            d_chance += 1.0 - pow(1.0 - static_cast<Volume>(vol_c) / vol_V, d);
         }
         exp_edge_contribution += hypergraph.dEdgeWeight(d) * d_chance;
     }

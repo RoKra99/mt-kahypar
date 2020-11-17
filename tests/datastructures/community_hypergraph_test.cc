@@ -9,6 +9,7 @@
 #include "mt-kahypar/partition/preprocessing/community_detection/hyp_local_moving_modularity.h"
 
 using ::testing::Test;
+using CommunityMove = mt_kahypar::community_detection::CommunityMove;
 
 namespace mt_kahypar {
 namespace ds {
@@ -93,69 +94,155 @@ TYPED_TEST(ACommunityHypergraph, SumOfEdgeWeights) {
 // TODO: Move Tests for HypLocalMovingModularity to it's own file
 TYPED_TEST(ACommunityHypergraph, ModularityDeltaNode0) {
     mt_kahypar::community_detection::HypLocalMovingModularity hlmm(this->community_hypergraph);
-    double before = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
-    double delta = hlmm.tryMove(0);
-    double after = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
+    Volume before = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
+    Volume delta = hlmm.tryMove(0);
+    Volume after = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
     ASSERT_DOUBLE_EQ(delta, after - before);
 }
 
 TYPED_TEST(ACommunityHypergraph, ModularityDeltaNode1) {
     mt_kahypar::community_detection::HypLocalMovingModularity hlmm(this->community_hypergraph);
-    double before = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
-    double delta = hlmm.tryMove(1);
-    double after = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
+    Volume before = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
+    Volume delta = hlmm.tryMove(1);
+    Volume after = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
     ASSERT_DOUBLE_EQ(delta, after - before);
 }
 
 TYPED_TEST(ACommunityHypergraph, ModularityDeltaNode2) {
     mt_kahypar::community_detection::HypLocalMovingModularity hlmm(this->community_hypergraph);
-    double before = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
-    double delta = hlmm.tryMove(2);
-    double after = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
+    Volume before = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
+    Volume delta = hlmm.tryMove(2);
+    Volume after = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
     ASSERT_DOUBLE_EQ(delta, after - before);
 }
 
 TYPED_TEST(ACommunityHypergraph, ModularityDeltaNode3) {
     mt_kahypar::community_detection::HypLocalMovingModularity hlmm(this->community_hypergraph);
-    double before = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
-    double delta = hlmm.tryMove(3);
-    double after = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
+    Volume before = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
+    Volume delta = hlmm.tryMove(3);
+    Volume after = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
     ASSERT_DOUBLE_EQ(delta, after - before);
 }
 
 TYPED_TEST(ACommunityHypergraph, ModularityDeltaNode4) {
     mt_kahypar::community_detection::HypLocalMovingModularity hlmm(this->community_hypergraph);
-    double before = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
-    double delta = hlmm.tryMove(4);
-    double after = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
+    Volume before = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
+    Volume delta = hlmm.tryMove(4);
+    Volume after = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
     ASSERT_DOUBLE_EQ(delta, after - before);
 }
 
 TYPED_TEST(ACommunityHypergraph, ModularityDeltaNode5) {
     mt_kahypar::community_detection::HypLocalMovingModularity hlmm(this->community_hypergraph);
-    double before = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
-    double delta = hlmm.tryMove(5);
-    double after = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
+    Volume before = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
+    Volume delta = hlmm.tryMove(5);
+    Volume after = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
     ASSERT_DOUBLE_EQ(delta, after - before);
 }
 
 TYPED_TEST(ACommunityHypergraph, ModularityDeltaNode6) {
     mt_kahypar::community_detection::HypLocalMovingModularity hlmm(this->community_hypergraph);
-    double before = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
-    double delta = hlmm.tryMove(6);
-    double after = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
+    Volume before = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
+    Volume delta = hlmm.tryMove(6);
+    Volume after = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
     ASSERT_DOUBLE_EQ(delta, after - before);
 }
 
+
+TYPED_TEST(ACommunityHypergraph, NewModularityDeltaNode0) {
+    mt_kahypar::community_detection::HypLocalMovingModularity hlmm(this->community_hypergraph);
+    Volume before = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
+    CommunityMove move = hlmm.calculateBestMove(0);
+    Volume delta = move.delta;
+    hlmm.makeMove(move);
+    Volume after = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
+    ASSERT_DOUBLE_EQ(delta, after - before);
+}
+
+TYPED_TEST(ACommunityHypergraph, NewModularityDeltaNode1) {
+    mt_kahypar::community_detection::HypLocalMovingModularity hlmm(this->community_hypergraph);
+    Volume before = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
+    CommunityMove move = hlmm.calculateBestMove(1);
+    Volume delta = move.delta;
+    hlmm.makeMove(move);
+    Volume after = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
+    ASSERT_DOUBLE_EQ(delta, after - before);
+}
+
+TYPED_TEST(ACommunityHypergraph, NewModularityDeltaNode2) {
+    mt_kahypar::community_detection::HypLocalMovingModularity hlmm(this->community_hypergraph);
+    Volume before = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
+    CommunityMove move = hlmm.calculateBestMove(2);
+    Volume delta = move.delta;
+    hlmm.makeMove(move);
+    Volume after = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
+    ASSERT_DOUBLE_EQ(delta, after - before);
+}
+
+TYPED_TEST(ACommunityHypergraph, NewModularityDeltaNode3) {
+    mt_kahypar::community_detection::HypLocalMovingModularity hlmm(this->community_hypergraph);
+    Volume before = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
+    CommunityMove move = hlmm.calculateBestMove(3);
+    Volume delta = move.delta;
+    hlmm.makeMove(move);
+    Volume after = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
+    ASSERT_DOUBLE_EQ(delta, after - before);
+}
+
+TYPED_TEST(ACommunityHypergraph, NewModularityDeltaNode4) {
+    mt_kahypar::community_detection::HypLocalMovingModularity hlmm(this->community_hypergraph);
+    Volume before = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
+    CommunityMove move = hlmm.calculateBestMove(4);
+    Volume delta = move.delta;
+    hlmm.makeMove(move);
+    Volume after = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
+    ASSERT_DOUBLE_EQ(delta, after - before);
+}
+
+TYPED_TEST(ACommunityHypergraph, NewModularityDeltaNode5) {
+    mt_kahypar::community_detection::HypLocalMovingModularity hlmm(this->community_hypergraph);
+    Volume before = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
+    CommunityMove move = hlmm.calculateBestMove(5);
+    Volume delta = move.delta;
+    hlmm.makeMove(move);
+    Volume after = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
+    ASSERT_DOUBLE_EQ(delta, after - before);
+}
+
+TYPED_TEST(ACommunityHypergraph, NewModularityDeltaNode6) {
+    mt_kahypar::community_detection::HypLocalMovingModularity hlmm(this->community_hypergraph);
+    Volume before = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
+    CommunityMove move = hlmm.calculateBestMove(6);
+    Volume delta = move.delta;
+    hlmm.makeMove(move);
+    Volume after = mt_kahypar::metrics::hyp_modularity(this->community_hypergraph);
+    ASSERT_DOUBLE_EQ(delta, after - before);
+}
+
+
 TYPED_TEST(ACommunityHypergraph, InitializingWeightToVector) {
     mt_kahypar::community_detection::HypLocalMovingModularity hlmm(this->community_hypergraph);
-    ASSERT_EQ(std::numeric_limits<double>::max(), hlmm.weightTOCommunity(0));
-    ASSERT_EQ(std::numeric_limits<double>::max(), hlmm.weightTOCommunity(1));
-    ASSERT_EQ(std::numeric_limits<double>::max(), hlmm.weightTOCommunity(2));
-    ASSERT_EQ(std::numeric_limits<double>::max(), hlmm.weightTOCommunity(3));
-    ASSERT_EQ(std::numeric_limits<double>::max(), hlmm.weightTOCommunity(4));
-    ASSERT_EQ(std::numeric_limits<double>::max(), hlmm.weightTOCommunity(5));
-    ASSERT_EQ(std::numeric_limits<double>::max(), hlmm.weightTOCommunity(6));
+    ASSERT_DOUBLE_EQ(std::numeric_limits<Volume>::max(), hlmm.weightTOCommunity(0));
+    ASSERT_DOUBLE_EQ(std::numeric_limits<Volume>::max(), hlmm.weightTOCommunity(1));
+    ASSERT_DOUBLE_EQ(std::numeric_limits<Volume>::max(), hlmm.weightTOCommunity(2));
+    ASSERT_DOUBLE_EQ(std::numeric_limits<Volume>::max(), hlmm.weightTOCommunity(3));
+    ASSERT_DOUBLE_EQ(std::numeric_limits<Volume>::max(), hlmm.weightTOCommunity(4));
+    ASSERT_DOUBLE_EQ(std::numeric_limits<Volume>::max(), hlmm.weightTOCommunity(5));
+    ASSERT_DOUBLE_EQ(std::numeric_limits<Volume>::max(), hlmm.weightTOCommunity(6));
+}
+
+TYPED_TEST(ACommunityHypergraph, makeMoveTest) {
+    mt_kahypar::community_detection::HypLocalMovingModularity hlmm(this->community_hypergraph);
+    HyperedgeWeight manuel = this->community_hypergraph.communityVolume(2) + this->community_hypergraph.nodeVolume(0);
+    CommunityMove cm;
+    cm.node_to_move = 0;
+    cm.delta = -10.0;
+    cm.destination_community = 2;
+    hlmm.makeMove(cm);
+    ASSERT_EQ(0,this->community_hypergraph.communityVolume(0));
+    ASSERT_EQ(manuel, this->community_hypergraph.communityVolume(2));
+    ASSERT_EQ(2, this->community_hypergraph.communityID(0));
+
 }
 }
 }
