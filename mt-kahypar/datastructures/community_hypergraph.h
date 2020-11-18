@@ -20,10 +20,12 @@ class CommunityHypergraph {
 public:
 
     using CommunityVolumes = Array<HyperedgeWeight>;
+    using EdgeSizes = std::vector<PartitionID>;
     using HyperedgeIterator = typename Hypergraph::HyperedgeIterator;
     using IncidenceIterator = typename Hypergraph::IncidenceIterator;
     using IncidentNetsIterator = typename Hypergraph::IncidentNetsIterator;
     using CommunityVolumeIterator = typename CommunityVolumes::const_iterator;
+    using EdgeSizeIterator = typename EdgeSizes::const_iterator;
 
     CommunityHypergraph() = default;
 
@@ -101,6 +103,10 @@ public:
         return IteratorRange<CommunityVolumeIterator>(_community_volumes.cbegin(), _community_volumes.cend());
     }
 
+    IteratorRange<EdgeSizeIterator> edgeSizes() const {
+        return IteratorRange<EdgeSizeIterator>(_valid_edge_sizes.cbegin(), _valid_edge_sizes.cend());
+    }
+
 
     // ######################## Community ########################
 
@@ -174,6 +180,11 @@ private:
             _total_edge_weight += edgeWeight(hn);
             _d_edge_weights[edgeSize(hn)] += edgeWeight(hn);
         }
+        for (size_t i = 0; i < _d_edge_weights.size(); ++i) {
+            if (_d_edge_weights[i] > 0) {
+                _valid_edge_sizes.emplace_back(i);
+            }
+        }
     }
 
     // ! Hypergraph this datastructure is wrapped around
@@ -190,6 +201,9 @@ private:
 
     // ! summed edgeweight for each edgesize
     Array<HyperedgeWeight> _d_edge_weights;
+
+    // ! contains the indexes to all edgeSizes which occur in the graph
+    std::vector<PartitionID> _valid_edge_sizes;
 
     // ! sum of all edgeweights
     HyperedgeWeight _total_edge_weight;

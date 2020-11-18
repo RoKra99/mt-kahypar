@@ -23,12 +23,13 @@ Volume hyp_modularity(const ds::CommunityHypergraph& hypergraph) {
         }
         neigh_communities.clear();
     }
-    for (HypernodeID d = 0; d < hypergraph.maxEdgeSize(); ++d) {
+    for (const size_t d : hypergraph.edgeSizes()) {
         Volume d_chance = 0.0;
         for (const HyperedgeWeight& vol_c : hypergraph.communityVolumes()) {
-            d_chance += 1.0 - pow(1.0 - static_cast<Volume>(vol_c) / vol_V, d);
+            d_chance += 1.0 - powl(vol_V - vol_c , d) / powl(vol_V,d);
         }
         exp_edge_contribution += hypergraph.dEdgeWeight(d) * d_chance;
+        std::cout << "Edgesize: " << d << ", d_chance " << d_chance << " what is added: " << hypergraph.dEdgeWeight(d) * d_chance << std::endl;
     }
     return  (edge_contribution - exp_edge_contribution) / hypergraph.totalEdgeWeight();
 }

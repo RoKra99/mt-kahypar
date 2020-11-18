@@ -51,8 +51,10 @@ public:
         std::vector<PartitionID> community_neighbours_of_node;
 
         for (const HyperedgeID& he : _hg->incidentEdges(v)) {
+            std::cout << "Hyperedge nr. " << he << std::endl;
             const HyperedgeWeight edge_weight = _hg->edgeWeight(he);
             for (const HypernodeID& hn : _hg->pins(he)) {
+                std::cout << hn << std::endl;
                 const PartitionID comm_hn = _hg->communityID(hn);
                 if (hn != v && !pins_in_community[comm_hn]) {
                     pins_in_community[comm_hn] = true;
@@ -86,9 +88,10 @@ public:
             community_edge_contribution[community] += sum_of_edgeweights - edge_contribution_c;
             const HyperedgeWeight vol_d = _hg->communityVolume(community);
             Volume exp_edge_contribution = 0.0;
-            for (HyperedgeID d = 0; d < _hg->maxEdgeSize(); ++d) {
-                exp_edge_contribution += (static_cast<Volume>(_hg->dEdgeWeight(d)) / pow(vol_total, d)) * (pow(vol_total - vol_c + vol_v, d) - pow(vol_total - vol_c, d)
-                                                                                                           + pow(vol_total - vol_d - vol_v, d) - pow(vol_total - vol_d, d));
+            for (const size_t d : _hg->edgeSizes()) {
+                std::cout << "EdgeSize: " << d << std::endl;
+                exp_edge_contribution += (static_cast<Volume>(_hg->dEdgeWeight(d)) / powl(vol_total, d)) * (powl(vol_total - vol_c + vol_v, d) - powl(vol_total - vol_c, d)
+                                                                                                           + powl(vol_total - vol_d - vol_v, d) - powl(vol_total - vol_d, d));
             }
             Volume delta = (static_cast<Volume>(community_edge_contribution[community]) + exp_edge_contribution) / total_edge_weight;
             if (delta < best_delta) {
@@ -190,9 +193,9 @@ private:
         const HyperedgeWeight vol_c = _hg->communityVolume(comm_v);
         const HyperedgeWeight vol_d = _hg->communityVolume(destination);
         Volume exp_edge_contribution = 0.0;
-        for (HyperedgeID d = 0; d < _hg->maxEdgeSize(); ++d) {
-            exp_edge_contribution += (static_cast<Volume>(_hg->dEdgeWeight(d)) / pow(vol_total, d)) * (pow(vol_total - vol_c + vol_v, d) - pow(vol_total - vol_c, d)
-                                                                                                       + pow(vol_total - vol_d - vol_v, d) - pow(vol_total - vol_d, d));
+        for (const size_t d : _hg->edgeSizes()) {
+            exp_edge_contribution += (static_cast<Volume>(_hg->dEdgeWeight(d)) / pow(vol_total, d)) * (powl(vol_total - vol_c + vol_v, d) - powl(vol_total - vol_c, d)
+                                                                                                       + powl(vol_total - vol_d - vol_v, d) - powl(vol_total - vol_d, d));
         }
         return (edge_contribution + exp_edge_contribution) / _hg->totalEdgeWeight();
     }
