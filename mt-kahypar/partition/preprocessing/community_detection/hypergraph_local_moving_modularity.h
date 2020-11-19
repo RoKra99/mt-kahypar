@@ -23,16 +23,16 @@ class HypergraphLocalMovingModularity {
 public:
     HypergraphLocalMovingModularity(ds::CommunityHypergraph& hypergraph) : _hg(&hypergraph) {
         tbb::parallel_invoke([&] {
-            community_edge_contribution.resize("Preprocessing", "clearlist_edge_contribution", hypergraph.initialNumNodes(), true, true);
+            _community_edge_contribution.resize("Preprocessing", "clearlist_edge_contribution", hypergraph.initialNumNodes(), true, true);
                              }, [&] {
-                                 pins_in_community.resize("Preprocessing", "clearlist_pins_in_community", hypergraph.initialNumNodes());
+                                 _pins_in_community.resize("Preprocessing", "clearlist_pins_in_community", hypergraph.initialNumNodes());
                              });
 
-        pins_in_community.assign(hypergraph.initialNumNodes(), false);
+        _pins_in_community.assign(hypergraph.initialNumNodes(), false);
     }
 
     ~HypergraphLocalMovingModularity() {
-        parallel::parallel_free(community_edge_contribution, pins_in_community);
+        parallel::parallel_free(_community_edge_contribution, _pins_in_community);
     }
 
     CommunityMove calculateBestMove(const HypernodeID v) {
@@ -51,23 +51,23 @@ public:
             for (const HypernodeID& hn : _hg->pins(he)) {
                 DBG << "Pin in edge: " << hn;
                 const PartitionID comm_hn = _hg->communityID(hn);
-                if (hn != v && !pins_in_community[comm_hn]) {
-                    pins_in_community[comm_hn] = true;
+                if (hn != v && !_pins_in_community[comm_hn]) {
+                    _pins_in_community[comm_hn] = true;
                     community_neighbours_of_edge.emplace_back(comm_hn); //TODO: what happens with comm_v?
                 }
             }
 
-            if (!pins_in_community[comm_v]) {
+            if (!_pins_in_community[comm_v]) {
                 edge_contribution_c += edge_weight;
             }
-            pins_in_community[comm_v] = false;
+            _pins_in_community[comm_v] = false;
 
             for (const PartitionID& community : community_neighbours_of_edge) {
-                if (!community_edge_contribution[community]) {
+                if (!_community_edge_contribution[community]) {
                     community_neighbours_of_node.emplace_back(community);
                 }
-                community_edge_contribution[community] -= edge_weight;
-                pins_in_community[community] = false;
+                _community_edge_contribution[community] -= edge_weight;
+                _pins_in_community[community] = false;
             }
             community_neighbours_of_edge.clear();
             sum_of_edgeweights += edge_weight;
@@ -80,26 +80,26 @@ public:
         const HyperedgeWeight vol_c = _hg->communityVolume(comm_v);
         const HyperedgeWeight total_edge_weight = _hg->totalEdgeWeight();
         for (const PartitionID community : community_neighbours_of_node) {
-            community_edge_contribution[community] += sum_of_edgeweights - edge_contribution_c;
+            _community_edge_contribution[community] += sum_of_edgeweights - edge_contribution_c;
             const HyperedgeWeight vol_d = _hg->communityVolume(community);
-            Volume exp_edge_contribution = 0.0;
+            Volume exp_edge_contribution = 0.0L;
             for (const size_t d : _hg->edgeSizes()) {
                 DBG << "EdgeSize: " << d;
                 exp_edge_contribution += (static_cast<Volume>(_hg->edgeWeightBySize(d)) / math::fast_power(vol_total, d)) * (math::fast_power(vol_total - vol_c + vol_v, d) - math::fast_power(vol_total - vol_c, d)
                                                                                                                        + math::fast_power(vol_total - vol_d - vol_v, d) - math::fast_power(vol_total - vol_d, d));
             }
-            Volume delta = (static_cast<Volume>(community_edge_contribution[community]) + exp_edge_contribution) / total_edge_weight;
+            Volume delta = (static_cast<Volume>(_community_edge_contribution[community]) + exp_edge_contribution) / total_edge_weight;
             if (delta < best_delta) {
                 best_delta = delta;
                 best_community = community;
             }
-            community_edge_contribution[community] = 0.0;
+            _community_edge_contribution[community] = 0.0L;
         }
 
         community_neighbours_of_node.clear();
         CommunityMove cm;
         cm.destination_community = best_community;
-        cm.delta = best_community == comm_v ? 0.0 : best_delta;
+        cm.delta = best_community == comm_v ? 0.0L : best_delta;
         cm.node_to_move = v;
         return cm;
     }
@@ -108,7 +108,7 @@ public:
     void makeMove(const CommunityMove& move) {
         static constexpr bool debug = false;
         DBG << "Move from " << _hg->communityID(move.node_to_move) << " to " << move.destination_community;
-        if (move.delta < 0.0) {
+        if (move.delta < 0.0L) {
             _hg->addCommunityVolume(move.node_to_move, move.destination_community);
             _hg->subtractCommunityVolume(move.node_to_move, _hg->communityID(move.node_to_move));
             _hg->setCommunityID(move.node_to_move, move.destination_community);
@@ -121,7 +121,7 @@ private:
     ds::CommunityHypergraph* _hg;
 
     // ! for clearlists
-    ds::Array<HyperedgeWeight> community_edge_contribution;
-    ds::Array<bool> pins_in_community;
+    ds::Array<HyperedgeWeight> _community_edge_contribution;
+    ds::Array<bool> _pins_in_community;
 };
 }

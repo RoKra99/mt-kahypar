@@ -43,7 +43,7 @@ public:
 };
 
 // precision with the modularity change is compared (this is the highest precision where all tests pass)
-static constexpr Volume PRECISION = 1e-15;
+static constexpr Volume PRECISION = 1e-15L;
 
 using CommunityHypergraphTestTypes =
 ::testing::Types<

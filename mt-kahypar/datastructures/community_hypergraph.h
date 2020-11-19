@@ -1,17 +1,9 @@
 #pragma once
 
-#include <atomic>
-#include <type_traits>
-#include <mutex>
-
 #include "tbb/parallel_invoke.h"
 #include "tbb/parallel_for.h"
 
 #include "mt-kahypar/definitions.h"
-#include "mt-kahypar/parallel/atomic_wrapper.h"
-#include "mt-kahypar/utils/range.h"
-#include "mt-kahypar/parallel/stl/scalable_vector.h"
-#include "mt-kahypar/parallel/stl/thread_locals.h"
 
 namespace mt_kahypar {
 namespace ds {
