@@ -1,4 +1,4 @@
-#include "hyp_local_moving_modularity.h"
+#include "hypergraph_local_moving_modularity.h"
 #include <iostream>
 
 namespace mt_kahypar::metrics {
@@ -30,8 +30,8 @@ Volume hyp_modularity(const ds::CommunityHypergraph& hypergraph) {
             DBG << "Volumes: " << vol_c;
             d_chance += static_cast<Volume>(1.0) - static_cast<Volume>(math::fast_power(vol_V - vol_c , d)) / math::fast_power(vol_V,d);
         }
-        exp_edge_contribution += hypergraph.dEdgeWeight(d) * d_chance;
-        DBG << "Edgesize: " << d << ", d_chance " << d_chance << " what is added: " << hypergraph.dEdgeWeight(d) * d_chance;
+        exp_edge_contribution += hypergraph.edgeWeightBySize(d) * d_chance;
+        DBG << "Edgesize: " << d << ", d_chance " << d_chance << " what is added: " << hypergraph.edgeWeightBySize(d) * d_chance;
     }
     return  (edge_contribution - exp_edge_contribution) / hypergraph.totalEdgeWeight();
 }

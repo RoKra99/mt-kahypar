@@ -134,7 +134,7 @@ public:
     }
 
     // ! Sum of all edweights of size d
-    HyperedgeWeight dEdgeWeight(const HypernodeID d) const {
+    HyperedgeWeight edgeWeightBySize(const HypernodeID d) const {
         return _d_edge_weights[d];
     }
 
@@ -146,6 +146,9 @@ public:
     HypernodeID maxEdgeSize() const {
         return _hg->maxEdgeSize();
     }
+
+
+    // ######################## Nodes ########################
 
     // ! Initial number of hypernodes
     HypernodeID initialNumNodes() const {

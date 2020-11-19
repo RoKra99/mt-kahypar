@@ -17,11 +17,11 @@ struct CommunityMove {
     Volume delta;
 };
 
-class HypLocalMovingModularity {
+class HypergraphLocalMovingModularity {
 
 
 public:
-    HypLocalMovingModularity(ds::CommunityHypergraph& hypergraph) : _hg(&hypergraph) {
+    HypergraphLocalMovingModularity(ds::CommunityHypergraph& hypergraph) : _hg(&hypergraph) {
         tbb::parallel_invoke([&] {
             community_edge_contribution.resize("Preprocessing", "clearlist_edge_contribution", hypergraph.initialNumNodes(), true, true);
                              }, [&] {
@@ -31,7 +31,7 @@ public:
         pins_in_community.assign(hypergraph.initialNumNodes(), false);
     }
 
-    ~HypLocalMovingModularity() {
+    ~HypergraphLocalMovingModularity() {
         parallel::parallel_free(community_edge_contribution, pins_in_community);
     }
 
@@ -85,7 +85,7 @@ public:
             Volume exp_edge_contribution = 0.0;
             for (const size_t d : _hg->edgeSizes()) {
                 DBG << "EdgeSize: " << d;
-                exp_edge_contribution += (static_cast<Volume>(_hg->dEdgeWeight(d)) / math::fast_power(vol_total, d)) * (math::fast_power(vol_total - vol_c + vol_v, d) - math::fast_power(vol_total - vol_c, d)
+                exp_edge_contribution += (static_cast<Volume>(_hg->edgeWeightBySize(d)) / math::fast_power(vol_total, d)) * (math::fast_power(vol_total - vol_c + vol_v, d) - math::fast_power(vol_total - vol_c, d)
                                                                                                                        + math::fast_power(vol_total - vol_d - vol_v, d) - math::fast_power(vol_total - vol_d, d));
             }
             Volume delta = (static_cast<Volume>(community_edge_contribution[community]) + exp_edge_contribution) / total_edge_weight;
