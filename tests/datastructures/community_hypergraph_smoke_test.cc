@@ -10,7 +10,7 @@ namespace mt_kahypar {
 namespace ds {
 
 TEST(FindBestMove, Example1) {
-    StaticHypergraph hg = io::readHypergraphFile("../../tests/instances/powersim.mtx.hgr", 0);
+    StaticHypergraph hg = io::readHypergraphFile("../tests/instances/powersim.mtx.hgr", 0);
     utils::Timer::instance().start_timer("comm_init", "Initialize Community Hypergraph");
     CommunityHypergraph chg(hg);
     utils::Timer::instance().stop_timer("comm_init");
