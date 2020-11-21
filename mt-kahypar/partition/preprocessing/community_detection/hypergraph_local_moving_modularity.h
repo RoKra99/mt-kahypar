@@ -43,6 +43,7 @@ public:
 
     // ! calculates the best modularity move for the given node
     CommunityMove calculateBestMove(const HypernodeID v) {
+        utils::Timer::instance().start_timer("calculate_best_move", "Calculate best move");
         static constexpr bool debug = false;
         const PartitionID comm_v = _hg->communityID(v);
         // the sum of edgeweights which only have v in that community
@@ -80,7 +81,7 @@ public:
             sum_of_edgeweights += edge_weight;
         }
         utils::Timer::instance().stop_timer("edge_contribution");
-
+        utils::Timer::instance().start_timer("exp_edge_contribution", "ExpectedEdgeContribution");
         PartitionID best_community = comm_v;
         Volume best_delta = 0.0;
         const HyperedgeWeight vol_total = _hg->totalVolume();
@@ -88,19 +89,26 @@ public:
         const HyperedgeWeight vol_c = _hg->communityVolume(comm_v);
 
         //precalculate the powers for the source community
-        for (const size_t d : _hg->edgeSizes()) { 
-            _powers_of_source_community[d] = math::fast_power(vol_total - vol_c + vol_v, d) - math::fast_power(vol_total - vol_c, d);
+        const Volume source_fraction_minus = 1.0L - static_cast<Volume>(vol_c - vol_v)/vol_total;
+        const Volume source_fraction = 1.0L - static_cast<Volume>(vol_c) / vol_total;
+        for (const size_t d : _hg->edgeSizes()) {
+            _powers_of_source_community[d] = math::fast_power(source_fraction_minus, d) - math::fast_power(source_fraction, d);
         }
 
-        utils::Timer::instance().start_timer("exp_edge_contribution", "ExpectedEdgeContribution");
+        // actual calculation for the expected edge contribution of each neighbor community
         for (const PartitionID community : community_neighbours_of_node) {
             _community_edge_contribution[community] += sum_of_edgeweights - edge_contribution_c;
-            const HyperedgeWeight vol_d = _hg->communityVolume(community);
+            const HyperedgeWeight vol_destination = _hg->communityVolume(community);
+            const Volume destination_fraction = 1.0L - static_cast<Volume>(vol_destination + vol_v) / vol_total;
+            const Volume destination_fraction_minus = 1.0L - static_cast<Volume>(vol_destination) / vol_total;
             Volume exp_edge_contribution = 0.0L;
-            // only the calculations for vol_d change here
+            
             for (const size_t d : _hg->edgeSizes()) {
-                exp_edge_contribution += _powers_of_total_volume[d] * (_powers_of_source_community[d] + math::fast_power(vol_total - vol_d - vol_v, d) - math::fast_power(vol_total - vol_d, d));
+                exp_edge_contribution += static_cast<Volume>(_hg->edgeWeightBySize(d)) * (_powers_of_source_community[d]
+                                                                                            + math::fast_power(destination_fraction, d) 
+                                                                                            - math::fast_power(destination_fraction_minus, d));
             }
+            
             Volume delta = (static_cast<Volume>(_community_edge_contribution[community]) + exp_edge_contribution);
             if (delta < best_delta) {
                 best_delta = delta;
@@ -115,6 +123,7 @@ public:
         cm.destination_community = best_community;
         cm.delta = best_community == comm_v ? 0.0L : best_delta;
         cm.node_to_move = v;
+        utils::Timer::instance().stop_timer("calculate_best_move");
         return cm;
     }
 
@@ -150,6 +159,6 @@ private:
 
     // ! contains (vol_V - vol(C)+vol(v))^d - (vol(V)-vol(C))^d for all valid edgesizes d
     // TODO: Note the values in here are not cleared after each call to tryMove
-    ds::Array<HyperedgeWeight> _powers_of_source_community;
+    ds::Array<Volume> _powers_of_source_community;
 };
 }

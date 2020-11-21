@@ -54,7 +54,7 @@ namespace mt_kahypar {
       pool.register_memory_chunk("Preprocessing", "clearlist_edge_contribution", num_hypernodes, sizeof(HyperedgeWeight));
       pool.register_memory_chunk("Preprocessing", "clearlist_pins_in_community", num_hypernodes, sizeof(bool));
       pool.register_memory_chunk("Preprocessing", "powers_of_total_volume", max_edge_size + 1, sizeof(Volume));
-      pool.register_memory_chunk("Preprocessing", "powers_of_source_community", max_edge_size + 1, sizeof(HyperedgeWeight));
+      pool.register_memory_chunk("Preprocessing", "powers_of_source_community", max_edge_size + 1, sizeof(Volume));
 
       pool.register_memory_chunk("Preprocessing", "indices", num_star_expansion_nodes + 1, sizeof(size_t));
       pool.register_memory_chunk("Preprocessing", "arcs", num_star_expansion_edges, sizeof(Arc));

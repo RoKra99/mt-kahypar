@@ -1,4 +1,5 @@
 #pragma once
+#include "mt-kahypar/utils/floating_point_comparisons.h"
 
 namespace mt_kahypar::math {
 
@@ -21,9 +22,10 @@ inline HyperedgeWeight fast_power2(HyperedgeWeight base, HyperedgeWeight exponen
     return fast_power_acc(base, exponent, base, 1, fast_power_acc);
 }
 
-inline HyperedgeWeight fast_power(HyperedgeWeight base, HyperedgeWeight exp) {
-    HyperedgeWeight result = 1;
-    const HyperedgeWeight int_max = std::numeric_limits<HyperedgeWeight>::max();
+inline Volume fast_power(Volume base, HyperedgeWeight exp) {
+    
+    Volume result = 1;
+    const Volume int_max = std::numeric_limits<Volume>::max();
     while (true) {
         if (exp & 1) {
             assert(result < int_max / base);
@@ -35,6 +37,11 @@ inline HyperedgeWeight fast_power(HyperedgeWeight base, HyperedgeWeight exp) {
         assert(base < int_max / base);
         base *= base;
     }
+    if (mt_kahypar::math::are_almost_equal_ld(result, 0.0L, 1e-6L)) {
+        LOG << base <<"^"<<exp;
+        LOG << result;
+    }
+    
     return result;
 }
 }
