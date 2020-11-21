@@ -33,6 +33,6 @@ Volume hyp_modularity(const ds::CommunityHypergraph& hypergraph) {
         exp_edge_contribution += hypergraph.edgeWeightBySize(d) * d_chance;
         DBG << "Edgesize: " << d << ", d_chance " << d_chance << " what is added: " << hypergraph.edgeWeightBySize(d) * d_chance;
     }
-    return  (edge_contribution - exp_edge_contribution) / hypergraph.totalEdgeWeight();
+    return  (edge_contribution - exp_edge_contribution);
 }
 }

@@ -14,7 +14,7 @@ namespace community_detection {
 using AHypergraphLocalMoving = ds::HypergraphFixture;
 
 // precision with the modularity change is compared (this is the highest precision where all tests pass)
-static constexpr Volume PRECISION = 1e-15L;
+static constexpr Volume PRECISION = 1e-14L;
 
 TEST_F(AHypergraphLocalMoving, NewModularityDeltaNode0) {
     ds::CommunityHypergraph community_hypergraph(hypergraph);

@@ -86,7 +86,6 @@ public:
         const HyperedgeWeight vol_total = _hg->totalVolume();
         const HyperedgeWeight vol_v = _hg->nodeVolume(v);
         const HyperedgeWeight vol_c = _hg->communityVolume(comm_v);
-        const HyperedgeWeight total_edge_weight = _hg->totalEdgeWeight();
 
         //precalculate the powers for the source community
         for (const size_t d : _hg->edgeSizes()) { 
@@ -102,7 +101,7 @@ public:
             for (const size_t d : _hg->edgeSizes()) {
                 exp_edge_contribution += _powers_of_total_volume[d] * (_powers_of_source_community[d] + math::fast_power(vol_total - vol_d - vol_v, d) - math::fast_power(vol_total - vol_d, d));
             }
-            Volume delta = (static_cast<Volume>(_community_edge_contribution[community]) + exp_edge_contribution) / total_edge_weight;
+            Volume delta = (static_cast<Volume>(_community_edge_contribution[community]) + exp_edge_contribution);
             if (delta < best_delta) {
                 best_delta = delta;
                 best_community = community;
