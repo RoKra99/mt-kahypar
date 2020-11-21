@@ -94,7 +94,10 @@ public:
         for (const size_t d : _hg->edgeSizes()) {
             _powers_of_source_community[d] = math::fast_power(source_fraction_minus, d) - math::fast_power(source_fraction, d);
         }
-
+        // std::vector<Volume> destination_powers(_hg->maxEdgeSize() + 1, 0.0L);
+        // std::vector<Volume> destination_powers_minus(_hg->maxEdgeSize() + 1, 0.0L);
+        // destination_powers[0] = 1.0L;
+        // destination_powers_minus[0] = 1.0L;
         // actual calculation for the expected edge contribution of each neighbor community
         for (const PartitionID community : community_neighbours_of_node) {
             _community_edge_contribution[community] += sum_of_edgeweights - edge_contribution_c;
@@ -103,11 +106,17 @@ public:
             const Volume destination_fraction_minus = 1.0L - static_cast<Volume>(vol_destination) / vol_total;
             Volume exp_edge_contribution = 0.0L;
             
+            //size_t biggest_d_yet = 0;
             for (const size_t d : _hg->edgeSizes()) {
                 exp_edge_contribution += static_cast<Volume>(_hg->edgeWeightBySize(d)) * (_powers_of_source_community[d]
-                                                                                            + math::fast_power(destination_fraction, d) 
-                                                                                            - math::fast_power(destination_fraction_minus, d));
+                                                                                            + math::fast_power( destination_fraction, d) 
+                                                                                            - math::fast_power( destination_fraction_minus, d));
+                //biggest_d_yet = d;
             }
+            // for (size_t i = 1; i < _hg->maxEdgeSize() + 1; ++i) {
+            //     destination_powers[i] = 0.0L;
+            //     destination_powers_minus[i] = 0.0L;
+            // }
             
             Volume delta = (static_cast<Volume>(_community_edge_contribution[community]) + exp_edge_contribution);
             if (delta < best_delta) {

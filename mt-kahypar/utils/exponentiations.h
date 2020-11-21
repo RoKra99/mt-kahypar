@@ -37,11 +37,32 @@ inline Volume fast_power(Volume base, HyperedgeWeight exp) {
         assert(base < int_max / base);
         base *= base;
     }
-    if (mt_kahypar::math::are_almost_equal_ld(result, 0.0L, 1e-6L)) {
-        LOG << base <<"^"<<exp;
-        LOG << result;
+    return result;
+}
+
+inline Volume reusable_power(std::vector<Volume>& values, PartitionID biggest_exp_yet, Volume base, HyperedgeWeight exp) {
+    HyperedgeWeight rest_exp = exp - biggest_exp_yet;
+    Volume rest = values[rest_exp];
+    if (!(rest > 0.0L)) {
+        HyperedgeWeight partial_exp = 0;
+        HyperedgeWeight increment = 1;
+        rest = 1.0L;
+
+        while (true) {
+            if (rest_exp & 1) {
+                rest *= base;
+                partial_exp += increment;
+                values[partial_exp] = rest;
+            }
+            rest_exp >>= 1;
+            if (!rest_exp) 
+                break;
+            base *= base;
+            increment *= 2;
+        }
     }
-    
+    const Volume result = values[biggest_exp_yet] * rest;
+    values[exp] = result;
     return result;
 }
 }
