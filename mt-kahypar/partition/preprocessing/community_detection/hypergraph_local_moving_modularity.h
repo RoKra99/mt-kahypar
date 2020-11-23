@@ -106,12 +106,15 @@ public:
             const Volume destination_fraction_minus = 1.0L - static_cast<Volume>(vol_destination) / vol_total;
             Volume exp_edge_contribution = 0.0L;
             
-            //size_t biggest_d_yet = 0;
+            size_t biggest_d_yet = 1;
+            Volume d_minus_prev = destination_fraction_minus;
+            Volume d_prev = destination_fraction;
             for (const size_t d : _hg->edgeSizes()) {
-                exp_edge_contribution += static_cast<Volume>(_hg->edgeWeightBySize(d)) * (_powers_of_source_community[d]
-                                                                                            + math::fast_power( destination_fraction, d) 
-                                                                                            - math::fast_power( destination_fraction_minus, d));
-                //biggest_d_yet = d;
+                const size_t remaining_d = d - biggest_d_yet;
+                d_minus_prev *= math::fast_power(destination_fraction_minus, remaining_d);
+                d_prev *= math::fast_power(destination_fraction, remaining_d);
+                exp_edge_contribution += static_cast<Volume>(_hg->edgeWeightBySize(d)) * (_powers_of_source_community[d] + d_prev - d_minus_prev);
+                biggest_d_yet = d;
             }
             // for (size_t i = 1; i < _hg->maxEdgeSize() + 1; ++i) {
             //     destination_powers[i] = 0.0L;
