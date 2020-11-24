@@ -28,17 +28,14 @@ public:
                              }, [&] {
                                  _pins_in_community.resize("Preprocessing", "clearlist_pins_in_community", hypergraph.initialNumNodes());
                              }, [&] {
-                                 _powers_of_total_volume.resize("Preprocessing", "powers_of_total_volume", hypergraph.maxEdgeSize() + 1);
-                             }, [&] {
                                  _powers_of_source_community.resize("Preprocessing", "powers_of_source_community", hypergraph.maxEdgeSize() + 1);
                              });
 
         _pins_in_community.assign(hypergraph.initialNumNodes(), false);
-        computeAndSetPowers();
     }
 
     ~HypergraphLocalMovingModularity() {
-        parallel::parallel_free(_community_edge_contribution, _pins_in_community, _powers_of_total_volume, _powers_of_source_community);
+        parallel::parallel_free(_community_edge_contribution, _pins_in_community, _powers_of_source_community);
     }
 
     // ! calculates the best modularity move for the given node
@@ -91,14 +88,18 @@ public:
         //precalculate the powers for the source community
         const Volume source_fraction_minus = 1.0L - static_cast<Volume>(vol_c - vol_v)/vol_total;
         const Volume source_fraction = 1.0L - static_cast<Volume>(vol_c) / vol_total;
+        size_t biggest_d_yet = 1;
+        Volume d_minus_prev = source_fraction_minus;
+        Volume d_prev = source_fraction;
         for (const size_t d : _hg->edgeSizes()) {
-            _powers_of_source_community[d] = math::fast_power(source_fraction_minus, d) - math::fast_power(source_fraction, d);
+            const size_t remaining_d = d - biggest_d_yet;
+            d_minus_prev *= math::fast_power(source_fraction_minus, remaining_d);
+            d_prev *= math::fast_power(source_fraction, remaining_d);
+            _powers_of_source_community[d] = d_minus_prev - d_prev;
+            biggest_d_yet = d;
         }
-        // std::vector<Volume> destination_powers(_hg->maxEdgeSize() + 1, 0.0L);
-        // std::vector<Volume> destination_powers_minus(_hg->maxEdgeSize() + 1, 0.0L);
-        // destination_powers[0] = 1.0L;
-        // destination_powers_minus[0] = 1.0L;
-        // actual calculation for the expected edge contribution of each neighbor community
+
+        // actual calculation for the expected edge contribution of each neighbour community
         for (const PartitionID community : community_neighbours_of_node) {
             _community_edge_contribution[community] += sum_of_edgeweights - edge_contribution_c;
             const HyperedgeWeight vol_destination = _hg->communityVolume(community);
@@ -106,9 +107,9 @@ public:
             const Volume destination_fraction_minus = 1.0L - static_cast<Volume>(vol_destination) / vol_total;
             Volume exp_edge_contribution = 0.0L;
             
-            size_t biggest_d_yet = 1;
-            Volume d_minus_prev = destination_fraction_minus;
-            Volume d_prev = destination_fraction;
+            biggest_d_yet = 1;
+            d_minus_prev = destination_fraction_minus;
+            d_prev = destination_fraction;
             for (const size_t d : _hg->edgeSizes()) {
                 const size_t remaining_d = d - biggest_d_yet;
                 d_minus_prev *= math::fast_power(destination_fraction_minus, remaining_d);
@@ -116,10 +117,6 @@ public:
                 exp_edge_contribution += static_cast<Volume>(_hg->edgeWeightBySize(d)) * (_powers_of_source_community[d] + d_prev - d_minus_prev);
                 biggest_d_yet = d;
             }
-            // for (size_t i = 1; i < _hg->maxEdgeSize() + 1; ++i) {
-            //     destination_powers[i] = 0.0L;
-            //     destination_powers_minus[i] = 0.0L;
-            // }
             
             Volume delta = (static_cast<Volume>(_community_edge_contribution[community]) + exp_edge_contribution);
             if (delta < best_delta) {
@@ -152,13 +149,6 @@ public:
 
 private:
 
-    void computeAndSetPowers() {
-        const HyperedgeWeight vol_total = _hg->totalVolume();
-        for (const size_t d : _hg->edgeSizes()) {
-            _powers_of_total_volume[d] = static_cast<Volume>(_hg->edgeWeightBySize(d)) / math::fast_power(vol_total, d);
-        }
-    }
-
     // ! Hypergraph on which the local moving is performed
     ds::CommunityHypergraph* _hg;
 
@@ -166,8 +156,6 @@ private:
     ds::Array<HyperedgeWeight> _community_edge_contribution;
     ds::Array<bool> _pins_in_community;
 
-    // ! contains the factor |E_d| / vol(V)^d for all valid edgesizes d
-    ds::Array<Volume> _powers_of_total_volume;
 
     // ! contains (vol_V - vol(C)+vol(v))^d - (vol(V)-vol(C))^d for all valid edgesizes d
     // TODO: Note the values in here are not cleared after each call to tryMove
