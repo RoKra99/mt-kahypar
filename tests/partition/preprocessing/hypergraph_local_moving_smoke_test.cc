@@ -11,6 +11,9 @@ namespace ds {
 
 TEST(AHypergraphLocalMovingSpeed, TestsTheSpeedOfTheDeltaCalculation) {
     StaticHypergraph hg = io::readHypergraphFile("../tests/instances/powersim.mtx.hgr", 0);
+    LOG << hg.initialNumNodes(); // Where do all these nodes come from?
+    LOG << hg.initialNumPins();
+    LOG << hg.initialNumEdges();
     utils::Timer::instance().start_timer("comm_init", "Initialize Community Hypergraph");
     CommunityHypergraph chg(hg);
     utils::Timer::instance().stop_timer("comm_init");
