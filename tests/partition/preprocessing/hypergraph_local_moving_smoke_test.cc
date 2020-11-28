@@ -11,14 +11,11 @@ namespace ds {
 
 TEST(AHypergraphLocalMovingSpeed, TestsTheSpeedOfTheDeltaCalculation) {
     StaticHypergraph hg = io::readHypergraphFile("../tests/instances/powersim.mtx.hgr", 0);
-    LOG << hg.initialNumNodes(); // Where do all these nodes come from?
-    LOG << hg.initialNumPins();
-    LOG << hg.initialNumEdges();
     utils::Timer::instance().start_timer("comm_init", "Initialize Community Hypergraph");
     CommunityHypergraph chg(hg);
     utils::Timer::instance().stop_timer("comm_init");
     community_detection::HypergraphLocalMovingModularity hlmm(chg);
-    for (size_t k = 0; k < 10; ++k) {
+    for (size_t k = 0; k < 10000; ++k) {
         for (HypernodeID hn = 0; hn < 15838; ++hn) {
             hlmm.makeMove(hlmm.calculateBestMove(hn));
         }

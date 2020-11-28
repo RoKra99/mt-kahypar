@@ -86,7 +86,7 @@ public:
         const HyperedgeWeight vol_c = _hg->communityVolume(comm_v);
 
         //precalculate the powers for the source community
-        const Volume source_fraction_minus = 1.0L - static_cast<Volume>(vol_c - vol_v)/vol_total;
+        const Volume source_fraction_minus = 1.0L - static_cast<Volume>(vol_c - vol_v) / vol_total;
         const Volume source_fraction = 1.0L - static_cast<Volume>(vol_c) / vol_total;
         size_t biggest_d_yet = 1;
         Volume d_minus_prev = source_fraction_minus;
@@ -98,27 +98,36 @@ public:
             _powers_of_source_community[d] = d_minus_prev - d_prev;
             biggest_d_yet = d;
         }
+        const HyperedgeWeight sum_of_edgeweights_minus_edgecontribution_c = sum_of_edgeweights - edge_contribution_c;
+        const HyperedgeWeight vol_c_minus_vol_v = vol_c - vol_v;
 
         // actual calculation for the expected edge contribution of each neighbour community
         for (const PartitionID community : community_neighbours_of_node) {
-            _community_edge_contribution[community] += sum_of_edgeweights - edge_contribution_c;
+            _community_edge_contribution[community] += sum_of_edgeweights_minus_edgecontribution_c;
             const HyperedgeWeight vol_destination = _hg->communityVolume(community);
+
+            // delta will not be < 0
+            if ((_community_edge_contribution[community] >= 0 || best_delta < _community_edge_contribution[community]) && vol_c_minus_vol_v <= vol_destination) continue;
+
             const Volume destination_fraction = 1.0L - static_cast<Volume>(vol_destination + vol_v) / vol_total;
             const Volume destination_fraction_minus = 1.0L - static_cast<Volume>(vol_destination) / vol_total;
             Volume exp_edge_contribution = 0.0L;
-            
-            biggest_d_yet = 1;
-            d_minus_prev = destination_fraction_minus;
-            d_prev = destination_fraction;
-            for (const size_t d : _hg->edgeSizes()) {
-                const size_t remaining_d = d - biggest_d_yet;
-                d_minus_prev *= math::fast_power(destination_fraction_minus, remaining_d);
-                d_prev *= math::fast_power(destination_fraction, remaining_d);
-                exp_edge_contribution += static_cast<Volume>(_hg->edgeWeightBySize(d)) * (_powers_of_source_community[d] + d_prev - d_minus_prev);
-                biggest_d_yet = d;
+
+            // if this is equal the expected_edge_contribution will be 0
+            if (vol_c_minus_vol_v != vol_destination) {
+                biggest_d_yet = 1;
+                d_minus_prev = destination_fraction_minus;
+                d_prev = destination_fraction;
+                for (const size_t d : _hg->edgeSizes()) {
+                    const size_t remaining_d = d - biggest_d_yet;
+                    d_minus_prev *= math::fast_power(destination_fraction_minus, remaining_d);
+                    d_prev *= math::fast_power(destination_fraction, remaining_d);
+                    exp_edge_contribution += static_cast<Volume>(_hg->edgeWeightBySize(d)) * (_powers_of_source_community[d] + d_prev - d_minus_prev);
+                    biggest_d_yet = d;
+                }
             }
-            
-            Volume delta = (static_cast<Volume>(_community_edge_contribution[community]) + exp_edge_contribution);
+
+            Volume delta = static_cast<Volume>(_community_edge_contribution[community]) + exp_edge_contribution;
             if (delta < best_delta) {
                 best_delta = delta;
                 best_community = community;
@@ -148,6 +157,16 @@ public:
     }
 
 private:
+
+    std::vector<size_t> sort_indexes(const std::vector<PartitionID>& v) {
+        std::vector<size_t> idx(v.size());
+        std::iota(idx.begin(), idx.end(), 0);
+
+        std::stable_sort(idx.begin(), idx.end(), [&v, this](size_t i1, size_t i2) {
+            return _community_edge_contribution[v[i1]] < _community_edge_contribution[v[i2]];
+                         });
+        return idx;
+    }
 
     // ! Hypergraph on which the local moving is performed
     ds::CommunityHypergraph* _hg;
