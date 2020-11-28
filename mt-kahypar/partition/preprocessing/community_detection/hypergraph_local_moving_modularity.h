@@ -48,6 +48,7 @@ public:
         // sum of all edgeweights incident to v
         HyperedgeWeight sum_of_edgeweights = 0;
         std::vector<PartitionID> community_neighbours_of_edge;
+        // -1 if invalid
         std::vector<PartitionID> community_neighbours_of_node;
         utils::Timer::instance().start_timer("edge_contribution", "EdgeContribution");
         for (const HyperedgeID& he : _hg->incidentEdges(v)) {
@@ -78,6 +79,58 @@ public:
             sum_of_edgeweights += edge_weight;
         }
         utils::Timer::instance().stop_timer("edge_contribution");
+        //TODO: Note: The smaller the volume of D the "better"(smaller) the expected edge contribution 
+        // utils::Timer::instance().start_timer("Pruning EdgeContribution", "pruning");
+        // key = edge contribution, value = index in community_neighbours_of_node
+        // std::unordered_map<HyperedgeWeight, PartitionID> best_volume_for_edge_contribution;
+        // for (size_t i = 0; i < community_neighbours_of_node.size(); ++i) {
+        //     const PartitionID communityID = community_neighbours_of_node[i];
+        //     auto iter = best_volume_for_edge_contribution.emplace(_community_edge_contribution[communityID], i);
+
+        //     // key was already in map
+        //     if (!iter.second) {
+        //         // old value is better
+        //         if (_hg->communityVolume(community_neighbours_of_node[iter.first->second]) < _hg->communityVolume(communityID)) {
+        //             community_neighbours_of_node[i] = -1;
+        //         }
+        //         else { // new value is better
+        //             community_neighbours_of_node[iter.first->second] = -1;
+        //             iter.first->second = i;
+        //         }
+        //     }
+        // }
+
+
+        // std::vector<size_t> sorted = sort_indexes(community_neighbours_of_node);
+        // HyperedgeWeight current_edge_contribution = std::numeric_limits<HyperedgeWeight>::max();
+        // PartitionID current_best_index = -1;
+        // HyperedgeWeight current_best_volume = -1;
+        // for (size_t i : sorted) {
+        //     const PartitionID communityID = community_neighbours_of_node[i];
+        //     const HyperedgeWeight edge_contribution = _community_edge_contribution[communityID];
+        //     const HyperedgeWeight community_volume = _hg->communityVolume(communityID);
+
+        //     if (current_edge_contribution == edge_contribution) {
+        //         if (current_best_volume < community_volume) {
+        //             community_neighbours_of_node[i] = -1;
+        //         } else {
+        //             community_neighbours_of_node[current_best_index] = -1;
+        //             current_best_index = i;
+        //             current_best_volume = community_volume;
+        //         }
+        //     } else {
+        //         current_edge_contribution = edge_contribution;
+        //         current_best_index = i;
+        //         current_best_volume = community_volume;
+        //     }
+        // }
+
+
+
+        //utils::Timer::instance().stop_timer("pruning");
+
+
+
         utils::Timer::instance().start_timer("exp_edge_contribution", "ExpectedEdgeContribution");
         PartitionID best_community = comm_v;
         Volume best_delta = 0.0;
@@ -103,6 +156,7 @@ public:
 
         // actual calculation for the expected edge contribution of each neighbour community
         for (const PartitionID community : community_neighbours_of_node) {
+            //if (community == -1) continue;
             _community_edge_contribution[community] += sum_of_edgeweights_minus_edgecontribution_c;
             const HyperedgeWeight vol_destination = _hg->communityVolume(community);
 
