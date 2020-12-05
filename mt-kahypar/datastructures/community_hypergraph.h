@@ -21,7 +21,7 @@ public:
 
     CommunityHypergraph() = default;
 
-    explicit CommunityHypergraph(Hypergraph& hypergraph) : _hg(&hypergraph), _vol_v(0), _total_edge_weight(0) {
+    explicit CommunityHypergraph(Hypergraph& hypergraph) : _hg(&hypergraph), _vol_v(0), _total_edge_weight(0), _max_d_edge_weight_(0) {
         tbb::parallel_invoke([&] {
             _node_volumes.resize("Preprocessing", "node_volumes", hypergraph.initialNumNodes(), true, true);
                              }, [&] {
@@ -95,6 +95,7 @@ public:
         return IteratorRange<CommunityVolumeIterator>(_community_volumes.cbegin(), _community_volumes.cend());
     }
 
+    // ! Returns a range of the occuring edge sizes
     IteratorRange<EdgeSizeIterator> edgeSizes() const {
         return IteratorRange<EdgeSizeIterator>(_valid_edge_sizes.cbegin(), _valid_edge_sizes.cend());
     }
@@ -135,8 +136,14 @@ public:
         return _hg->edgeSize(e);
     }
 
+    // ! Maximum size of a hyperedge
     HypernodeID maxEdgeSize() const {
         return _hg->maxEdgeSize();
+    }
+
+    // ! Maximum edgeweight accumulated by edgesize
+    HypernodeID maxAccumulatedEdgeWeight() {
+        return _max_d_edge_weight_;
     }
 
 
@@ -153,6 +160,7 @@ private:
         parallel::parallel_free(_node_volumes, _community_volumes, _d_edge_weights);
         _vol_v = 0;
         _total_edge_weight = 0;
+        _max_d_edge_weight_ = 0;
     }
 
     // ! computes the volumes (weighted degrees) of each node.
@@ -178,6 +186,7 @@ private:
         for (size_t i = 0; i < _d_edge_weights.size(); ++i) {
             if (_d_edge_weights[i] > 0) {
                 _valid_edge_sizes.emplace_back(i);
+                _max_d_edge_weight_ = _d_edge_weights[i] > _max_d_edge_weight_ ? _d_edge_weights[i] : _max_d_edge_weight_;
             }
         }
     }
@@ -202,6 +211,9 @@ private:
 
     // ! sum of all edgeweights
     HyperedgeWeight _total_edge_weight;
+
+    // ! maximum value of _d_edge_weight 
+    HyperedgeWeight _max_d_edge_weight_;
 
 
 };
