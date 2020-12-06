@@ -103,15 +103,16 @@ public:
             _powers_of_source_community[d] = d_minus_prev - d_prev;
             biggest_d_yet = d;
         }
+
         const HyperedgeWeight sum_of_edgeweights_minus_edgecontribution_c = sum_of_edgeweights - edge_contribution_c;
         const HyperedgeWeight vol_c_minus_vol_v = vol_c - vol_v;
         HyperedgeWeight max_edgeWeight = _hg->maxAccumulatedEdgeWeight();
         HyperedgeWeight max_edge_size = _hg->maxEdgeSize();
-        Volume geom_c_minus = 0.0L;
-        Volume geom_c = 0.0L;
+        Volume geometric_approximation_c_minus = 0.0L;
+        Volume geometric_approximation_c = 0.0L;
         if (vol_c_minus_vol_v) {
-            geom_c_minus = geometric_approximation(vol_c_minus_vol_v, source_fraction_minus, max_edge_size);
-            geom_c = geometric_approximation(vol_c, source_fraction, max_edge_size);
+            geometric_approximation_c_minus = geometric_approximation(vol_c_minus_vol_v, source_fraction_minus, max_edge_size);
+            geometric_approximation_c = geometric_approximation(vol_c, source_fraction, max_edge_size);
         }
 
         // actual calculation for the expected edge contribution of each neighbour community
@@ -121,32 +122,34 @@ public:
             const HyperedgeWeight vol_destination = vol_destination_minus + vol_v;
 
             // delta will not be < 0
-            if ((_community_edge_contribution[community] >= 0 || best_delta < _community_edge_contribution[community]) && vol_c_minus_vol_v <= vol_destination) {
+            if ((_community_edge_contribution[community] >= 0 || best_delta < _community_edge_contribution[community])
+                && vol_c_minus_vol_v <= vol_destination) {
                 _community_edge_contribution[community] = 0;
                 continue;
             }
 
-             const Volume destination_fraction = 1.0L - static_cast<Volume>(vol_destination) / vol_total;
-             const Volume destination_fraction_minus = 1.0L - static_cast<Volume>(vol_destination_minus) / vol_total;
-            Volume geom_exp = std::numeric_limits<Volume>::max();
+            const Volume destination_fraction = 1.0L - static_cast<Volume>(vol_destination) / vol_total;
+            const Volume destination_fraction_minus = 1.0L - static_cast<Volume>(vol_destination_minus) / vol_total;
+            Volume geometric_approximation_exp = std::numeric_limits<Volume>::max();
             if (vol_c_minus_vol_v > vol_destination_minus) {
-                Volume geom_d = geometric_approximation(vol_destination, destination_fraction, max_edge_size);
-                Volume geom_d_minus = geometric_approximation(vol_destination_minus, destination_fraction_minus, max_edge_size);
+                Volume geometric_approximation_d = geometric_approximation(vol_destination, destination_fraction, max_edge_size);
+                Volume geometric_approximation_d_minus = geometric_approximation(vol_destination_minus, destination_fraction_minus, max_edge_size);
 
                 // trying to avoid overflow by changing the multiplication order
-                geom_exp = vol_total * (geom_c_minus - geom_c + geom_d - geom_d_minus) * max_edgeWeight;
+                geometric_approximation_exp = vol_total
+                    * (geometric_approximation_c_minus - geometric_approximation_c + geometric_approximation_d - geometric_approximation_d_minus)
+                    * max_edgeWeight;
 
-                if (_community_edge_contribution[community] + geom_exp > 0.0L || _community_edge_contribution[community] + geom_exp > best_delta) {
+                if (_community_edge_contribution[community] + geometric_approximation_exp > 0.0L
+                    || _community_edge_contribution[community] + geometric_approximation_exp > best_delta) {
                     _community_edge_contribution[community] = 0;
-                    ++pruned;
+                    //TESTING
+                    //++pruned;
                     continue;
                 }
             }
 
-
-
             Volume exp_edge_contribution = 0.0L;
-            // Volume testing_d = 0.0L;
             // if this is equal the expected_edge_contribution will be 0
             if (vol_c_minus_vol_v != vol_destination_minus) {
                 biggest_d_yet = 1;
@@ -159,7 +162,9 @@ public:
                     exp_edge_contribution += static_cast<Volume>(_hg->edgeWeightBySize(d)) * (_powers_of_source_community[d] + d_prev - d_minus_prev);
                     biggest_d_yet = d;
                 }
-                ASSERT((vol_c_minus_vol_v > vol_destination_minus && exp_edge_contribution < 0.0L) || (vol_c_minus_vol_v < vol_destination_minus&& exp_edge_contribution > 0.0L) || (vol_c_minus_vol_v == vol_destination_minus));
+                ASSERT((vol_c_minus_vol_v > vol_destination_minus && exp_edge_contribution < 0.0L)
+                    || (vol_c_minus_vol_v < vol_destination_minus&& exp_edge_contribution > 0.0L)
+                    || (vol_c_minus_vol_v == vol_destination_minus));
             }
 
             Volume delta = static_cast<Volume>(_community_edge_contribution[community]) + exp_edge_contribution;
@@ -195,7 +200,7 @@ public:
 
     //TESTING
     //std::vector<Volume> ratios;
-    size_t pruned = 0;
+    //size_t pruned = 0;
 private:
 
     // only for testing

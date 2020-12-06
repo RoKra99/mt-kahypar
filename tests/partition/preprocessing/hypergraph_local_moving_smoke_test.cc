@@ -34,7 +34,7 @@ TEST(AHypergraphLocalMovingSpeed, TestsTheSpeedOfTheDeltaCalculation) {
     //hlmm.ratios.clear();
 //}
     LOG << utils::Timer::instance(true);
-    LOG << "Pruning count" << hlmm.pruned;
+    //LOG << "Pruning count" << hlmm.pruned;
     LOG << "rounds until nothing moved: " << counter;
     ASSERT_TRUE(true);
 }
