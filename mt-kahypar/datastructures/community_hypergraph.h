@@ -24,11 +24,11 @@ public:
     explicit CommunityHypergraph(Hypergraph& hypergraph) : _hg(&hypergraph), _vol_v(0), _total_edge_weight(0), _max_d_edge_weight_(0) {
         tbb::parallel_invoke([&] {
             _node_volumes.resize("Preprocessing", "node_volumes", hypergraph.initialNumNodes(), true, true);
-                             }, [&] {
-                                 _community_volumes.resize("Preprocessing", "community_volumes", hypergraph.initialNumNodes(), true, true);
-                             }, [&] {
-                                 _d_edge_weights.resize("Preprocessing", "d_edge_weights", hypergraph.maxEdgeSize() + 1, true, true);
-                             });
+            }, [&] {
+                _community_volumes.resize("Preprocessing", "community_volumes", hypergraph.initialNumNodes(), true, true);
+            }, [&] {
+                _d_edge_weights.resize("Preprocessing", "d_edge_weights", hypergraph.maxEdgeSize() + 1, true, true);
+            });
         // Initialize the communities as Singletons
         for (const HypernodeID& hn : _hg->nodes()) {
             _hg->setCommunityID(hn, hn);
@@ -142,8 +142,13 @@ public:
     }
 
     // ! Maximum edgeweight accumulated by edgesize
-    HypernodeID maxAccumulatedEdgeWeight() {
+    HypernodeID maxAccumulatedEdgeWeight() const{
         return _max_d_edge_weight_;
+    }
+
+    // ! Number of different edge sizes that occur in the Hypergraph
+    size_t numberOfUniqueEdgeSizes() const {
+        return _valid_edge_sizes.size();
     }
 
 

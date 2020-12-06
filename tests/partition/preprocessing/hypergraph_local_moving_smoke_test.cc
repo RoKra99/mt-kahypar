@@ -17,25 +17,23 @@ TEST(AHypergraphLocalMovingSpeed, TestsTheSpeedOfTheDeltaCalculation) {
     CommunityHypergraph chg(hg);
     utils::Timer::instance().stop_timer("comm_init");
     community_detection::HypergraphLocalMovingModularity hlmm(chg);
-    //for (size_t k = 0; k < 1000; ++k) {
     bool moved = true;
+    size_t movedcounter = 0;
     size_t counter = 0;
     while (moved) {
         moved = false;
         for (HypernodeID hn = 0; hn < hg.initialNumNodes(); ++hn) {
-            moved |= hlmm.makeMove(hlmm.calculateBestMove(hn));
+            if (hlmm.makeMove(hlmm.calculateBestMove(hn))) {
+                ++movedcounter; 
+                moved = true;
+            }
         }
         ++counter;
     }
-    //Volume min = *std::min_element(hlmm.ratios.begin(), hlmm.ratios.end());
-    //Volume max = *std::max_element(hlmm.ratios.begin(), hlmm.ratios.end());
-    //Volume avg =  std::accumulate(hlmm.ratios.begin(), hlmm.ratios.end(), 0.0L) / hlmm.ratios.size();
-    //int add = 1 + 1;
-    //hlmm.ratios.clear();
-//}
+    // Volume min = *std::min_element(hlmm.ratios.begin(), hlmm.ratios.end());
+    // Volume max = *std::max_element(hlmm.ratios.begin(), hlmm.ratios.end());
+    // Volume avg =  std::accumulate(hlmm.ratios.begin(), hlmm.ratios.end(), 0.0L) / hlmm.ratios.size();
     LOG << utils::Timer::instance(true);
-    //LOG << "Pruning count" << hlmm.pruned;
-    LOG << "rounds until nothing moved: " << counter;
     ASSERT_TRUE(true);
 }
 }

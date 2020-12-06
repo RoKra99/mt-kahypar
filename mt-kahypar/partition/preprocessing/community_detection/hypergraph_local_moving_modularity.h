@@ -42,7 +42,6 @@ public:
     CommunityMove calculateBestMove(const HypernodeID v) {
         ASSERT(communityEdgeContributionisEmpty());
         utils::Timer::instance().start_timer("calculate_best_move", "Calculate best move");
-        static constexpr bool debug = false;
         const PartitionID comm_v = _hg->communityID(v);
         // the sum of edgeweights which only have v in that community
         HyperedgeWeight edge_contribution_c = 0;
@@ -53,10 +52,9 @@ public:
         std::vector<PartitionID> community_neighbours_of_node;
         utils::Timer::instance().start_timer("edge_contribution", "EdgeContribution");
         for (const HyperedgeID& he : _hg->incidentEdges(v)) {
-            DBG << "Hyperedge nr. " << he;
             const HyperedgeWeight edge_weight = _hg->edgeWeight(he);
+            ASSERT(community_neighbours_of_edge.empty());
             for (const HypernodeID& hn : _hg->pins(he)) {
-                DBG << "Pin in edge: " << hn;
                 const PartitionID comm_hn = _hg->communityID(hn);
                 if (hn != v && !_pins_in_community[comm_hn]) {
                     _pins_in_community[comm_hn] = true;
@@ -84,18 +82,18 @@ public:
 
 
         utils::Timer::instance().start_timer("exp_edge_contribution", "ExpectedEdgeContribution");
-        PartitionID best_community = comm_v;
-        Volume best_delta = 0.0;
         const HyperedgeWeight vol_total = _hg->totalVolume();
         const HyperedgeWeight vol_v = _hg->nodeVolume(v);
         const HyperedgeWeight vol_c = _hg->communityVolume(comm_v);
+        const Volume reciprocal_vol_total = 1.0L / vol_total;
 
         //precalculate the powers for the source community
-        const Volume source_fraction_minus = 1.0L - static_cast<Volume>(vol_c - vol_v) / vol_total;
-        const Volume source_fraction = 1.0L - static_cast<Volume>(vol_c) / vol_total;
+        const Volume source_fraction_minus = 1.0L - static_cast<Volume>(vol_c - vol_v) * reciprocal_vol_total;
+        const Volume source_fraction = 1.0L - static_cast<Volume>(vol_c) * reciprocal_vol_total;
         size_t biggest_d_yet = 1;
         Volume d_minus_prev = source_fraction_minus;
         Volume d_prev = source_fraction;
+
         for (const size_t d : _hg->edgeSizes()) {
             const size_t remaining_d = d - biggest_d_yet;
             d_minus_prev *= math::fast_power(source_fraction_minus, remaining_d);
@@ -107,13 +105,17 @@ public:
         const HyperedgeWeight sum_of_edgeweights_minus_edgecontribution_c = sum_of_edgeweights - edge_contribution_c;
         const HyperedgeWeight vol_c_minus_vol_v = vol_c - vol_v;
         HyperedgeWeight max_edgeWeight = _hg->maxAccumulatedEdgeWeight();
-        HyperedgeWeight max_edge_size = _hg->maxEdgeSize();
+        HyperedgeWeight nr_unique_edgesizes = _hg->numberOfUniqueEdgeSizes();
         Volume geometric_approximation_c_minus = 0.0L;
         Volume geometric_approximation_c = 0.0L;
+        // for pruning with the geometric series
         if (vol_c_minus_vol_v) {
-            geometric_approximation_c_minus = geometric_approximation(vol_c_minus_vol_v, source_fraction_minus, max_edge_size);
-            geometric_approximation_c = geometric_approximation(vol_c, source_fraction, max_edge_size);
+            geometric_approximation_c_minus = geometric_approximation(vol_c_minus_vol_v, source_fraction_minus, nr_unique_edgesizes);
+            geometric_approximation_c = geometric_approximation(vol_c, source_fraction, nr_unique_edgesizes);
         }
+
+        PartitionID best_community = comm_v;
+        Volume best_delta = 0.0;
 
         // actual calculation for the expected edge contribution of each neighbour community
         for (const PartitionID community : community_neighbours_of_node) {
@@ -128,12 +130,12 @@ public:
                 continue;
             }
 
-            const Volume destination_fraction = 1.0L - static_cast<Volume>(vol_destination) / vol_total;
-            const Volume destination_fraction_minus = 1.0L - static_cast<Volume>(vol_destination_minus) / vol_total;
+            const Volume destination_fraction = 1.0L - static_cast<Volume>(vol_destination) * reciprocal_vol_total;
+            const Volume destination_fraction_minus = 1.0L - static_cast<Volume>(vol_destination_minus) * reciprocal_vol_total;
             Volume geometric_approximation_exp = std::numeric_limits<Volume>::max();
             if (vol_c_minus_vol_v > vol_destination_minus) {
-                Volume geometric_approximation_d = geometric_approximation(vol_destination, destination_fraction, max_edge_size);
-                Volume geometric_approximation_d_minus = geometric_approximation(vol_destination_minus, destination_fraction_minus, max_edge_size);
+                Volume geometric_approximation_d = geometric_approximation(vol_destination, destination_fraction, nr_unique_edgesizes);
+                Volume geometric_approximation_d_minus = geometric_approximation(vol_destination_minus, destination_fraction_minus, nr_unique_edgesizes);
 
                 // trying to avoid overflow by changing the multiplication order
                 geometric_approximation_exp = vol_total
@@ -142,9 +144,9 @@ public:
 
                 if (_community_edge_contribution[community] + geometric_approximation_exp > 0.0L
                     || _community_edge_contribution[community] + geometric_approximation_exp > best_delta) {
-                    _community_edge_contribution[community] = 0;
                     //TESTING
                     //++pruned;
+                    _community_edge_contribution[community] = 0;
                     continue;
                 }
             }
@@ -166,6 +168,11 @@ public:
                     || (vol_c_minus_vol_v < vol_destination_minus&& exp_edge_contribution > 0.0L)
                     || (vol_c_minus_vol_v == vol_destination_minus));
             }
+
+            // if (geometric_approximation_exp < std::numeric_limits<Volume>::max()) {
+            //     Volume ratio = geometric_approximation_exp / exp_edge_contribution;
+            //     ratios.emplace_back(ratio);
+            // }
 
             Volume delta = static_cast<Volume>(_community_edge_contribution[community]) + exp_edge_contribution;
             if (delta < best_delta) {
@@ -199,8 +206,8 @@ public:
     }
 
     //TESTING
-    //std::vector<Volume> ratios;
-    //size_t pruned = 0;
+    // std::vector<Volume> ratios;
+    // size_t pruned = 0;
 private:
 
     // only for testing
@@ -212,8 +219,10 @@ private:
         return result;
     }
 
-    Volume geometric_approximation(HyperedgeWeight vol_community, Volume q, size_t d_max) {
-        return (math::fast_power(q, 2) - math::fast_power(q, d_max)) / vol_community;
+    // TODO: currently using 2 as d_min (can we assume that 2 will always be the smallest edge size?)
+    Volume geometric_approximation(HyperedgeWeight vol_community, Volume q, size_t d_max) const {
+        ASSERT(vol_community > 0);
+        return math::fast_power(q, 2) * (1.0L - math::fast_power(q, d_max)) / vol_community;
     }
 
     // ! Hypergraph on which the local moving is performed
