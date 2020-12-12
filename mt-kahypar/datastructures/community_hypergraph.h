@@ -141,6 +141,12 @@ public:
         return _hg->maxEdgeSize();
     }
 
+    // ! Minimum size of a Hyperedge
+    HypernodeID minEdgeSize() const {
+        ASSERT(!_valid_edge_sizes.empty());
+        return _valid_edge_sizes[0];
+    }
+
     // ! Maximum edgeweight accumulated by edgesize
     HypernodeID maxAccumulatedEdgeWeight() const{
         return _max_d_edge_weight_;

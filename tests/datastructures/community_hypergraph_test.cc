@@ -108,5 +108,9 @@ TYPED_TEST(ACommunityHypergraph, HasCorrectEdgeSizeIterator) {
 TYPED_TEST(ACommunityHypergraph, InitializesMaximumEdgeWeightCorrectly) {
     ASSERT_EQ(2, this->community_hypergraph.maxAccumulatedEdgeWeight());
 }
+
+TYPED_TEST(ACommunityHypergraph, ReturnsTheMinimumEdgeSize) {
+    ASSERT_EQ(2, this->community_hypergraph.minEdgeSize());
+}
 }
 }
