@@ -32,6 +32,8 @@ public:
             });
 
         _pins_in_community.assign(hypergraph.initialNumNodes(), false);
+
+        _reciprocal_vol_total = 1.0L / _hg->totalVolume();
     }
 
     ~HypergraphLocalMovingModularity() {
@@ -84,7 +86,6 @@ public:
         const HyperedgeWeight vol_total = _hg->totalVolume();
         const HyperedgeWeight vol_v = _hg->nodeVolume(v);
         const HyperedgeWeight vol_c = _hg->communityVolume(comm_v);
-        const Volume reciprocal_vol_total = 1.0L / vol_total;
         const HyperedgeWeight sum_of_edgeweights_minus_edgecontribution_c = sum_of_edgeweights - edge_contribution_c;
         const HyperedgeWeight vol_c_minus_vol_v = vol_c - vol_v;
 
@@ -93,8 +94,8 @@ public:
         Volume geometric_approximation_c_minus = 0.0L;
         Volume geometric_approximation_c = 0.0L;
 
-        const Volume source_fraction_minus = 1.0L - static_cast<Volume>(vol_c_minus_vol_v) * reciprocal_vol_total;
-        const Volume source_fraction = 1.0L - static_cast<Volume>(vol_c) * reciprocal_vol_total;
+        const Volume source_fraction_minus = 1.0L - static_cast<Volume>(vol_c_minus_vol_v) * _reciprocal_vol_total;
+        const Volume source_fraction = 1.0L - static_cast<Volume>(vol_c) * _reciprocal_vol_total;
         size_t biggest_d_yet = 1;
         Volume d_minus_prev = source_fraction_minus;
         Volume d_prev = source_fraction;
@@ -125,8 +126,8 @@ public:
             }
 
             // pruning via the geometric series
-            const Volume destination_fraction = 1.0L - static_cast<Volume>(vol_destination) * reciprocal_vol_total;
-            const Volume destination_fraction_minus = 1.0L - static_cast<Volume>(vol_destination_minus) * reciprocal_vol_total;
+            const Volume destination_fraction = 1.0L - static_cast<Volume>(vol_destination) * _reciprocal_vol_total;
+            const Volume destination_fraction_minus = 1.0L - static_cast<Volume>(vol_destination_minus) * _reciprocal_vol_total;
             Volume geometric_approximation_exp = std::numeric_limits<Volume>::max();
             if (vol_c_minus_vol_v > vol_destination_minus) {
                 Volume geometric_approximation_d = geometric_approximation(vol_destination, destination_fraction, max_edgeSize);
@@ -244,6 +245,8 @@ private:
         const Volume lower_power = math::fast_power(q, _hg->minEdgeSize());
         return (lower_power - lower_power * math::fast_power(q, size_count)) / vol_community;
     }
+
+    Volume _reciprocal_vol_total = 0.0L;
 
     // ! Hypergraph on which the local moving is performed
     ds::CommunityHypergraph* _hg;
