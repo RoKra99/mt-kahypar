@@ -13,10 +13,10 @@ namespace community_detection {
 
 using AHypergraphLocalMoving = ds::HypergraphFixture;
 
-// precision with the modularity change is compared (this is the highest precision where all tests pass)
+// precision with which the modularity change is compared (this is the highest precision where all tests pass)
 static constexpr Volume PRECISION = 1e-14L;
 
-TEST_F(AHypergraphLocalMoving, NewModularityDeltaNode0) {
+TEST_F(AHypergraphLocalMoving, CalculatesModularityDelta0) {
     ds::CommunityHypergraph community_hypergraph(hypergraph);
     HypergraphLocalMovingModularity hlmm(community_hypergraph);
     Volume before = mt_kahypar::metrics::hyp_modularity(community_hypergraph);
@@ -26,7 +26,7 @@ TEST_F(AHypergraphLocalMoving, NewModularityDeltaNode0) {
     ASSERT_TRUE(mt_kahypar::math::are_almost_equal_ld(move.delta, after - before, PRECISION));
 }
 
-TEST_F(AHypergraphLocalMoving, NewModularityDeltaNode1) {
+TEST_F(AHypergraphLocalMoving, CalculatesModularityDelta1) {
     ds::CommunityHypergraph community_hypergraph(hypergraph);
     HypergraphLocalMovingModularity hlmm(community_hypergraph);
     Volume before = mt_kahypar::metrics::hyp_modularity(community_hypergraph);
@@ -36,7 +36,7 @@ TEST_F(AHypergraphLocalMoving, NewModularityDeltaNode1) {
     ASSERT_TRUE(mt_kahypar::math::are_almost_equal_ld(move.delta, after - before, PRECISION));
 }
 
-TEST_F(AHypergraphLocalMoving, NewModularityDeltaNode2) {
+TEST_F(AHypergraphLocalMoving, CalculatesModularityDelta2) {
     ds::CommunityHypergraph community_hypergraph(hypergraph);
     HypergraphLocalMovingModularity hlmm(community_hypergraph);
     Volume before = mt_kahypar::metrics::hyp_modularity(community_hypergraph);
@@ -46,7 +46,7 @@ TEST_F(AHypergraphLocalMoving, NewModularityDeltaNode2) {
     ASSERT_TRUE(mt_kahypar::math::are_almost_equal_ld(move.delta, after - before, PRECISION));
 }
 
-TEST_F(AHypergraphLocalMoving, NewModularityDeltaNode3) {
+TEST_F(AHypergraphLocalMoving, CalculatesModularityDelta3) {
     ds::CommunityHypergraph community_hypergraph(hypergraph);
     HypergraphLocalMovingModularity hlmm(community_hypergraph);
     Volume before = mt_kahypar::metrics::hyp_modularity(community_hypergraph);
@@ -56,7 +56,7 @@ TEST_F(AHypergraphLocalMoving, NewModularityDeltaNode3) {
     ASSERT_TRUE(mt_kahypar::math::are_almost_equal_ld(move.delta, after - before, PRECISION));
 }
 
-TEST_F(AHypergraphLocalMoving, NewModularityDeltaNode4) {
+TEST_F(AHypergraphLocalMoving, CalculatesModularityDelta4) {
     ds::CommunityHypergraph community_hypergraph(hypergraph);
     HypergraphLocalMovingModularity hlmm(community_hypergraph);
     Volume before = mt_kahypar::metrics::hyp_modularity(community_hypergraph);
@@ -66,7 +66,7 @@ TEST_F(AHypergraphLocalMoving, NewModularityDeltaNode4) {
     ASSERT_TRUE(mt_kahypar::math::are_almost_equal_ld(move.delta, after - before, PRECISION));
 }
 
-TEST_F(AHypergraphLocalMoving, NewModularityDeltaNode5) {
+TEST_F(AHypergraphLocalMoving, CalculatesModularityDelta5) {
     ds::CommunityHypergraph community_hypergraph(hypergraph);
     HypergraphLocalMovingModularity hlmm(community_hypergraph);
     Volume before = mt_kahypar::metrics::hyp_modularity(community_hypergraph);
@@ -76,7 +76,7 @@ TEST_F(AHypergraphLocalMoving, NewModularityDeltaNode5) {
     ASSERT_TRUE(mt_kahypar::math::are_almost_equal_ld(move.delta, after - before, PRECISION));
 }
 
-TEST_F(AHypergraphLocalMoving, NewModularityDeltaNode6) {
+TEST_F(AHypergraphLocalMoving, CalculatesModularityDelta6) {
     ds::CommunityHypergraph community_hypergraph(hypergraph);
     HypergraphLocalMovingModularity hlmm(community_hypergraph);
     Volume before = mt_kahypar::metrics::hyp_modularity(community_hypergraph);
@@ -87,7 +87,7 @@ TEST_F(AHypergraphLocalMoving, NewModularityDeltaNode6) {
 }
 
 
-TEST_F(AHypergraphLocalMoving, makeMoveTest) {
+TEST_F(AHypergraphLocalMoving, ExecutesAMoveCorrectly) {
     ds::CommunityHypergraph community_hypergraph(hypergraph);
     HypergraphLocalMovingModularity hlmm(community_hypergraph);
     CommunityMove cm;
