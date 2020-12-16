@@ -83,15 +83,10 @@ public:
 
 
         utils::Timer::instance().start_timer("exp_edge_contribution", "ExpectedEdgeContribution");
-        
-        const HyperedgeWeight max_edgeWeight = _hg->maxAccumulatedEdgeWeight();
-        const HyperedgeWeight max_edgeSize = _hg->maxEdgeSize();
 
         const HyperedgeWeight vol_v = _hg->nodeVolume(v);
         const HyperedgeWeight vol_c = _hg->communityVolume(comm_v);
         const HyperedgeWeight vol_c_minus_vol_v = vol_c - vol_v;
-        Volume geometric_approximation_c_minus = 0.0L;
-        Volume geometric_approximation_c = 0.0L;
 
         const Volume source_fraction_minus = 1.0L - static_cast<Volume>(vol_c_minus_vol_v) * _reciprocal_vol_total;
         const Volume source_fraction = 1.0L - static_cast<Volume>(vol_c) * _reciprocal_vol_total;
@@ -100,19 +95,13 @@ public:
         Volume power_d_fraction = source_fraction;
         bool calculated_c = false;
 
-        // for pruning with the geometric series
-        if (vol_c_minus_vol_v) {
-            geometric_approximation_c_minus = geometric_approximation(vol_c_minus_vol_v, source_fraction_minus, max_edgeSize);
-            geometric_approximation_c = geometric_approximation(vol_c, source_fraction, max_edgeSize);
-        }
-
-        const HyperedgeWeight vol_total = _hg->totalVolume();
         PartitionID best_community = comm_v;
         Volume best_delta = 0.0L;
         const HyperedgeWeight sum_of_edgeweights_minus_edgecontribution_c = sum_of_edgeweights - edge_contribution_c;
 
         // expected edgecontribution starts here
         for (const PartitionID community : _community_neighbours_of_node) {
+            //++overall_checks;
             _community_edge_contribution[community] += sum_of_edgeweights_minus_edgecontribution_c;
             const HyperedgeWeight vol_destination_minus = _hg->communityVolume(community);
             const HyperedgeWeight vol_destination = vol_destination_minus + vol_v;
@@ -120,30 +109,15 @@ public:
 
             // delta will not be < 0
             if ((destination_edge_contribution >= 0 || best_delta < destination_edge_contribution)
-                && vol_c_minus_vol_v <= vol_destination) {
+                && vol_c_minus_vol_v <= vol_destination_minus) {
+                //++pruned_by_old;
                 _community_edge_contribution[community] = 0;
                 continue;
             }
 
-            // pruning via the geometric series
+            // // pruning via the geometric series
             const Volume destination_fraction = 1.0L - static_cast<Volume>(vol_destination) * _reciprocal_vol_total;
             const Volume destination_fraction_minus = 1.0L - static_cast<Volume>(vol_destination_minus) * _reciprocal_vol_total;
-            Volume geometric_approximation_exp = std::numeric_limits<Volume>::max();
-            if (vol_c_minus_vol_v > vol_destination_minus) {
-                Volume geometric_approximation_d = geometric_approximation(vol_destination, destination_fraction, max_edgeSize);
-                Volume geometric_approximation_d_minus = geometric_approximation(vol_destination_minus, destination_fraction_minus, max_edgeSize);
-
-                // trying to avoid overflow by changing the multiplication order
-                geometric_approximation_exp = vol_total
-                    * (geometric_approximation_c_minus - geometric_approximation_c + geometric_approximation_d - geometric_approximation_d_minus)
-                    * max_edgeWeight;
-
-                if (destination_edge_contribution + geometric_approximation_exp > 0.0L
-                    || destination_edge_contribution + geometric_approximation_exp > best_delta) {
-                    _community_edge_contribution[community] = 0;
-                    continue;
-                }
-            }
 
             // precalculate the powers for the source community only once
             // and only if not every possible move is pruned beforehand
@@ -207,9 +181,12 @@ public:
         return false;
     }
 
+    //size_t overall_checks = 0;
+    //size_t pruned_by_old = 0;
+
 private:
 
-    // only for testing
+    // ! only for testing
     bool communityEdgeContributionisEmpty() {
         bool result = true;
         for (const HyperedgeWeight hw : _community_edge_contribution) {
@@ -218,12 +195,7 @@ private:
         return result;
     }
 
-    Volume geometric_approximation(HyperedgeWeight vol_community, Volume q, size_t size_count) const {
-        ASSERT(vol_community > 0);
-        const Volume lower_power = math::fast_power(q, _hg->minEdgeSize());
-        return (lower_power - lower_power * math::fast_power(q, size_count)) / vol_community;
-    }
-
+    // ! reciprocal total volume
     Volume _reciprocal_vol_total = 0.0L;
 
     // ! Hypergraph on which the local moving is performed
@@ -234,7 +206,7 @@ private:
     ds::Array<bool> _pins_in_community;
 
     // ! contains (vol_V - vol(C)+vol(v))^d - (vol(V)-vol(C))^d for all valid edgesizes d
-    // TODO: Note the values in here are not cleared after each call to calculateBestMove
+    // ! Note the values in here are not cleared after each call to calculateBestMove
     ds::Array<Volume> _powers_of_source_community;
 
     // used in clearlist for calculating the edge contribution
