@@ -4,6 +4,7 @@
 #include "tbb/parallel_for.h"
 
 #include "mt-kahypar/definitions.h"
+#include "mt-kahypar/datastructures/community_count.h"
 
 namespace mt_kahypar {
 namespace ds {
@@ -18,6 +19,7 @@ public:
     using IncidentNetsIterator = typename Hypergraph::IncidentNetsIterator;
     using CommunityVolumeIterator = typename CommunityVolumes::const_iterator;
     using EdgeSizeIterator = typename EdgeSizes::const_iterator;
+    using HashMap = std::unordered_map<PartitionID, uint32_t>;
 
     CommunityHypergraph() = default;
 
@@ -28,7 +30,12 @@ public:
                 _community_volumes.resize("Preprocessing", "community_volumes", hypergraph.initialNumNodes(), true, true);
             }, [&] {
                 _d_edge_weights.resize("Preprocessing", "d_edge_weights", hypergraph.maxEdgeSize() + 1, true, true);
+            }, [&] {
+                _community_count.resize("Preprocessing", "community_counts", hypergraph.initialNumEdges());
             });
+        // TODO: Add to register_memory_pool
+        _community_count.assign(hypergraph.initialNumEdges(), std::make_unique<CommunityCount<HashMap>>());
+
         // Initialize the communities as Singletons
         for (const HypernodeID& hn : _hg->nodes()) {
             _hg->setCommunityID(hn, hn);
@@ -226,7 +233,8 @@ private:
     // ! maximum value of _d_edge_weight 
     HyperedgeWeight _max_d_edge_weight_;
 
-
+    // ! contains the cut communities for each hyperedge
+    Array<std::unique_ptr<CommunityCount<HashMap>>> _community_count;
 };
 }
 }
