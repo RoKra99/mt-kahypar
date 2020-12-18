@@ -20,6 +20,7 @@ public:
     using CommunityVolumeIterator = typename CommunityVolumes::const_iterator;
     using EdgeSizeIterator = typename EdgeSizes::const_iterator;
     using HashMap = std::unordered_map<PartitionID, uint32_t>;
+    static constexpr size_t EDGESIZE_THRESHHOLD = 0;
 
     CommunityHypergraph() = default;
 
@@ -30,11 +31,7 @@ public:
                 _community_volumes.resize("Preprocessing", "community_volumes", hypergraph.initialNumNodes(), true, true);
             }, [&] {
                 _d_edge_weights.resize("Preprocessing", "d_edge_weights", hypergraph.maxEdgeSize() + 1, true, true);
-            }, [&] {
-                _community_count.resize("Preprocessing", "community_counts", hypergraph.initialNumEdges());
             });
-        // TODO: Add to register_memory_pool
-        _community_count.assign(hypergraph.initialNumEdges(), std::make_unique<CommunityCount<HashMap>>());
 
         // Initialize the communities as Singletons
         for (const HypernodeID& hn : _hg->nodes()) {
@@ -42,6 +39,8 @@ public:
         };
         computeAndSetTotalEdgeWeight();
         computeAndSetInitialVolumes();
+        // TODO: Add to register_memory_pool
+        computeAndSetCommunityCounts();
     }
 
     ~CommunityHypergraph() {
@@ -107,7 +106,6 @@ public:
         return IteratorRange<EdgeSizeIterator>(_valid_edge_sizes.cbegin(), _valid_edge_sizes.cend());
     }
 
-
     // ######################## Community ########################
 
     // ! Community id which hypernode u is assigned to
@@ -155,7 +153,7 @@ public:
     }
 
     // ! Maximum edgeweight accumulated by edgesize
-    HypernodeID maxAccumulatedEdgeWeight() const{
+    HypernodeID maxAccumulatedEdgeWeight() const {
         return _max_d_edge_weight_;
     }
 
@@ -209,6 +207,13 @@ private:
         }
     }
 
+    void computeAndSetCommunityCounts() {
+        _community_count.reserve(_hg->initialNumEdges());
+        for (const HyperedgeID& he : _hg->edges()) {
+            _community_count[he] = edgeSize(he) > EDGESIZE_THRESHHOLD ? std::make_unique<CommunityCount<CommunityHypergraph, HashMap>>(edgeSize(he), pins(he)) : std::unique_ptr<CommunityCount<CommunityHypergraph, HashMap>>(nullptr);
+        }
+    }
+
     // ! Hypergraph this datastructure is wrapped around
     Hypergraph* _hg;
 
@@ -234,7 +239,8 @@ private:
     HyperedgeWeight _max_d_edge_weight_;
 
     // ! contains the cut communities for each hyperedge
-    Array<std::unique_ptr<CommunityCount<HashMap>>> _community_count;
+    // ! TODO: Get this to work with Array
+    std::vector<std::unique_ptr<CommunityCount<CommunityHypergraph, HashMap>>> _community_count;
 };
 }
 }
