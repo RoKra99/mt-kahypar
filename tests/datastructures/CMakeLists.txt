@@ -12,4 +12,5 @@ target_sources(mt_kahypar_tests PRIVATE
         pin_count_in_part_test.cc
         sparse_map_test.cc
         community_hypergraph_test.cc
+        hash_maps_test.cc
         )
