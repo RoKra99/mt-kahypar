@@ -1,5 +1,6 @@
 #pragma once
 
+#include "mt-kahypar/macros.h"
 #include "mt-kahypar/datastructures/community_hypergraph.h"
 #include "mt-kahypar/definitions.h"
 #include "mt-kahypar/utils/exponentiations.h"
@@ -20,8 +21,10 @@ struct CommunityMove {
 
 class HypergraphLocalMovingModularity {
 
-
 public:
+    static constexpr bool debug = false;
+    static constexpr bool enable_heavy_assert = false;
+
     HypergraphLocalMovingModularity(ds::CommunityHypergraph& hypergraph) : _hg(&hypergraph) {
         tbb::parallel_invoke([&] {
             _community_edge_contribution.resize("Preprocessing", "clearlist_edge_contribution", hypergraph.initialNumNodes(), true, true);
@@ -44,7 +47,7 @@ public:
     CommunityMove calculateBestMove(const HypernodeID v) {
         ASSERT(_community_neighbours_of_edge.empty());
         ASSERT(_community_neighbours_of_node.empty());
-        ASSERT(communityEdgeContributionisEmpty());
+        HEAVY_PREPROCESSING_ASSERT(communityEdgeContributionisEmpty());
         utils::Timer::instance().start_timer("calculate_best_move", "Calculate best move");
         const PartitionID comm_v = _hg->communityID(v);
         // the sum of edgeweights which only have v in that community
