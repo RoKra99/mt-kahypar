@@ -48,13 +48,14 @@ namespace mt_kahypar {
       const size_t num_star_expansion_edges = is_graph ? num_pins : (2UL * num_pins);
 
       pool.register_memory_group("Preprocessing", 1);
+      // Hyperedge Modularity
       pool.register_memory_chunk("Preprocessing", "node_volumes", num_hypernodes, sizeof(HyperedgeWeight));
       pool.register_memory_chunk("Preprocessing", "community_volumes", num_hypernodes, sizeof(HyperedgeWeight));
       pool.register_memory_chunk("Preprocessing", "d_edge_weights", max_edge_size + 1, sizeof(HyperedgeWeight));
       pool.register_memory_chunk("Preprocessing", "clearlist_edge_contribution", num_hypernodes, sizeof(HyperedgeWeight));
-      pool.register_memory_chunk("Preprocessing", "clearlist_pins_in_community", num_hypernodes, sizeof(bool));
       pool.register_memory_chunk("Preprocessing", "powers_of_source_community", max_edge_size + 1, sizeof(Volume));
 
+      // Old Modualrity
       pool.register_memory_chunk("Preprocessing", "indices", num_star_expansion_nodes + 1, sizeof(size_t));
       pool.register_memory_chunk("Preprocessing", "arcs", num_star_expansion_edges, sizeof(Arc));
       pool.register_memory_chunk("Preprocessing", "node_volumes", num_star_expansion_nodes, sizeof(ArcWeight));

@@ -26,7 +26,7 @@ public:
 
     CommunityHypergraph() = default;
 
-    explicit CommunityHypergraph(Hypergraph& hypergraph) : _hg(&hypergraph), _vol_v(0), _total_edge_weight(0), _max_d_edge_weight_(0), _community_counts(hypergraph.initialNumEdges()) {
+    explicit CommunityHypergraph(Hypergraph& hypergraph) :  _community_counts(hypergraph.initialNumEdges()), _hg(&hypergraph), _vol_v(0), _total_edge_weight(0), _max_d_edge_weight_(0) {
         tbb::parallel_invoke([&] {
             _node_volumes.resize("Preprocessing", "node_volumes", hypergraph.initialNumNodes(), true, true);
             }, [&] {

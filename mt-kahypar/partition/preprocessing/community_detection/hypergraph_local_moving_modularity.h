@@ -29,25 +29,20 @@ public:
         tbb::parallel_invoke([&] {
             _community_edge_contribution.resize("Preprocessing", "clearlist_edge_contribution", hypergraph.initialNumNodes(), true, true);
             }, [&] {
-                _pins_in_community.resize("Preprocessing", "clearlist_pins_in_community", hypergraph.initialNumNodes());
-            }, [&] {
                 _powers_of_source_community.resize("Preprocessing", "powers_of_source_community", hypergraph.maxEdgeSize() + 1);
             });
-
-        _pins_in_community.assign(hypergraph.initialNumNodes(), false);
 
         _reciprocal_vol_total = 1.0L / _hg->totalVolume();
     }
 
     ~HypergraphLocalMovingModularity() {
-        parallel::parallel_free(_community_edge_contribution, _pins_in_community, _powers_of_source_community);
+        parallel::parallel_free(_community_edge_contribution, _powers_of_source_community);
     }
 
     // ! calculates the best modularity move for the given node
     CommunityMove calculateBestMove(const HypernodeID v) {
-        ASSERT(_community_neighbours_of_edge.empty());
         ASSERT(_community_neighbours_of_node.empty());
-        HEAVY_PREPROCESSING_ASSERT(communityEdgeContributionisEmpty());
+        ASSERT(communityEdgeContributionisEmpty());
         utils::Timer::instance().start_timer("calculate_best_move", "Calculate best move");
         const PartitionID comm_v = _hg->communityID(v);
         // the sum of edgeweights which only have v in that community
@@ -57,30 +52,28 @@ public:
         utils::Timer::instance().start_timer("edge_contribution", "EdgeContribution");
         for (const HyperedgeID& he : _hg->incidentEdges(v)) {
             const HyperedgeWeight edge_weight = _hg->edgeWeight(he);
-            ASSERT(_community_neighbours_of_edge.empty());
-            for (const HypernodeID& hn : _hg->pins(he)) {
-                const PartitionID comm_hn = _hg->communityID(hn);
-                if (hn != v && !_pins_in_community[comm_hn]) {
-                    _pins_in_community[comm_hn] = true;
-                    _community_neighbours_of_edge.emplace_back(comm_hn);
-                }
-            }
-
-            if (!_pins_in_community[comm_v]) {
-                edge_contribution_c += edge_weight;
-            }
-            _pins_in_community[comm_v] = false;
-
-            for (const PartitionID& community : _community_neighbours_of_edge) {
-                if (!_community_edge_contribution[community]) {
+            sum_of_edgeweights += edge_weight;
+            for (auto& community : _hg->_community_counts[he]->singleCuts()) {
+                if (community != comm_v && !_community_edge_contribution[community]) {
                     _community_neighbours_of_node.emplace_back(community);
                 }
                 _community_edge_contribution[community] -= edge_weight;
-                _pins_in_community[community] = false;
+
             }
-            _community_neighbours_of_edge.clear();
-            sum_of_edgeweights += edge_weight;
+
+            for (auto& e : _hg->_community_counts[he]->multiCut()) {
+                if (e.first != comm_v) {
+                    if (!_community_edge_contribution[e.first]) {
+                        _community_neighbours_of_node.emplace_back(e.first);
+                    }
+                    _community_edge_contribution[e.first] -= edge_weight;
+                } else if (e.second == 1) {
+                    _community_edge_contribution[comm_v] -= edge_weight;
+                }
+            }
         }
+        edge_contribution_c = -_community_edge_contribution[comm_v];
+        _community_edge_contribution[comm_v] = 0;
         utils::Timer::instance().stop_timer("edge_contribution");
 
 
@@ -175,10 +168,15 @@ public:
     // ! executes the given move
     bool makeMove(const CommunityMove& move) {
         if (move.delta < 0.0L) {
-            ASSERT(move.destination_community != _hg->communityID(move.node_to_move));
+            const PartitionID source_community = _hg->communityID(move.node_to_move);
+            ASSERT(move.destination_community != source_community);
             _hg->addCommunityVolume(move.node_to_move, move.destination_community);
-            _hg->subtractCommunityVolume(move.node_to_move, _hg->communityID(move.node_to_move));
+            _hg->subtractCommunityVolume(move.node_to_move, source_community);
             _hg->setCommunityID(move.node_to_move, move.destination_community);
+            for (const HyperedgeID& he : _hg->incidentEdges(move.node_to_move)) {
+                _hg->_community_counts[he]->addToCommunity(move.destination_community);
+                _hg->_community_counts[he]->removeFromCommunity(source_community);
+            }
             return true;
         }
         return false;
@@ -206,14 +204,12 @@ private:
 
     // ! for clearlists
     ds::Array<HyperedgeWeight> _community_edge_contribution;
-    ds::Array<bool> _pins_in_community;
 
     // ! contains (vol_V - vol(C)+vol(v))^d - (vol(V)-vol(C))^d for all valid edgesizes d
     // ! Note the values in here are not cleared after each call to calculateBestMove
     ds::Array<Volume> _powers_of_source_community;
 
     // used in clearlist for calculating the edge contribution
-    std::vector<PartitionID> _community_neighbours_of_edge;
     std::vector<PartitionID> _community_neighbours_of_node;
 
 };
