@@ -5,6 +5,8 @@
 
 #include "mt-kahypar/definitions.h"
 #include "mt-kahypar/datastructures/community_count.h"
+#include "mt-kahypar/datastructures/hash_maps.h"
+#include "mt-kahypar/datastructures/hash_functions.h"
 
 namespace mt_kahypar {
 namespace ds {
@@ -19,12 +21,12 @@ public:
     using IncidentNetsIterator = typename Hypergraph::IncidentNetsIterator;
     using CommunityVolumeIterator = typename CommunityVolumes::const_iterator;
     using EdgeSizeIterator = typename EdgeSizes::const_iterator;
-    using HashMap = std::unordered_map<PartitionID, uint32_t>;
+    using Map = HashMap<PartitionID, size_t, xxhash<uint32_t>>;
     static constexpr size_t EDGESIZE_THRESHHOLD = 0;
 
     CommunityHypergraph() = default;
 
-    explicit CommunityHypergraph(Hypergraph& hypergraph) : _hg(&hypergraph), _vol_v(0), _total_edge_weight(0), _max_d_edge_weight_(0) {
+    explicit CommunityHypergraph(Hypergraph& hypergraph) : _hg(&hypergraph), _vol_v(0), _total_edge_weight(0), _max_d_edge_weight_(0), _community_counts(hypergraph.initialNumEdges()) {
         tbb::parallel_invoke([&] {
             _node_volumes.resize("Preprocessing", "node_volumes", hypergraph.initialNumNodes(), true, true);
             }, [&] {
@@ -170,6 +172,10 @@ public:
         return _hg->initialNumNodes();
     }
 
+    // ! contains the cut communities for each hyperedge
+    // ! TODO: Get this to work with Array
+    std::vector<std::unique_ptr<CommunityCount<Map>>> _community_counts;
+
 private:
 
     void freeInternalData() {
@@ -208,9 +214,8 @@ private:
     }
 
     void computeAndSetCommunityCounts() {
-        _community_count.reserve(_hg->initialNumEdges());
         for (const HyperedgeID& he : _hg->edges()) {
-            _community_count[he] = edgeSize(he) > EDGESIZE_THRESHHOLD ? std::make_unique<CommunityCount<CommunityHypergraph, HashMap>>(edgeSize(he), pins(he)) : std::unique_ptr<CommunityCount<CommunityHypergraph, HashMap>>(nullptr);
+            _community_counts[he] = edgeSize(he) > EDGESIZE_THRESHHOLD ? std::make_unique<CommunityCount<Map>>(edgeSize(he), pins(he)) : std::unique_ptr<CommunityCount<Map>>(nullptr);
         }
     }
 
@@ -238,9 +243,6 @@ private:
     // ! maximum value of _d_edge_weight 
     HyperedgeWeight _max_d_edge_weight_;
 
-    // ! contains the cut communities for each hyperedge
-    // ! TODO: Get this to work with Array
-    std::vector<std::unique_ptr<CommunityCount<CommunityHypergraph, HashMap>>> _community_count;
 };
 }
 }

@@ -6,7 +6,7 @@
 namespace mt_kahypar {
 namespace ds {
 
-template <typename Hypergraph, typename HashMap>
+template <typename HashMap>
 class CommunityCount {
 
 public:
@@ -16,7 +16,7 @@ public:
     using MapIterator = HashMapIterator<HashMap>;
     CommunityCount() = default;
 
-    explicit CommunityCount(PartitionID pincount, IteratorRange<IncidenceIterator> pins) {
+    explicit CommunityCount(HypernodeID pincount, IteratorRange<IncidenceIterator> pins) : _communities(64){
         _single_cut_communities.reserve(pincount);
         // since there are no duplicate pins in the initial Hypergraph
         // and every pin is in its own community
