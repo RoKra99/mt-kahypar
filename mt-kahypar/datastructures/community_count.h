@@ -1,6 +1,7 @@
 #pragma once
 
 #include "mt-kahypar/definitions.h"
+#include "mt-kahypar/datastructures/hash_maps.h"
 
 namespace mt_kahypar {
 namespace ds {
@@ -11,6 +12,8 @@ class CommunityCount {
 public:
 
     using IncidenceIterator = typename Hypergraph::IncidenceIterator;
+    using VectorIterator = typename std::vector<PartitionID>::const_iterator;
+    using MapIterator = HashMapIterator<HashMap>;
     CommunityCount() = default;
 
     explicit CommunityCount(PartitionID pincount, IteratorRange<IncidenceIterator> pins) {
@@ -44,6 +47,18 @@ public:
             }
         }
     }
+
+    // ! IteratorRange over all communities with single cuts
+    IteratorRange<VectorIterator> singleCuts() {
+        return IteratorRange<VectorIterator>(_single_cut_communities.cbegin(), _single_cut_communities.cend());
+    }
+
+    // ! IteratorRange over all communities with multiple cuts
+    // TODO: cbegin() and cend()
+    IteratorRange<MapIterator> multiCut() {
+        return IteratorRange<MapIterator>(_communities.begin(), _communities.end());
+    }
+
 private:
 
     // ! Removes the community from the single cut datastructure

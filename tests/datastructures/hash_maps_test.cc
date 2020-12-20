@@ -22,7 +22,7 @@ TEST(AHashMap, InsertsElementsProperly) {
         hm.insert(i, i);
     }
     size_t count = 0;
-    for (auto& e : hm.entries()) {
+    for (auto& e : hm) {
         ++count;
         ASSERT_TRUE(e.first == e.second);
     }
@@ -44,7 +44,7 @@ TEST(AHashMap, ErasesElementsProperly) {
     ASSERT(hm.size() == INSERTS);
     for (size_t i = 0; i < INSERTS; ++i) {
         hm.erase(i);
-        for (auto& e : hm.entries()) {
+        for (auto& e : hm) {
             ASSERT_TRUE(e.first != i);
         }
         ASSERT_TRUE(hm.size() == INSERTS - i - 1);
@@ -58,7 +58,7 @@ TEST(AHashMap, HoldsTheSameElementsAfterResizing) {
         hm.insert(i, i);
     }
     size_t count = 0;
-    for (auto& e : hm.entries()) {
+    for (auto& e : hm) {
         ++count;
         ASSERT_TRUE(e.first == e.second);
     }
@@ -113,7 +113,7 @@ TEST(AHashMap, RemovesElementsDecrementedToZero) {
         hm.decrement(i);
         ASSERT_TRUE(hm.size() == INSERTS - i - 1);
         ASSERT_TRUE(hm.get(i).first != i);
-        for (auto e : hm.entries()) {
+        for (auto e : hm) {
             ASSERT_TRUE(e.first > i);
         }
     }
@@ -143,7 +143,7 @@ TEST(AHashMap, DoesNotIncrementNotExistingEntries) {
     for (size_t i = 0; i < INSERTS; ++i) {
         ASSERT_FALSE(hm.increment(i));
     }
-    for (auto& e : hm.entries()) {
+    for (auto& e : hm) {
         ASSERT_EQ(e.first, e.second);
     }
 }
@@ -155,14 +155,14 @@ TEST(AHashMap, ActsLikeAnUnorderedMapWithInsertAndErase) {
     size_t hm_result = 0;
     for (size_t i = 0; i < INSERTS; ++i) {
         hm.insert(i, i);
-        for (auto& e : hm.entries()) {
+        for (auto& e : hm) {
             hm_result += e.second;
         }
     }
 
     for (size_t i = 0; i < INSERTS; ++i) {
         hm.erase(i);
-        for (auto& e : hm.entries()) {
+        for (auto& e : hm) {
             hm_result += e.second;
         }
     }

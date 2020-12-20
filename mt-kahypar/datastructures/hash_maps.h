@@ -128,9 +128,12 @@ public:
         return std::make_pair(_empty_element, Value());
     }
 
-    // ! returns an iteratorrange over all inserted elements
-    IteratorRange<Iterator> entries() {
-        return IteratorRange<Iterator>(begin(), end());
+    Iterator begin() const {
+        return Iterator(*this, 0);
+    }
+
+    Iterator end() const {
+        return Iterator(*this, size());
     }
 
 private:
@@ -200,14 +203,6 @@ private:
             ASSERT(pos < _entries.size(), "get Position runs out of the table");
         }
         return pos;
-    }
-
-    Iterator begin() const {
-        return Iterator(*this, 0);
-    }
-
-    Iterator end() const {
-        return Iterator(*this, size());
     }
 
     Key _empty_element;
