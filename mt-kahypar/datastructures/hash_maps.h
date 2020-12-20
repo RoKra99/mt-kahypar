@@ -182,7 +182,6 @@ private:
 
     // ! resizes the hashmap by creating a new one and inserting each element again
     void resize() {
-        LOG << "Resize";
         _size *= 2;
         MyType other(_size);
         ASSERT(other._entries.size() > _entries.size(), "resize doesn't increase the size of the table");
