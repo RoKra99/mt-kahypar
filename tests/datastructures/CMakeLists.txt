@@ -13,4 +13,5 @@ target_sources(mt_kahypar_tests PRIVATE
         sparse_map_test.cc
         community_hypergraph_test.cc
         hash_maps_test.cc
+        community_count_test.cc
         )

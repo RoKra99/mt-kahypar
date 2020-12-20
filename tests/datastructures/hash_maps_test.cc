@@ -3,7 +3,6 @@
 #include "mt-kahypar/datastructures/hash_maps.h"
 #include "mt-kahypar/datastructures/hash_functions.h"
 #include "mt-kahypar/utils/timer.h"
-#include "mt-kahypar/utils/randomize.h"
 
 using ::testing::Test;
 
