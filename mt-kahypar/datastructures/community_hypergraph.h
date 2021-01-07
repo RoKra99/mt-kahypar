@@ -21,6 +21,7 @@ public:
     using IncidentNetsIterator = typename Hypergraph::IncidentNetsIterator;
     using CommunityVolumeIterator = typename CommunityVolumes::const_iterator;
     using EdgeSizeIterator = typename EdgeSizes::const_iterator;
+    //using Map = RobinHoodMap<PartitionID, size_t>;
     using Map = HashMap<PartitionID, size_t, xxhash<uint32_t>>;
     static constexpr size_t EDGESIZE_THRESHHOLD = 0;
 

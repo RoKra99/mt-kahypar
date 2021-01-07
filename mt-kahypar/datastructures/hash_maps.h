@@ -1,5 +1,6 @@
 #pragma once
 #include "mt-kahypar/definitions.h"
+#include "robin_hood.h"
 
 namespace mt_kahypar {
 namespace ds {
@@ -34,19 +35,69 @@ private:
     size_t _offset;
 };
 
-template<typename Key, typename Value, typename Hash>
-class HashMap {
+template<typename Key, typename Value>
+class RobinHoodMap {
+private:
+    robin_hood::unordered_map<Key, Value> map;
+
 public:
     using Element = std::pair<Key, Value>;
+    using Iterator = typename robin_hood::unordered_map<Key, Value>::iterator;
+
+    RobinHoodMap(size_t size) {
+        map.reserve(size);
+    }
+    // ! returns true if the element is already in the hashmap and increments its value.
+    // ! returns false if not
+    bool increment(const Key key) {
+        auto it = map.find(key);
+        if (it != map.end()) {
+            it->second += 1;
+            return true;
+        }
+        return false;
+    }
+
+    // ! returns true if the element is already in the hashmap and decrements its value.
+    // ! erases the Element if its value becomes zero
+    // ! returns false if not
+    bool decrement(const Key key) {
+        auto it = map.find(key);
+        if (it != map.end()) {
+            it->second -= 1;
+            if (it->second == 0) {
+                map.erase(it);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    void insert(Key k, Value v) {
+        map.insert({k,v});
+    }
+
+    Iterator begin() {
+        return map.begin();
+    }
+    Iterator end() {
+        return map.end();
+    }
+};
+
+template<typename Key, typename Value, typename Hash>
+class HashMap {
 private:
     using MyType = HashMap<Key, Value, Hash>;
+
+public:
+    using Element = std::pair<Key, Value>;
     using Iterator = HashMapIterator<MyType>;
-    friend Iterator;
 
 public:
     HashMap(const size_t size) :
         _empty_element(std::numeric_limits<Key>::max()),
-        _size(pow(2, floor(log2(size)))),
+        _size(std::max(2, static_cast<int>(pow(2, floor(log2(size)))))),
         _hash(),
         _entries(_size * 2, std::make_pair(_empty_element, Value())) {
         _positions.reserve(_size);
@@ -138,6 +189,7 @@ public:
 
 private:
 
+    // TODO: This is O(n), improve?
     // ! removes a given position from the list of positions
     void removePosition(size_t pos) {
         for (size_t i = 0; i < _positions.size(); ++i) {
@@ -147,7 +199,7 @@ private:
                 return;
             }
         }
-        ASSERT(0 == 1);
+        ASSERT(false, "Trying to remove a position which is not occupied");
     }
 
     // ! erases the element at the given position
@@ -174,13 +226,12 @@ private:
     // ! actual implementation of the insertion algorithm
     void insertAlgorithm(const Key key, const Value v) {
         // if half full, resize
-        if (_positions.size() > _size) {
+        if (_positions.size() >= _size) {
             resize();
         }
         size_t pos = getPosition(key);
         _entries[pos] = std::make_pair(key, v);
         _positions.push_back(pos);
-        //LOG << "Key: " << key << "Pos:" << pos;
     }
 
     // ! resizes the hashmap by creating a new one and inserting each element again
@@ -205,6 +256,7 @@ private:
         return pos;
     }
 
+    friend Iterator;
     Key _empty_element;
     size_t _size;
     Hash _hash;

@@ -13,10 +13,12 @@ public:
 
     using IncidenceIterator = typename Hypergraph::IncidenceIterator;
     using VectorIterator = typename std::vector<PartitionID>::const_iterator;
-    using MapIterator = HashMapIterator<HashMap>;
+    using MapIterator = typename HashMap::Iterator;
+    
     CommunityCount() = default;
 
-    explicit CommunityCount(HypernodeID pincount, IteratorRange<IncidenceIterator> pins) : _communities(64){
+    // TODO: Initialization size of Hashmap
+    explicit CommunityCount(HypernodeID pincount, IteratorRange<IncidenceIterator> pins) : _communities(pincount / 2) {
         _single_cut_communities.reserve(pincount);
         // since there are no duplicate pins in the initial Hypergraph
         // and every pin is in its own community
@@ -60,7 +62,7 @@ public:
     }
 
 private:
-
+    // TODO: This is O(n), improve?
     // ! Removes the community from the single cut datastructure
     bool removeFromSingleCut(PartitionID id) {
         for (size_t i = 0; i < _single_cut_communities.size(); ++i) {

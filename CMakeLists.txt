@@ -20,6 +20,9 @@ include_directories(SYSTEM ${gtest_SOURCE_DIR}/../googlemock/include ${gtest_SOU
 #include KaHyPar
 include_directories(external_tools/kahypar)
 
+#include robin hood hashing
+include_directories(external_tools/robin-hood-hashing/src/include)
+
 option(KAHYPAR_USE_MINIMAL_BOOST
   "Download boost automatically and compile required libraries." OFF)
 
