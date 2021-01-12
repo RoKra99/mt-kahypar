@@ -8,10 +8,60 @@
 #include "mt-kahypar/datastructures/hash_maps.h"
 #include "mt-kahypar/datastructures/hash_functions.h"
 
+#include "static_hypergraph.h"
+
 namespace mt_kahypar {
 namespace ds {
 
+
+
 class CommunityHypergraph {
+
+    using Hypernode = StaticHypergraph::Hypernode;
+    using Hyperedge = StaticHypergraph::Hyperedge;
+    using IncidentNets = StaticHypergraph::IncidentNets;
+    using IncidenceArray = StaticHypergraph::IncidenceArray;
+
+
+    // ! Contains buffers that are needed during multilevel contractions.
+    // ! Struct is allocated on top level hypergraph and passed to each contracted
+    // ! hypergraph such that memory can be reused in consecutive contractions.
+    struct TmpContractionBuffer {
+        explicit TmpContractionBuffer(const HypernodeID num_hypernodes,
+            const HyperedgeID num_hyperedges,
+            const HyperedgeID num_pins) {
+            tbb::parallel_invoke([&] {
+                mapping.resize("Coarsening", "mapping", num_hypernodes);
+                }, [&] {
+                    tmp_hypernodes.resize("Coarsening", "tmp_hypernodes", num_hypernodes);
+                }, [&] {
+                    tmp_incident_nets.resize("Coarsening", "tmp_incident_nets", num_pins);
+                }, [&] {
+                    tmp_num_incident_nets.resize("Coarsening", "tmp_num_incident_nets", num_hypernodes);
+                }, [&] {
+                    hn_weights.resize("Coarsening", "hn_weights", num_hypernodes);
+                    // }, [&] {
+                    //     tmp_hyperedges.resize("Coarsening", "tmp_hyperedges", num_hyperedges);
+                    // }, [&] {
+                    //     tmp_incidence_array.resize("Coarsening", "tmp_incidence_array", num_pins);
+                    // }, [&] {
+                    //     he_sizes.resize("Coarsening", "he_sizes", num_hyperedges);
+                    // }, [&] {
+                    //     valid_hyperedges.resize("Coarsening", "valid_hyperedges", num_hyperedges);
+                });
+        }
+
+        Array<size_t> mapping;
+        Array<Hypernode> tmp_hypernodes;
+        IncidentNets tmp_incident_nets;
+        Array<parallel::IntegralAtomicWrapper<size_t>> tmp_num_incident_nets;
+        Array<parallel::IntegralAtomicWrapper<HypernodeWeight>> hn_weights;
+        // Array<Hyperedge> tmp_hyperedges;
+        // IncidenceArray tmp_incidence_array;
+        // Array<size_t> he_sizes;
+        // Array<size_t> valid_hyperedges;
+    };
+
 public:
 
     using CommunityVolumes = Array<HyperedgeWeight>;
@@ -27,7 +77,7 @@ public:
 
     CommunityHypergraph() = default;
 
-    explicit CommunityHypergraph(Hypergraph& hypergraph) :  _community_counts(hypergraph.initialNumEdges()), _hg(&hypergraph), _vol_v(0), _total_edge_weight(0), _max_d_edge_weight_(0) {
+    explicit CommunityHypergraph(Hypergraph& hypergraph) : _community_counts(hypergraph.initialNumEdges()), _hg(&hypergraph), _vol_v(0), _total_edge_weight(0), _max_d_edge_weight_(0), _tmp_contraction_buffer(nullptr) {
         tbb::parallel_invoke([&] {
             _node_volumes.resize("Preprocessing", "node_volumes", hypergraph.initialNumNodes(), true, true);
             }, [&] {
@@ -45,6 +95,9 @@ public:
         // TODO: Add to register_memory_pool
         computeAndSetCommunityCounts();
     }
+
+    CommunityHypergraph(CommunityHypergraph&& other) = default;
+    CommunityHypergraph& operator=(CommunityHypergraph&& other) = default;
 
     ~CommunityHypergraph() {
         freeInternalData();
@@ -173,6 +226,8 @@ public:
         return _hg->initialNumNodes();
     }
 
+    CommunityHypergraph contract(/*parallel::scalable_vector<HypernodeID>& communities*/);
+
     // ! contains the cut communities for each hyperedge
     // ! TODO: Get this to work with Array
     parallel::scalable_vector<std::unique_ptr<CommunityCount<Map>>> _community_counts;
@@ -220,6 +275,14 @@ private:
         }
     }
 
+    // ! Allocate the temporary contraction buffer
+    void allocateTmpContractionBuffer() {
+        if (!_tmp_contraction_buffer) {
+            _tmp_contraction_buffer = new TmpContractionBuffer(
+                _hg->_num_hypernodes, _hg->_num_hyperedges, _hg->_num_pins);
+        }
+    }
+
     // ! Hypergraph this datastructure is wrapped around
     Hypergraph* _hg;
 
@@ -243,6 +306,8 @@ private:
 
     // ! maximum value of _d_edge_weight 
     HyperedgeWeight _max_d_edge_weight_;
+
+    TmpContractionBuffer* _tmp_contraction_buffer;
 
 };
 }
