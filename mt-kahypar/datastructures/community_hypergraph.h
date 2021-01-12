@@ -15,7 +15,7 @@ class CommunityHypergraph {
 public:
 
     using CommunityVolumes = Array<HyperedgeWeight>;
-    using EdgeSizes = std::vector<PartitionID>;
+    using EdgeSizes = parallel::scalable_vector<PartitionID>;
     using HyperedgeIterator = typename Hypergraph::HyperedgeIterator;
     using IncidenceIterator = typename Hypergraph::IncidenceIterator;
     using IncidentNetsIterator = typename Hypergraph::IncidentNetsIterator;
@@ -175,7 +175,7 @@ public:
 
     // ! contains the cut communities for each hyperedge
     // ! TODO: Get this to work with Array
-    std::vector<std::unique_ptr<CommunityCount<Map>>> _community_counts;
+    parallel::scalable_vector<std::unique_ptr<CommunityCount<Map>>> _community_counts;
 
 private:
 
@@ -236,7 +236,7 @@ private:
     Array<HyperedgeWeight> _d_edge_weights;
 
     // ! contains the indexes to all edgeSizes which occur in the graph
-    std::vector<PartitionID> _valid_edge_sizes;
+    parallel::scalable_vector<PartitionID> _valid_edge_sizes;
 
     // ! sum of all edgeweights
     HyperedgeWeight _total_edge_weight;

@@ -42,7 +42,7 @@ public:
     // ! calculates the best modularity move for the given node
     CommunityMove calculateBestMove(const HypernodeID v) {
         ASSERT(_community_neighbours_of_node.empty());
-        ASSERT(communityEdgeContributionisEmpty());
+        HEAVY_PREPROCESSING_ASSERT(communityEdgeContributionisEmpty());
         utils::Timer::instance().start_timer("calculate_best_move", "Calculate best move");
         const PartitionID comm_v = _hg->communityID(v);
         // the sum of edgeweights which only have v in that community
@@ -97,7 +97,7 @@ public:
 
         // expected edgecontribution starts here
         for (const PartitionID community : _community_neighbours_of_node) {
-            //++overall_checks;
+            ++overall_checks;
             _community_edge_contribution[community] += sum_of_edgeweights_minus_edgecontribution_c;
             const HyperedgeWeight vol_destination_minus = _hg->communityVolume(community);
             const HyperedgeWeight vol_destination = vol_destination_minus + vol_v;
@@ -106,7 +106,7 @@ public:
             // delta will not be < 0
             if ((destination_edge_contribution >= 0 || best_delta < destination_edge_contribution)
                 && vol_c_minus_vol_v <= vol_destination_minus) {
-                //++pruned_by_old;
+                ++pruned_by_old;
                 _community_edge_contribution[community] = 0;
                 continue;
             }
@@ -182,8 +182,8 @@ public:
         return false;
     }
 
-    //size_t overall_checks = 0;
-    //size_t pruned_by_old = 0;
+    size_t overall_checks = 0;
+    size_t pruned_by_old = 0;
 
 private:
 
@@ -210,7 +210,7 @@ private:
     ds::Array<Volume> _powers_of_source_community;
 
     // used in clearlist for calculating the edge contribution
-    std::vector<PartitionID> _community_neighbours_of_node;
+    parallel::scalable_vector<PartitionID> _community_neighbours_of_node;
 
 };
 }
