@@ -26,8 +26,8 @@ class CommunityHypergraph {
     // ! Contains buffers that are needed during multilevel contractions.
     // ! Struct is allocated on top level hypergraph and passed to each contracted
     // ! hypergraph such that memory can be reused in consecutive contractions.
-    struct TmpContractionBuffer {
-        explicit TmpContractionBuffer(const HypernodeID num_hypernodes,
+    struct TmpCommunityHypergraphBuffer {
+        explicit TmpCommunityHypergraphBuffer(const HypernodeID num_hypernodes,
             const HyperedgeID num_hyperedges,
             const HyperedgeID num_pins) {
             tbb::parallel_invoke([&] {
@@ -40,14 +40,14 @@ class CommunityHypergraph {
                     tmp_num_incident_nets.resize("Coarsening", "tmp_num_incident_nets", num_hypernodes);
                 }, [&] {
                     hn_weights.resize("Coarsening", "hn_weights", num_hypernodes);
-                    // }, [&] {
-                    //     tmp_hyperedges.resize("Coarsening", "tmp_hyperedges", num_hyperedges);
-                    // }, [&] {
-                    //     tmp_incidence_array.resize("Coarsening", "tmp_incidence_array", num_pins);
-                    // }, [&] {
-                    //     he_sizes.resize("Coarsening", "he_sizes", num_hyperedges);
-                    // }, [&] {
-                    //     valid_hyperedges.resize("Coarsening", "valid_hyperedges", num_hyperedges);
+                }, [&] {
+                    tmp_hyperedges.resize("Coarsening", "tmp_hyperedges", num_hyperedges);
+                }, [&] {
+                    tmp_incidence_array.resize("Coarsening", "tmp_incidence_array", num_pins);
+                }, [&] {
+                    he_sizes.resize("Coarsening", "he_sizes", num_hyperedges);
+                }, [&] {
+                    valid_hyperedges.resize("Coarsening", "valid_hyperedges", num_hyperedges);
                 });
         }
 
@@ -56,10 +56,10 @@ class CommunityHypergraph {
         IncidentNets tmp_incident_nets;
         Array<parallel::IntegralAtomicWrapper<size_t>> tmp_num_incident_nets;
         Array<parallel::IntegralAtomicWrapper<HypernodeWeight>> hn_weights;
-        // Array<Hyperedge> tmp_hyperedges;
-        // IncidenceArray tmp_incidence_array;
-        // Array<size_t> he_sizes;
-        // Array<size_t> valid_hyperedges;
+        Array<Hyperedge> tmp_hyperedges;
+        IncidenceArray tmp_incidence_array;
+        Array<size_t> he_sizes;
+        Array<size_t> valid_hyperedges;
     };
 
 public:
@@ -278,7 +278,7 @@ private:
     // ! Allocate the temporary contraction buffer
     void allocateTmpContractionBuffer() {
         if (!_tmp_contraction_buffer) {
-            _tmp_contraction_buffer = new TmpContractionBuffer(
+            _tmp_contraction_buffer = new TmpCommunityHypergraphBuffer(
                 _hg->_num_hypernodes, _hg->_num_hyperedges, _hg->_num_pins);
         }
     }
@@ -307,7 +307,7 @@ private:
     // ! maximum value of _d_edge_weight 
     HyperedgeWeight _max_d_edge_weight_;
 
-    TmpContractionBuffer* _tmp_contraction_buffer;
+    TmpCommunityHypergraphBuffer* _tmp_contraction_buffer;
 
 };
 }
