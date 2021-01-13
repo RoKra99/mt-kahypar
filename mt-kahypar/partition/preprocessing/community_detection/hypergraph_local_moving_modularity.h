@@ -166,13 +166,14 @@ public:
     }
 
     // ! executes the given move
-    bool makeMove(const CommunityMove& move) {
+    bool makeMove(const CommunityMove& move/*, ds::Clustering& communities*/) {
         if (move.delta < 0.0L) {
             const PartitionID source_community = _hg->communityID(move.node_to_move);
             ASSERT(move.destination_community != source_community);
             _hg->addCommunityVolume(move.node_to_move, move.destination_community);
             _hg->subtractCommunityVolume(move.node_to_move, source_community);
             _hg->setCommunityID(move.node_to_move, move.destination_community);
+            //communities[move.node_to_move, move.destination_community];
             for (const HyperedgeID& he : _hg->incidentEdges(move.node_to_move)) {
                 _hg->_community_counts[he]->addToCommunity(move.destination_community);
                 _hg->_community_counts[he]->removeFromCommunity(source_community);
@@ -180,6 +181,27 @@ public:
             return true;
         }
         return false;
+    }
+
+    bool localMoving(ds::Clustering communities) {
+        parallel::scalable_vector<HypernodeID> nodes(_hg->initialNumNodes());
+        for (size_t i = 0; i < _hg->initialNumNodes(); ++i) {
+            communities[i] = i;
+            nodes[i] = i;
+        }
+
+        utils::Randomize::instance().parallelShuffleVector(nodes, 0UL, nodes.size());
+        bool changed_clustering = false;
+        bool nodes_moved = true;
+        while (nodes_moved) {
+            nodes_moved = false;
+            for (HypernodeID& hn : nodes) {
+                nodes_moved |= makeMove(calculateBestMove(hn)/*, communities*/);
+            }
+            changed_clustering |= nodes_moved;
+        }
+
+        return changed_clustering;
     }
 
     size_t overall_checks = 0;
