@@ -729,7 +729,8 @@ public:
    * \param task_group_id Task Group ID
    */
   StaticHypergraph contract(parallel::scalable_vector<HypernodeID>& communities,
-    const TaskGroupID /* task_group_id */);
+    const TaskGroupID /* task_group_id */,
+    const bool remove_multi_pins = true);
 
   // ####################### Remove / Restore Hyperedges #######################
 

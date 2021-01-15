@@ -56,7 +56,8 @@ namespace mt_kahypar::ds {
    */
   StaticHypergraph StaticHypergraph::contract(
           parallel::scalable_vector<HypernodeID>& communities,
-          const TaskGroupID /* task_group_id */) {
+          const TaskGroupID /* task_group_id */,
+          const bool remove_multi_pins) {
 
     ASSERT(communities.size() == _num_hypernodes);
 
@@ -173,20 +174,25 @@ namespace mt_kahypar::ds {
             tmp_incidence_array[pos] = map_to_coarse_hypergraph(pin);
           }
 
-          // Remove duplicates and disabled vertices
-          auto first_entry_it = tmp_incidence_array.begin() + incidence_array_start;
-          std::sort(first_entry_it, tmp_incidence_array.begin() + incidence_array_end);
-          auto first_invalid_entry_it = std::unique(first_entry_it, tmp_incidence_array.begin() + incidence_array_end);
-          while ( first_entry_it != first_invalid_entry_it && *(first_invalid_entry_it - 1) == kInvalidHypernode ) {
-            --first_invalid_entry_it;
+          size_t contracted_size = 0;
+          if ( remove_multi_pins ) {
+            // Remove duplicates and disabled vertices
+            auto first_entry_it = tmp_incidence_array.begin() + incidence_array_start;
+            std::sort(first_entry_it, tmp_incidence_array.begin() + incidence_array_end);
+            auto first_invalid_entry_it = std::unique(first_entry_it, tmp_incidence_array.begin() + incidence_array_end);
+            while ( first_entry_it != first_invalid_entry_it && *(first_invalid_entry_it - 1) == kInvalidHypernode ) {
+              --first_invalid_entry_it;
+            }
+          
+            // Update size of hyperedge in temporary hyperedge buffer
+            contracted_size = std::distance(
+                    tmp_incidence_array.begin() + incidence_array_start, first_invalid_entry_it);
+          } else {
+            contracted_size = edgeSize(he);
           }
-
-          // Update size of hyperedge in temporary hyperedge buffer
-          const size_t contracted_size = std::distance(
-                  tmp_incidence_array.begin() + incidence_array_start, first_invalid_entry_it);
           tmp_hyperedges[he].setSize(contracted_size);
 
-
+          
           if ( contracted_size > 1 ) {
             // Compute hash of contracted hyperedge
             size_t footprint = kEdgeHashSeed;
