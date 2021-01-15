@@ -2,7 +2,7 @@
 #include <iostream>
 
 namespace mt_kahypar::metrics {
-Volume hyp_modularity(const ds::CommunityHypergraph& hypergraph) {
+Volume hyp_modularity(const ds::CommunityHypergraph& hypergraph, const parallel::scalable_vector<HypernodeID>& communities, const community_detection::HypergraphLocalMovingModularity& hlmm) {
     static constexpr bool debug = false;
     const HyperedgeWeight vol_V = hypergraph.totalVolume();
     Volume edge_contribution = 0.0L;
@@ -11,7 +11,7 @@ Volume hyp_modularity(const ds::CommunityHypergraph& hypergraph) {
     std::vector<PartitionID> neigh_communities;
     for (const HyperedgeID& he : hypergraph.edges()) {
         for (const HypernodeID& n : hypergraph.pins(he)) {
-            const PartitionID community_n = hypergraph.communityID(n);
+            const PartitionID community_n = communities[n];
             if (!weight_to_community[community_n]) { // first time finding this community
                 weight_to_community[community_n] = hypergraph.edgeWeight(he);
                 neigh_communities.emplace_back(community_n);
@@ -26,7 +26,7 @@ Volume hyp_modularity(const ds::CommunityHypergraph& hypergraph) {
     Volume exp_edge_contribution = 0.0;
     for (const size_t d : hypergraph.edgeSizes()) {
         Volume d_chance = 0.0L;
-        for (const HyperedgeWeight& vol_c : hypergraph.communityVolumes()) {
+        for (const HyperedgeWeight& vol_c : hlmm.communityVolumes()) {
             DBG << "Volumes: " << vol_c;
             d_chance += 1.0L - static_cast<Volume>(math::fast_power(vol_V - vol_c , d)) / math::fast_power(vol_V,d);
         }
