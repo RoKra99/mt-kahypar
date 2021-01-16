@@ -15,36 +15,32 @@ namespace ds {
 
 class CommunityHypergraph {
 
-    using Hypernode = StaticHypergraph::Hypernode;
-    using Hyperedge = StaticHypergraph::Hyperedge;
-    using IncidentNets = StaticHypergraph::IncidentNets;
-    using IncidenceArray = StaticHypergraph::IncidenceArray;
-
+    //using Map = RobinHoodMap<PartitionID, size_t>;
+    using Map = HashMap<PartitionID, size_t, xxhash<uint32_t>>;
 
     //!Contains buffers that are needed during multilevel contractions.
     //!Struct is allocated on top level Communityhypergraph and passed to each contracted
     //!hypergraph such that memory can be reused in consecutive contractions.
     struct TmpCommunityHypergraphBuffer {
-        explicit TmpCommunityHypergraphBuffer(const HypernodeID num_hypernodes) {
+        explicit TmpCommunityHypergraphBuffer(const HypernodeID num_hypernodes, const HyperedgeID num_hyperedges): tmp_community_counts(num_hyperedges) {
             tmp_node_volumes.resize("Preprocessing", "tmp_community_volumes", num_hypernodes);
         }
 
         Array<parallel::AtomicWrapper<HyperedgeWeight>> tmp_node_volumes;
+        parallel::scalable_vector<std::unique_ptr<CommunityCount<Map>>> tmp_community_counts;
     };
 
 public:
 
-    using CommunityVolumes = Array<HyperedgeWeight>;
     using EdgeSizes = parallel::scalable_vector<PartitionID>;
     using HyperedgeIterator = typename Hypergraph::HyperedgeIterator;
     using IncidenceIterator = typename Hypergraph::IncidenceIterator;
     using IncidentNetsIterator = typename Hypergraph::IncidentNetsIterator;
-    using CommunityVolumeIterator = typename CommunityVolumes::const_iterator;
     using EdgeSizeIterator = typename EdgeSizes::const_iterator;
-    //using Map = RobinHoodMap<PartitionID, size_t>;
-    using Map = HashMap<PartitionID, size_t, xxhash<uint32_t>>;
     static constexpr size_t EDGESIZE_THRESHHOLD = 0;
+
     CommunityHypergraph() :
+        _community_counts(),
         _hg(nullptr),
         _node_volumes(),
         _vol_v(0),
@@ -60,10 +56,6 @@ public:
                 _d_edge_weights.resize("Preprocessing", "d_edge_weights", hypergraph.maxEdgeSize() + 1, true, true);
             });
 
-        // Initialize the communities as Singletons
-        for (const HypernodeID& hn : _hg->nodes()) {
-            _hg->setCommunityID(hn, hn);
-        };
         computeAndSetTotalEdgeWeight();
         computeAndSetInitialVolumes();
         // TODO: Add to register_memory_pool
@@ -163,6 +155,11 @@ public:
         return _valid_edge_sizes.size();
     }
 
+    // ! Initial number of hyperedges
+    HyperedgeID initialNumEdges() const {
+        return _hg->initialNumEdges();
+    }
+
 
     // ######################## Nodes ########################
 
@@ -227,7 +224,7 @@ private:
     void allocateTmpCommunityHypergraphBuffer() {
         if (!_tmp_community_hypergraph_buffer) {
             _tmp_community_hypergraph_buffer = new TmpCommunityHypergraphBuffer(
-                _hg->_num_hypernodes);
+                _hg->_num_hypernodes, _hg->_num_hyperedges);
         }
     }
 

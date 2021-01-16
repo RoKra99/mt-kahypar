@@ -74,7 +74,7 @@ public:
     }
 
     void insert(Key k, Value v) {
-        map.insert({k,v});
+        map.insert({ k,v });
     }
 
     Iterator begin() {
@@ -82,6 +82,10 @@ public:
     }
     Iterator end() {
         return map.end();
+    }
+
+    void clear() {
+        map.clear();
     }
 };
 
@@ -185,6 +189,11 @@ public:
 
     Iterator end() const {
         return Iterator(*this, size());
+    }
+
+    void clear() {
+        _entries.clear();
+        _positions.clear();
     }
 
 private:

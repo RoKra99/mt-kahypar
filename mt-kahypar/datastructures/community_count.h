@@ -14,7 +14,7 @@ public:
     using IncidenceIterator = typename Hypergraph::IncidenceIterator;
     using VectorIterator = typename std::vector<PartitionID>::const_iterator;
     using MapIterator = typename HashMap::Iterator;
-    
+
     CommunityCount() = default;
 
     // TODO: Initialization size of Hashmap
@@ -48,6 +48,21 @@ public:
                 _single_cut_communities.push_back(id);
             }
         }
+    }
+
+    void contract(const parallel::scalable_vector<HypernodeID>& communities) {
+        // mapping the single cut communities to the new community ids
+        for (size_t i = 0; i < _single_cut_communities.size(); ++i) {
+            _single_cut_communities[i] = communities[_single_cut_communities[i]];
+        }
+
+        // mapping the mulitcuts to the new community ids
+        // every former muli cut is now jsut a single cut due to contraction
+        for (const auto& e : _communities) {
+            _single_cut_communities.push_back(communities[e.first]);
+        }
+
+        _communities.clear();
     }
 
     // ! IteratorRange over all communities with single cuts

@@ -18,6 +18,8 @@ struct CommunityMove {
 class HypergraphLocalMovingModularity {
 private:
     using AtomicHyperedgeWeight = parallel::AtomicWrapper<HyperedgeWeight>;
+    using CommunityVolumes = parallel::scalable_vector<AtomicHyperedgeWeight>;
+    using CommunityVolumeIterator = typename CommunityVolumes::const_iterator;
 
 public:
     static constexpr bool debug = false;
@@ -184,13 +186,14 @@ public:
 
     bool localMoving(ds::CommunityHypergraph& chg, parallel::scalable_vector<HypernodeID>& communities) {
         parallel::scalable_vector<HypernodeID> nodes(chg.initialNumNodes());
-        // tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID i) {
-        //     });
-        for (HypernodeID i = 0; i < chg.initialNumNodes(); ++i) {
+
+        //        for (HypernodeID i = 0; i < chg.initialNumNodes(); ++i) {
+        tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID i) {
             communities[i] = i;
             nodes[i] = i;
-            _community_volumes[i] = chg.nodeVolume(i);
-        }
+            _community_volumes[i].store(chg.nodeVolume(i));
+            });
+        //}
         if (!_deactivate_random) {
             utils::Randomize::instance().parallelShuffleVector(nodes, 0UL, nodes.size());
         }
@@ -207,14 +210,17 @@ public:
     }
 
     void initializeCommunityVolumes(const ds::CommunityHypergraph& chg, const parallel::scalable_vector<HypernodeID>& communities) {
-        tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID i) {
-            _community_volumes[communities[i]] = chg.nodeVolume(i);
+        tbb::parallel_for(0UL, _community_volumes.size(), [&](const size_t i) {
+            _community_volumes[i].store(0);
         });
+        tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID i) {
+            _community_volumes[communities[i]] += chg.nodeVolume(i);
+            });
     }
 
     //TODO: Just for testing
-    parallel::scalable_vector<HyperedgeWeight> communityVolumes() const {
-        return _community_volumes;
+    IteratorRange<CommunityVolumeIterator> communityVolumes(const ds::CommunityHypergraph& chg) const {
+        return IteratorRange<CommunityVolumeIterator>(_community_volumes.cbegin(), _community_volumes.cbegin() + chg.initialNumNodes());
     }
 
     size_t overall_checks = 0;
@@ -244,7 +250,7 @@ private:
     // used in clearlist for calculating the edge contribution
     parallel::scalable_vector<PartitionID> _community_neighbours_of_node;
 
-    parallel::scalable_vector<HyperedgeWeight> _community_volumes;
+    parallel::scalable_vector<AtomicHyperedgeWeight> _community_volumes;
 
     const bool _deactivate_random;
 
