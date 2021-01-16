@@ -21,21 +21,16 @@ class CommunityHypergraph {
     using IncidenceArray = StaticHypergraph::IncidenceArray;
 
 
-    // ! Contains buffers that are needed during multilevel contractions.
-    // ! Struct is allocated on top level hypergraph and passed to each contracted
-    // ! hypergraph such that memory can be reused in consecutive contractions.
-    // struct TmpCommunityHypergraphBuffer {
-    //     explicit TmpCommunityHypergraphBuffer(const HypernodeID num_hypernodes) {
-    //         tbb::parallel_invoke([&] {
-    //             tmp_node_volumes.resize("Preprocessing", "tmp_node_volumes", num_hypernodes);
-    //             }, [&] {
-    //                 tmp_community_volumes.resize("Preprocessing", "tmp_community_volumes", num_hypernodes);
-    //             });
-    //     }
+    //!Contains buffers that are needed during multilevel contractions.
+    //!Struct is allocated on top level Communityhypergraph and passed to each contracted
+    //!hypergraph such that memory can be reused in consecutive contractions.
+    struct TmpCommunityHypergraphBuffer {
+        explicit TmpCommunityHypergraphBuffer(const HypernodeID num_hypernodes) {
+            tmp_node_volumes.resize("Preprocessing", "tmp_community_volumes", num_hypernodes);
+        }
 
-    //     Array<HyperedgeWeight> tmp_node_volumes;
-    //     Array<HyperedgeWeight> tmp_community_volumes;
-    // };
+        Array<parallel::AtomicWrapper<HyperedgeWeight>> tmp_node_volumes;
+    };
 
 public:
 
@@ -55,10 +50,10 @@ public:
         _vol_v(0),
         _d_edge_weights(),
         _valid_edge_sizes(),
-        _total_edge_weight(0)
-        /*_tmp_community_hypergraph_buffer(nullptr)*/ {}
+        _total_edge_weight(0),
+        _tmp_community_hypergraph_buffer(nullptr) {}
 
-    explicit CommunityHypergraph(Hypergraph& hypergraph) : _community_counts(hypergraph.initialNumEdges()), _hg(&hypergraph), _vol_v(0), _total_edge_weight(0) /*_tmp_community_hypergraph_buffer(nullptr)*/ {
+    explicit CommunityHypergraph(Hypergraph& hypergraph) : _community_counts(hypergraph.initialNumEdges()), _hg(&hypergraph), _vol_v(0), _total_edge_weight(0), _tmp_community_hypergraph_buffer(nullptr) {
         tbb::parallel_invoke([&] {
             _node_volumes.resize("Preprocessing", "node_volumes", hypergraph.initialNumNodes(), true, true);
             }, [&] {
@@ -73,6 +68,7 @@ public:
         computeAndSetInitialVolumes();
         // TODO: Add to register_memory_pool
         computeAndSetCommunityCounts();
+        allocateTmpCommunityHypergraphBuffer();
     }
 
 
@@ -175,7 +171,7 @@ public:
         return _hg->initialNumNodes();
     }
 
-    StaticHypergraph contract(parallel::scalable_vector<HypernodeID>& communities);
+    CommunityHypergraph contract(StaticHypergraph& hypergraph, parallel::scalable_vector<HypernodeID>& communities);
 
     CommunityHypergraph mapContractedVolumes(StaticHypergraph& hypergraph);
 
@@ -189,6 +185,9 @@ private:
         parallel::parallel_free(_node_volumes, _d_edge_weights);
         _vol_v = 0;
         _total_edge_weight = 0;
+        if (_tmp_community_hypergraph_buffer) {
+            delete(_tmp_community_hypergraph_buffer);
+        }
     }
 
     // ! computes the volumes (weighted degrees) of each node.
@@ -224,13 +223,13 @@ private:
         }
     }
 
-    // ! Allocate the temporary contraction buffer
-    // void allocateTmpContractionBuffer() {
-    //     if (!_tmp_community_hypergraph_buffer) {
-    //         _tmp_community_hypergraph_buffer = new TmpCommunityHypergraphBuffer(
-    //             _hg->_num_hypernodes);
-    //     }
-    // }
+    //! Allocate the temporary contraction buffer
+    void allocateTmpCommunityHypergraphBuffer() {
+        if (!_tmp_community_hypergraph_buffer) {
+            _tmp_community_hypergraph_buffer = new TmpCommunityHypergraphBuffer(
+                _hg->_num_hypernodes);
+        }
+    }
 
     // ! Hypergraph this datastructure is wrapped around
     Hypergraph* _hg;
@@ -250,7 +249,7 @@ private:
     // ! sum of all edgeweights
     HyperedgeWeight _total_edge_weight;
 
-    //TmpCommunityHypergraphBuffer* _tmp_community_hypergraph_buffer;
+    TmpCommunityHypergraphBuffer* _tmp_community_hypergraph_buffer;
 
 };
 }

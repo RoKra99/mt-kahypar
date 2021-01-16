@@ -8,23 +8,37 @@
 
 namespace mt_kahypar::ds {
 
-StaticHypergraph CommunityHypergraph::contract(parallel::scalable_vector<HypernodeID>& communities) {
-    return _hg->contract(communities, 0, false);
-}
-
-CommunityHypergraph CommunityHypergraph::mapContractedVolumes(StaticHypergraph& hypergraph) {
+CommunityHypergraph CommunityHypergraph::contract(StaticHypergraph& hypergraph, parallel::scalable_vector<HypernodeID>& communities) {
+    hypergraph = _hg->contract(communities, 0, false);
     CommunityHypergraph chg;
     chg._hg = &hypergraph;
     chg._vol_v = _vol_v;
     chg._valid_edge_sizes = std::move(_valid_edge_sizes);
     chg._d_edge_weights = std::move(_d_edge_weights);
     chg._total_edge_weight = _total_edge_weight;
-    // map according to prefixsum
-    // chg._community_volumes
-    // chg._node_volumes
-    //############################## Keine Ahnung wie ########################
-    // chg.community_counts
+
+    // reset buffer values
+    Array<parallel::AtomicWrapper<HyperedgeWeight>>& tmp_node_volumes = _tmp_community_hypergraph_buffer->tmp_node_volumes;
+    tbb::parallel_for(0U, initialNumNodes(), [&](const HypernodeID i) {
+        tmp_node_volumes[i].store(0);
+    });
+
+    // map according to hypergraph mapping
+    tbb::parallel_for(0U, initialNumNodes(), [&](const HypernodeID i) {
+        const HypernodeID coarse_i = communities[i];
+        tmp_node_volumes[coarse_i] += nodeVolume(i);
+    });
+
+    chg._node_volumes = std::move(_node_volumes);
+
+    // actually writing the volumes to the graph
+    tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID i) {
+        chg._node_volumes[i] = tmp_node_volumes[i];
+    });
+
+    chg._tmp_community_hypergraph_buffer = _tmp_community_hypergraph_buffer;
+    _tmp_community_hypergraph_buffer = nullptr;
+
     return chg;
 }
-
 }
