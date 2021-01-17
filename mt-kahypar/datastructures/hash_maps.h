@@ -192,7 +192,7 @@ public:
     }
 
     void clear() {
-        _entries.clear();
+        clearEntries();
         _positions.clear();
     }
 
@@ -263,6 +263,12 @@ private:
             ASSERT(pos < _entries.size(), "get Position runs out of the table");
         }
         return pos;
+    }
+
+    void clearEntries() {
+        for(const size_t p : _positions) {
+            _entries[p].first = _empty_element;
+        }
     }
 
     friend Iterator;
