@@ -5,6 +5,7 @@
 #include "mt-kahypar/definitions.h"
 #include "mt-kahypar/utils/exponentiations.h"
 #include "mt-kahypar/utils/timer.h"
+#include "mt-kahypar/partition/context.h"
 
 
 namespace mt_kahypar::community_detection {
@@ -25,7 +26,8 @@ public:
     static constexpr bool debug = false;
     static constexpr bool enable_heavy_assert = false;
 
-    HypergraphLocalMovingModularity(ds::CommunityHypergraph& hypergraph, const bool deactivate_random = false) :
+    HypergraphLocalMovingModularity(ds::CommunityHypergraph& hypergraph, const Context& context, const bool deactivate_random = false) :
+        _context(context),
         _community_volumes(hypergraph.initialNumNodes()),
         _deactivate_random(deactivate_random) {
         tbb::parallel_invoke([&] {
@@ -198,13 +200,17 @@ public:
             utils::Randomize::instance().parallelShuffleVector(nodes, 0UL, nodes.size());
         }
         bool changed_clustering = false;
-        bool nodes_moved = true;
-        while (nodes_moved) {
-            nodes_moved = false;
+        size_t nr_nodes_moved = chg.initialNumNodes();
+        for (size_t round = 0;
+            nr_nodes_moved >= _context.preprocessing.community_detection.min_vertex_move_fraction * chg.initialNumNodes()
+            && round < _context.preprocessing.community_detection.max_pass_iterations; ++round) {
+            nr_nodes_moved = 0;
             for (HypernodeID& hn : nodes) {
-                nodes_moved |= makeMove(chg, communities, calculateBestMove(chg, communities, hn));
+                if (makeMove(chg, communities, calculateBestMove(chg, communities, hn))) {
+                    ++nr_nodes_moved;
+                }
             }
-            changed_clustering |= nodes_moved;
+            changed_clustering |= nr_nodes_moved > 0;
         }
         return changed_clustering;
     }
@@ -212,7 +218,7 @@ public:
     void initializeCommunityVolumes(const ds::CommunityHypergraph& chg, const parallel::scalable_vector<HypernodeID>& communities) {
         tbb::parallel_for(0UL, _community_volumes.size(), [&](const size_t i) {
             _community_volumes[i].store(0);
-        });
+            });
         tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID i) {
             _community_volumes[communities[i]] += chg.nodeVolume(i);
             });
@@ -236,6 +242,8 @@ private:
         }
         return result;
     }
+
+    const Context& _context;
 
     // ! reciprocal total volume
     Volume _reciprocal_vol_total = 0.0L;

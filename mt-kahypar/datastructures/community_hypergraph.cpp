@@ -13,6 +13,7 @@ namespace mt_kahypar::ds {
 //TODO: bug affecting edge contribution calculation (slight difference)
 CommunityHypergraph CommunityHypergraph::contract(StaticHypergraph& hypergraph, parallel::scalable_vector<HypernodeID>& communities) {
     hypergraph = _hg->contract(communities, 0, false);
+    utils::Timer::instance().start_timer("community_hypergraph_contract", "New Contraction");
     CommunityHypergraph chg;
     chg._hg = &hypergraph;
     chg._vol_v = _vol_v;
@@ -57,7 +58,7 @@ CommunityHypergraph CommunityHypergraph::contract(StaticHypergraph& hypergraph, 
 
     chg._tmp_community_hypergraph_buffer = _tmp_community_hypergraph_buffer;
     _tmp_community_hypergraph_buffer = nullptr;
-
+    utils::Timer::instance().stop_timer("community_hypergraph_contract");
     return chg;
 }
 }
