@@ -20,9 +20,9 @@ CommunityHypergraph CommunityHypergraph::contract(StaticHypergraph& hypergraph, 
     chg._d_edge_weights = std::move(_d_edge_weights);
     chg._total_edge_weight = _total_edge_weight;
 
-    // reset buffer values
     Array<parallel::AtomicWrapper<HyperedgeWeight>>& tmp_node_volumes = _tmp_community_hypergraph_buffer->tmp_node_volumes;
     auto& tmp_community_counts = _tmp_community_hypergraph_buffer->tmp_community_counts;
+    tmp_community_counts.resize(chg.initialNumEdges());
 
     tbb::parallel_for(0U, initialNumNodes(), [&](const HypernodeID i) {
         tmp_node_volumes[i].store(0);
