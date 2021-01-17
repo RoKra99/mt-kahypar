@@ -18,7 +18,11 @@ static constexpr Volume PRECISION = 1e-18L;
 
 TEST_F(AHypergraphLocalMoving, CalculatesModularityDelta0) {
     ds::CommunityHypergraph community_hypergraph(hypergraph);
-    HypergraphLocalMovingModularity hlmm(community_hypergraph);
+    Context context;
+    context.preprocessing.community_detection.max_pass_iterations = 100;
+    context.preprocessing.community_detection.min_vertex_move_fraction = 0.0001;
+    context.shared_memory.num_threads = 1;
+    HypergraphLocalMovingModularity hlmm(community_hypergraph, context);
     parallel::scalable_vector<HypernodeID> communities = { 0,1,2,3,4,5,6 };
     hlmm.initializeCommunityVolumes(community_hypergraph, communities);
     Volume before = mt_kahypar::metrics::hyp_modularity(community_hypergraph, communities, hlmm);
@@ -31,7 +35,11 @@ TEST_F(AHypergraphLocalMoving, CalculatesModularityDelta0) {
 
 TEST_F(AHypergraphLocalMoving, CalculatesModularityDelta1) {
     ds::CommunityHypergraph community_hypergraph(hypergraph);
-    HypergraphLocalMovingModularity hlmm(community_hypergraph);
+    Context context;
+    context.preprocessing.community_detection.max_pass_iterations = 100;
+    context.preprocessing.community_detection.min_vertex_move_fraction = 0.0001;
+    context.shared_memory.num_threads = 1;
+    HypergraphLocalMovingModularity hlmm(community_hypergraph, context);
     parallel::scalable_vector<HypernodeID> communities = { 0,1,2,3,4,5,6 };
     hlmm.initializeCommunityVolumes(community_hypergraph, communities);
     Volume before = mt_kahypar::metrics::hyp_modularity(community_hypergraph, communities, hlmm);
@@ -44,7 +52,11 @@ TEST_F(AHypergraphLocalMoving, CalculatesModularityDelta1) {
 
 TEST_F(AHypergraphLocalMoving, CalculatesModularityDelta2) {
     ds::CommunityHypergraph community_hypergraph(hypergraph);
-    HypergraphLocalMovingModularity hlmm(community_hypergraph);
+    Context context;
+    context.preprocessing.community_detection.max_pass_iterations = 100;
+    context.preprocessing.community_detection.min_vertex_move_fraction = 0.0001;
+    context.shared_memory.num_threads = 1;
+    HypergraphLocalMovingModularity hlmm(community_hypergraph, context);
     parallel::scalable_vector<HypernodeID> communities = { 0,1,2,3,4,5,6 };
     hlmm.initializeCommunityVolumes(community_hypergraph, communities);
     Volume before = mt_kahypar::metrics::hyp_modularity(community_hypergraph, communities, hlmm);
@@ -57,7 +69,11 @@ TEST_F(AHypergraphLocalMoving, CalculatesModularityDelta2) {
 
 TEST_F(AHypergraphLocalMoving, CalculatesModularityDelta3) {
     ds::CommunityHypergraph community_hypergraph(hypergraph);
-    HypergraphLocalMovingModularity hlmm(community_hypergraph);
+    Context context;
+    context.preprocessing.community_detection.max_pass_iterations = 100;
+    context.preprocessing.community_detection.min_vertex_move_fraction = 0.0001;
+    context.shared_memory.num_threads = 1;
+    HypergraphLocalMovingModularity hlmm(community_hypergraph, context);
     parallel::scalable_vector<HypernodeID> communities = { 0,1,2,3,4,5,6 };
     hlmm.initializeCommunityVolumes(community_hypergraph, communities);
     Volume before = mt_kahypar::metrics::hyp_modularity(community_hypergraph, communities, hlmm);
@@ -70,7 +86,11 @@ TEST_F(AHypergraphLocalMoving, CalculatesModularityDelta3) {
 
 TEST_F(AHypergraphLocalMoving, CalculatesModularityDelta4) {
     ds::CommunityHypergraph community_hypergraph(hypergraph);
-    HypergraphLocalMovingModularity hlmm(community_hypergraph);
+    Context context;
+    context.preprocessing.community_detection.max_pass_iterations = 100;
+    context.preprocessing.community_detection.min_vertex_move_fraction = 0.0001;
+    context.shared_memory.num_threads = 1;
+    HypergraphLocalMovingModularity hlmm(community_hypergraph, context);
     parallel::scalable_vector<HypernodeID> communities = { 0,1,2,3,4,5,6 };
     hlmm.initializeCommunityVolumes(community_hypergraph, communities);
     Volume before = mt_kahypar::metrics::hyp_modularity(community_hypergraph, communities, hlmm);
@@ -83,7 +103,11 @@ TEST_F(AHypergraphLocalMoving, CalculatesModularityDelta4) {
 
 TEST_F(AHypergraphLocalMoving, CalculatesModularityDelta5) {
     ds::CommunityHypergraph community_hypergraph(hypergraph);
-    HypergraphLocalMovingModularity hlmm(community_hypergraph);
+    Context context;
+    context.preprocessing.community_detection.max_pass_iterations = 100;
+    context.preprocessing.community_detection.min_vertex_move_fraction = 0.0001;
+    context.shared_memory.num_threads = 1;
+    HypergraphLocalMovingModularity hlmm(community_hypergraph, context);
     parallel::scalable_vector<HypernodeID> communities = { 0,1,2,3,4,5,6 };
     hlmm.initializeCommunityVolumes(community_hypergraph, communities);
     Volume before = mt_kahypar::metrics::hyp_modularity(community_hypergraph, communities, hlmm);
@@ -96,7 +120,11 @@ TEST_F(AHypergraphLocalMoving, CalculatesModularityDelta5) {
 
 TEST_F(AHypergraphLocalMoving, CalculatesModularityDelta6) {
     ds::CommunityHypergraph community_hypergraph(hypergraph);
-    HypergraphLocalMovingModularity hlmm(community_hypergraph);
+    Context context;
+    context.preprocessing.community_detection.max_pass_iterations = 100;
+    context.preprocessing.community_detection.min_vertex_move_fraction = 0.0001;
+    context.shared_memory.num_threads = 1;
+    HypergraphLocalMovingModularity hlmm(community_hypergraph, context);
     parallel::scalable_vector<HypernodeID> communities = { 0,1,2,3,4,5,6 };
     hlmm.initializeCommunityVolumes(community_hypergraph, communities);
     Volume before = mt_kahypar::metrics::hyp_modularity(community_hypergraph, communities, hlmm);
