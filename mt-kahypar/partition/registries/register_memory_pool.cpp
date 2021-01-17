@@ -53,19 +53,20 @@ namespace mt_kahypar {
       pool.register_memory_chunk("Preprocessing", "d_edge_weights", max_edge_size + 1, sizeof(HyperedgeWeight));
       pool.register_memory_chunk("Preprocessing", "clearlist_edge_contribution", num_hypernodes, sizeof(HyperedgeWeight));
       pool.register_memory_chunk("Preprocessing", "powers_of_source_community", max_edge_size + 1, sizeof(Volume));
+      pool.register_memory_chunk("Preprocessing", "tmp_community_volumes", num_hypernodes, sizeof(parallel::AtomicWrapper<HyperedgeWeight>));
 
       // Old Modualrity
-      pool.register_memory_chunk("Preprocessing", "indices", num_star_expansion_nodes + 1, sizeof(size_t));
-      pool.register_memory_chunk("Preprocessing", "arcs", num_star_expansion_edges, sizeof(Arc));
-      pool.register_memory_chunk("Preprocessing", "node_volumes", num_star_expansion_nodes, sizeof(ArcWeight));
-      pool.register_memory_chunk("Preprocessing", "tmp_indices",
-                                 num_star_expansion_nodes + 1, sizeof(parallel::IntegralAtomicWrapper<size_t>));
-      pool.register_memory_chunk("Preprocessing", "tmp_pos",
-                                 num_star_expansion_nodes, sizeof(parallel::IntegralAtomicWrapper<size_t>));
-      pool.register_memory_chunk("Preprocessing", "tmp_arcs", num_star_expansion_edges, sizeof(Arc));
-      pool.register_memory_chunk("Preprocessing", "valid_arcs", num_star_expansion_edges, sizeof(size_t));
-      pool.register_memory_chunk("Preprocessing", "tmp_node_volumes",
-                                 num_star_expansion_nodes, sizeof(parallel::AtomicWrapper<ArcWeight>));
+      // pool.register_memory_chunk("Preprocessing", "indices", num_star_expansion_nodes + 1, sizeof(size_t));
+      // pool.register_memory_chunk("Preprocessing", "arcs", num_star_expansion_edges, sizeof(Arc));
+      // pool.register_memory_chunk("Preprocessing", "node_volumes", num_star_expansion_nodes, sizeof(ArcWeight));
+      // pool.register_memory_chunk("Preprocessing", "tmp_indices",
+      //                            num_star_expansion_nodes + 1, sizeof(parallel::IntegralAtomicWrapper<size_t>));
+      // pool.register_memory_chunk("Preprocessing", "tmp_pos",
+      //                            num_star_expansion_nodes, sizeof(parallel::IntegralAtomicWrapper<size_t>));
+      // pool.register_memory_chunk("Preprocessing", "tmp_arcs", num_star_expansion_edges, sizeof(Arc));
+      // pool.register_memory_chunk("Preprocessing", "valid_arcs", num_star_expansion_edges, sizeof(size_t));
+      // pool.register_memory_chunk("Preprocessing", "tmp_node_volumes",
+      //                            num_star_expansion_nodes, sizeof(parallel::AtomicWrapper<ArcWeight>));
     }
 
     // ########## Coarsening Memory ##########
