@@ -22,12 +22,11 @@ class CommunityHypergraph {
     //!Struct is allocated on top level Communityhypergraph and passed to each contracted
     //!hypergraph such that memory can be reused in consecutive contractions.
     struct TmpCommunityHypergraphBuffer {
-        explicit TmpCommunityHypergraphBuffer(const HypernodeID num_hypernodes, const HyperedgeID num_hyperedges): tmp_community_counts(num_hyperedges) {
+        explicit TmpCommunityHypergraphBuffer(const HypernodeID num_hypernodes, const HyperedgeID num_hyperedges) {
             tmp_node_volumes.resize("Preprocessing", "tmp_community_volumes", num_hypernodes);
         }
 
         Array<parallel::AtomicWrapper<HyperedgeWeight>> tmp_node_volumes;
-        parallel::scalable_vector<std::unique_ptr<CommunityCount<Map>>> tmp_community_counts;
     };
 
 public:

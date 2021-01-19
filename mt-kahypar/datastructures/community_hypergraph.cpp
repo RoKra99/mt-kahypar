@@ -8,12 +8,14 @@
 
 namespace mt_kahypar::ds {
 
+    
+
 //TODO: parallel contract community count
 //TODO: remove "single pin edges" / save them for dbg purposes
 //TODO: bug affecting edge contribution calculation (slight difference)
 CommunityHypergraph CommunityHypergraph::contract(StaticHypergraph& hypergraph, parallel::scalable_vector<HypernodeID>& communities) {
     hypergraph = _hg->contract(communities, 0, false);
-    utils::Timer::instance().start_timer("community_hypergraph_contract", "New Contraction");
+    utils::Timer::instance().start_timer("community_hypergraph_contract", "CommunityHypergaph Contraction");
     CommunityHypergraph chg;
     chg._hg = &hypergraph;
     chg._vol_v = _vol_v;
@@ -22,13 +24,10 @@ CommunityHypergraph CommunityHypergraph::contract(StaticHypergraph& hypergraph, 
     chg._total_edge_weight = _total_edge_weight;
 
     Array<parallel::AtomicWrapper<HyperedgeWeight>>& tmp_node_volumes = _tmp_community_hypergraph_buffer->tmp_node_volumes;
-    auto& tmp_community_counts = _tmp_community_hypergraph_buffer->tmp_community_counts;
-    tmp_community_counts.resize(chg.initialNumEdges());
-
+    
     tbb::parallel_for(0U, initialNumNodes(), [&](const HypernodeID i) {
         tmp_node_volumes[i].store(0);
         });
-
     // map according to hypergraph mapping
     tbb::parallel_for(0U, initialNumNodes(), [&](const HypernodeID i) {
         const HypernodeID coarse_i = communities[i];
@@ -36,25 +35,17 @@ CommunityHypergraph CommunityHypergraph::contract(StaticHypergraph& hypergraph, 
         });
 
     chg._node_volumes.resize(chg.initialNumNodes());
-
     // actually writing the volumes to the graph
     tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID i) {
         chg._node_volumes[i] = std::move(tmp_node_volumes[i]);
         });
 
-    for (HyperedgeID i = 0; i < initialNumEdges(); ++i) {
-        const HyperedgeID coarse_i = hypergraph._tmp_contraction_buffer->valid_hyperedges[i];
-        if (coarse_i && !tmp_community_counts[coarse_i - 1]) {
-            tmp_community_counts.insert(tmp_community_counts.begin() + coarse_i - 1, std::move(_community_counts[i]));
-        }
-    }
-
-    tbb::parallel_for(0U, chg.initialNumEdges(), [&](const HyperedgeID i) {
-            tmp_community_counts[i]->contract(communities);
-        });
-
-    chg._community_counts = std::move(tmp_community_counts);
-
+    utils::Timer::instance().start_timer("community_count", "Map Community Counts");
+    chg._community_counts.resize(chg.initialNumEdges());
+    tbb::parallel_for(0U, chg.initialNumEdges(), [&](const HyperedgeID he) {
+        chg._community_counts[he] = chg.edgeSize(he) > EDGESIZE_THRESHHOLD ? std::make_unique<CommunityCount<Map>>(chg.edgeSize(he), chg.pins(he), true) : std::unique_ptr<CommunityCount<Map>>(nullptr);
+    });
+    utils::Timer::instance().stop_timer("community_count");
 
     chg._tmp_community_hypergraph_buffer = _tmp_community_hypergraph_buffer;
     _tmp_community_hypergraph_buffer = nullptr;

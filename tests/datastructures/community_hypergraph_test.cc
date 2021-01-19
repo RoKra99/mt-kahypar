@@ -67,6 +67,21 @@ public:
         }
     }
 
+    void verifyCommunityCounts(const CommunityHypergraph& chg, const HyperedgeID he, std::vector<std::set<HypernodeID>> exp_communities) {
+        size_t count = 0;
+        for (auto& e : chg._community_counts[he]->singleCuts()) {
+            ASSERT_TRUE(exp_communities[0].find(e) != exp_communities[0].end());
+            ++count;
+        }
+        ASSERT_EQ(count, exp_communities[0].size());
+        count = 0;
+        for (auto& e : chg._community_counts[he]->multiCut()) {
+            ASSERT_TRUE(exp_communities[1].find(e.first) != exp_communities[1].end());
+            ++count;
+        }
+        ASSERT_EQ(count, exp_communities[1].size());
+    }
+
     Hypergraph hypergraph;
     CommunityHypergraph community_hypergraph;
 };
@@ -158,6 +173,12 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities1) {
     ASSERT_EQ(1, cchg.edgeWeight(2));
     ASSERT_EQ(1, cchg.edgeWeight(3));
 
+    // verify community counts
+    this->verifyCommunityCounts(cchg, 0, { {0}, {} });
+    this->verifyCommunityCounts(cchg, 1, { {0,1,2}, {} });
+    this->verifyCommunityCounts(cchg, 2, { {2}, {} });
+    this->verifyCommunityCounts(cchg, 3, { {0,1,2}, {} });
+
     // verify hypergraph structure
     this->verifyIncidentNets(hg, 0, { 0, 1, 3 });
     this->verifyIncidentNets(hg, 1, { 1, 3 });
@@ -211,11 +232,17 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities2) {
     ASSERT_EQ(1, cchg.edgeWeight(2));
     ASSERT_EQ(1, cchg.edgeWeight(3));
 
+    // verify community counts
+    this->verifyCommunityCounts(cchg, 0, { {0, 2}, {} });
+    this->verifyCommunityCounts(cchg, 1, { {0,1}, {} });
+    this->verifyCommunityCounts(cchg, 2, { {1,2}, {} });
+    this->verifyCommunityCounts(cchg, 3, { {2}, {} });
+
     // verify hypergraph structure
     this->verifyIncidentNets(hg, 0, { 0, 1 });
     this->verifyIncidentNets(hg, 1, { 1, 2 });
     this->verifyIncidentNets(hg, 2, { 0, 2, 3 });
-    this->verifyPins(hg, { 0,1,2,3 }, { {0,2}, {0,0,1,1}, {1,1,2}, {2,2,2} }, true);
+    this->verifyPins(hg, { 0,1,2,3 }, { {0,2}, {0,0,1,1}, {1,1,2}, {2,2,2} });
 }
 }
 }

@@ -27,6 +27,7 @@
 #include "mt-kahypar/parallel/atomic_wrapper.h"
 #include "mt-kahypar/utils/memory_tree.h"
 #include "mt-kahypar/utils/timer.h"
+#include "mt-kahypar/datastructures/community_hypergraph.h"
 
 namespace mt_kahypar {
 
@@ -44,8 +45,8 @@ namespace mt_kahypar {
 
     if ( context.preprocessing.use_community_detection ) {
       const bool is_graph = hypergraph.maxEdgeSize() == 2;
-      const size_t num_star_expansion_nodes = num_hypernodes + (is_graph ? 0 : num_hyperedges);
-      const size_t num_star_expansion_edges = is_graph ? num_pins : (2UL * num_pins);
+      //const size_t num_star_expansion_nodes = num_hypernodes + (is_graph ? 0 : num_hyperedges);
+      //const size_t num_star_expansion_edges = is_graph ? num_pins : (2UL * num_pins);
 
       pool.register_memory_group("Preprocessing", 1);
       // Hyperedge Modularity

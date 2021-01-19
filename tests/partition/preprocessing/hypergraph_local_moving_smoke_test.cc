@@ -27,7 +27,6 @@ TEST(AHypergraphLocalMovingSpeed, TestsTheSpeedOfTheDeltaCalculation) {
     utils::Timer::instance().stop_timer("comm_init");
     parallel::scalable_vector<HypernodeID> communities = community_detection::hypergraph_louvain(chg, context);
     LOG << "community count " << *std::max_element(communities.begin(), communities.end());
-    //chg = chg.contract(communities);
     LOG << "Number of nodes: " << chg.initialNumNodes();
     LOG << utils::Timer::instance(true);
     ASSERT_TRUE(true);

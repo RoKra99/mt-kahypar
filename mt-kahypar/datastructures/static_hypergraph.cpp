@@ -175,10 +175,11 @@ namespace mt_kahypar::ds {
           }
 
           size_t contracted_size = 0;
-          if ( remove_multi_pins ) {
+          
             // Remove duplicates and disabled vertices
             auto first_entry_it = tmp_incidence_array.begin() + incidence_array_start;
             std::sort(first_entry_it, tmp_incidence_array.begin() + incidence_array_end);
+            if ( remove_multi_pins ) {
             auto first_invalid_entry_it = std::unique(first_entry_it, tmp_incidence_array.begin() + incidence_array_end);
             while ( first_entry_it != first_invalid_entry_it && *(first_invalid_entry_it - 1) == kInvalidHypernode ) {
               --first_invalid_entry_it;
