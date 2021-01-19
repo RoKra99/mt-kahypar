@@ -8,11 +8,7 @@
 
 namespace mt_kahypar::ds {
 
-    
-
-//TODO: parallel contract community count
 //TODO: remove "single pin edges" / save them for dbg purposes
-//TODO: bug affecting edge contribution calculation (slight difference)
 CommunityHypergraph CommunityHypergraph::contract(StaticHypergraph& hypergraph, parallel::scalable_vector<HypernodeID>& communities) {
     hypergraph = _hg->contract(communities, 0, false);
     utils::Timer::instance().start_timer("community_hypergraph_contract", "CommunityHypergaph Contraction");
