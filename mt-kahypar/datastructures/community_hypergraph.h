@@ -15,14 +15,11 @@ namespace ds {
 
 class CommunityHypergraph {
 
-    //using Map = RobinHoodMap<PartitionID, size_t>;
-    using Map = HashMap<PartitionID, size_t, xxhash<uint32_t>>;
-
     //!Contains buffers that are needed during multilevel contractions.
     //!Struct is allocated on top level Communityhypergraph and passed to each contracted
     //!hypergraph such that memory can be reused in consecutive contractions.
     struct TmpCommunityHypergraphBuffer {
-        explicit TmpCommunityHypergraphBuffer(const HypernodeID num_hypernodes, const HyperedgeID num_hyperedges) {
+        explicit TmpCommunityHypergraphBuffer(const HypernodeID num_hypernodes) {
             tmp_node_volumes.resize("Preprocessing", "tmp_community_volumes", num_hypernodes);
         }
 
@@ -36,6 +33,10 @@ public:
     using IncidenceIterator = typename Hypergraph::IncidenceIterator;
     using IncidentNetsIterator = typename Hypergraph::IncidentNetsIterator;
     using EdgeSizeIterator = typename EdgeSizes::const_iterator;
+    //using Map = RobinHoodMap<PartitionID, size_t>;
+    using Map = HashMap<PartitionID, size_t, xxhash<uint32_t>>;
+    using VectorIterator = typename std::vector<PartitionID>::const_iterator;
+    using MapIterator = typename Map::Iterator;
     static constexpr size_t EDGESIZE_THRESHHOLD = 0;
 
     CommunityHypergraph() :
@@ -57,7 +58,6 @@ public:
 
         computeAndSetTotalEdgeWeight();
         computeAndSetInitialVolumes();
-        // TODO: Add to register_memory_pool
         computeAndSetCommunityCounts();
         allocateTmpCommunityHypergraphBuffer();
     }
@@ -103,6 +103,17 @@ public:
         return IteratorRange<EdgeSizeIterator>(_valid_edge_sizes.cbegin(), _valid_edge_sizes.cend());
     }
 
+    // ! IteratorRange over all communities with single cuts of the hyperedge
+    IteratorRange<VectorIterator> singleCuts(const HyperedgeID he) const {
+        return _community_counts[he]->singleCuts();
+    }
+
+    // ! IteratorRange over all communities with multiple cuts
+    // TODO: cbegin() and cend()
+    IteratorRange<MapIterator> multiCuts(const HyperedgeID he) const {
+        return _community_counts[he]->multiCuts();
+    }
+
     // ######################## Community ########################
 
     // ! Community id which hypernode u is assigned to
@@ -113,6 +124,19 @@ public:
     // ! Assign a community to a hypernode
     void setCommunityID(const HypernodeID u, const PartitionID community_id) {
         _hg->setCommunityID(u, community_id);
+    }
+
+    // ! increments the unique node count for the given community.
+    // ! It will be added if it is not in the datastructure yet.
+    void addCommunityToHyperedge(const HyperedgeID he, const PartitionID community) {
+        _community_counts[he]->addToCommunity(community);
+    }
+
+    // ! expects the community to be in the datastructure already, else undefined
+    // ! decrements the unique node count for the given community. 
+    // ! Community will be removed if the count is zero afterwards
+    void removeCommunityFromHyperedge(const HyperedgeID he, const PartitionID community) {
+        _community_counts[he]->removeFromCommunity(community);
     }
 
 
@@ -167,13 +191,8 @@ public:
         return _hg->initialNumNodes();
     }
 
+    // ! contracts the Hypergraph according to the given communities
     CommunityHypergraph contract(StaticHypergraph& hypergraph, parallel::scalable_vector<HypernodeID>& communities);
-
-    CommunityHypergraph mapContractedVolumes(StaticHypergraph& hypergraph);
-
-    // ! contains the cut communities for each hyperedge
-    // ! TODO: Get this to work with Array
-    parallel::scalable_vector<std::unique_ptr<CommunityCount<Map>>> _community_counts;
 
 private:
 
@@ -213,19 +232,23 @@ private:
         }
     }
 
+    // ! initializes a community count datastructures for all edges above a certain edgesize
     void computeAndSetCommunityCounts() {
         for (const HyperedgeID& he : _hg->edges()) {
             _community_counts[he] = edgeSize(he) > EDGESIZE_THRESHHOLD ? std::make_unique<CommunityCount<Map>>(edgeSize(he), pins(he)) : std::unique_ptr<CommunityCount<Map>>(nullptr);
         }
     }
 
-    //! Allocate the temporary contraction buffer
+    // ! Allocate the temporary contraction buffer
     void allocateTmpCommunityHypergraphBuffer() {
         if (!_tmp_community_hypergraph_buffer) {
             _tmp_community_hypergraph_buffer = new TmpCommunityHypergraphBuffer(
-                _hg->_num_hypernodes, _hg->_num_hyperedges);
+                _hg->_num_hypernodes);
         }
     }
+
+    // ! contains the cut communities for each hyperedge
+    parallel::scalable_vector<std::unique_ptr<CommunityCount<Map>>> _community_counts;
 
     // ! Hypergraph this datastructure is wrapped around
     Hypergraph* _hg;
@@ -245,6 +268,7 @@ private:
     // ! sum of all edgeweights
     HyperedgeWeight _total_edge_weight;
 
+    // ! contains structures used in contaction to avoid allocations
     TmpCommunityHypergraphBuffer* _tmp_community_hypergraph_buffer;
 
 };

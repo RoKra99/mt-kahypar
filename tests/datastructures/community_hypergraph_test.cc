@@ -69,13 +69,13 @@ public:
 
     void verifyCommunityCounts(const CommunityHypergraph& chg, const HyperedgeID he, std::vector<std::set<HypernodeID>> exp_communities) {
         size_t count = 0;
-        for (auto& e : chg._community_counts[he]->singleCuts()) {
+        for (auto& e : chg.singleCuts(he)) {
             ASSERT_TRUE(exp_communities[0].find(e) != exp_communities[0].end());
             ++count;
         }
         ASSERT_EQ(count, exp_communities[0].size());
         count = 0;
-        for (auto& e : chg._community_counts[he]->multiCut()) {
+        for (auto& e : chg.multiCuts(he)) {
             ASSERT_TRUE(exp_communities[1].find(e.first) != exp_communities[1].end());
             ++count;
         }

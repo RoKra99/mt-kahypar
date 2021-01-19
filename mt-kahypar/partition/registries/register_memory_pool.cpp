@@ -44,7 +44,7 @@ namespace mt_kahypar {
     auto& pool = parallel::MemoryPool::instance();
 
     if ( context.preprocessing.use_community_detection ) {
-      const bool is_graph = hypergraph.maxEdgeSize() == 2;
+      //const bool is_graph = hypergraph.maxEdgeSize() == 2;
       //const size_t num_star_expansion_nodes = num_hypernodes + (is_graph ? 0 : num_hyperedges);
       //const size_t num_star_expansion_edges = is_graph ? num_pins : (2UL * num_pins);
 

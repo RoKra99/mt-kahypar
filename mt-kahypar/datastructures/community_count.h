@@ -17,7 +17,6 @@ public:
 
     CommunityCount() = default;
 
-    // TODO: Initialization size of Hashmap
     explicit CommunityCount(const HypernodeID pincount, IteratorRange<IncidenceIterator> pins, const bool multipins = false) : _communities(pincount / 2) {
         _single_cut_communities.reserve(pincount);
         if (!multipins) {
@@ -28,7 +27,7 @@ public:
             }
         } else {
             HypernodeID prev = std::numeric_limits<HypernodeID>::max();
-            for (const HypernodeID hn :pins) {
+            for (const HypernodeID hn : pins) {
                 if (prev != hn) {
                     _single_cut_communities.push_back(hn);
                     prev = hn;
@@ -61,13 +60,13 @@ public:
     }
 
     // ! IteratorRange over all communities with single cuts
-    IteratorRange<VectorIterator> singleCuts() {
+    IteratorRange<VectorIterator> singleCuts() const {
         return IteratorRange<VectorIterator>(_single_cut_communities.cbegin(), _single_cut_communities.cend());
     }
 
     // ! IteratorRange over all communities with multiple cuts
     // TODO: cbegin() and cend()
-    IteratorRange<MapIterator> multiCut() {
+    IteratorRange<MapIterator> multiCuts() const {
         return IteratorRange<MapIterator>(_communities.begin(), _communities.end());
     }
 
@@ -85,7 +84,10 @@ private:
         return false;
     }
 
+    //! communities which only contain a single node of this hyperedge
     std::vector<PartitionID> _single_cut_communities;
+
+    //! communities which contain multiple nodes of this hyperedge
     HashMap _communities;
 
 };

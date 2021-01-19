@@ -57,7 +57,7 @@ public:
         for (const HyperedgeID& he : chg.incidentEdges(v)) {
             const HyperedgeWeight edge_weight = chg.edgeWeight(he);
             sum_of_edgeweights += edge_weight;
-            for (auto& community : chg._community_counts[he]->singleCuts()) {
+            for (auto& community : chg.singleCuts(he)) {
                 if (community != comm_v && !_community_edge_contribution[community]) {
                     _community_neighbours_of_node.emplace_back(community);
                 }
@@ -65,7 +65,7 @@ public:
 
             }
 
-            for (auto& e : chg._community_counts[he]->multiCut()) {
+            for (auto& e : chg.multiCuts(he)) {
                 if (e.first != comm_v) {
                     if (!_community_edge_contribution[e.first]) {
                         _community_neighbours_of_node.emplace_back(e.first);
@@ -178,8 +178,8 @@ public:
             _community_volumes[source_community] -= chg.nodeVolume(move.node_to_move);
             communities[move.node_to_move] = move.destination_community;
             for (const HyperedgeID& he : chg.incidentEdges(move.node_to_move)) {
-                chg._community_counts[he]->addToCommunity(move.destination_community);
-                chg._community_counts[he]->removeFromCommunity(source_community);
+                chg.addCommunityToHyperedge(he, move.destination_community);
+                chg.removeCommunityFromHyperedge(he, source_community);
             }
             return true;
         }
@@ -224,7 +224,7 @@ public:
             });
     }
 
-    //TODO: Just for testing
+    //! Iterator for the Community volumes
     IteratorRange<CommunityVolumeIterator> communityVolumes(const ds::CommunityHypergraph& chg) const {
         return IteratorRange<CommunityVolumeIterator>(_community_volumes.cbegin(), _community_volumes.cbegin() + chg.initialNumNodes());
     }
@@ -243,6 +243,7 @@ private:
         return result;
     }
 
+    // ! contains Hyperparameters for the algorithms
     const Context& _context;
 
     // ! reciprocal total volume
@@ -255,11 +256,13 @@ private:
     // ! Note the values in here are not cleared after each call to calculateBestMove
     ds::Array<Volume> _powers_of_source_community;
 
-    // used in clearlist for calculating the edge contribution
+    // ! used in clearlist for calculating the edge contribution
     parallel::scalable_vector<PartitionID> _community_neighbours_of_node;
 
+    // ! volumes of each community
     parallel::scalable_vector<AtomicHyperedgeWeight> _community_volumes;
 
+    // ! deactivates random node order in local moving
     const bool _deactivate_random;
 
 };
