@@ -2,7 +2,7 @@
 
 namespace mt_kahypar::community_detection {
 parallel::scalable_vector<HypernodeID> hypergraph_local_moving_contract_recurse(ds::CommunityHypergraph& chg, HypergraphLocalMovingModularity& hlmm) {
-    static constexpr bool debug = false;
+    static constexpr bool debug = true;
     parallel::scalable_vector<HypernodeID> communities(chg.initialNumNodes());
     bool clustering_changed = hlmm.localMoving(chg, communities);
     if (clustering_changed) {
@@ -23,7 +23,6 @@ parallel::scalable_vector<HypernodeID> hypergraph_local_moving_contract_recurse(
             Volume contraction = metrics::hyp_modularity(coarse_chg, comm, hlmm);
             LOG << "contraction" << contraction;
         }
-        //ASSERT(after == contraction);
         parallel::scalable_vector<HypernodeID> coarse_communities = hypergraph_local_moving_contract_recurse(coarse_chg, hlmm);
         for (size_t i = 0; i < chg.initialNumNodes(); ++i) {
             communities[i] = coarse_communities[communities[i]];

@@ -39,15 +39,17 @@ public:
         community_hypergraph(hypergraph) {}
 
     void verifyIncidentNets(const Hypergraph& hg,
-        const HypernodeID hn,
-        const std::set<HypernodeID>& reference) {
-        size_t count = 0;
-        for (const HyperedgeID& he : hg.incidentEdges(hn)) {
-            ASSERT_TRUE(reference.find(he) != reference.end()) << V(he);
-            count++;
-        }
-        ASSERT_EQ(count, reference.size());
+                          const HypernodeID hn,
+                          const std::set<HypernodeID>& reference,
+                          bool log = false) {
+    size_t count = 0;
+    for (const HyperedgeID& he : hg.incidentEdges(hn)) {
+      if (log) LOG << V(he) << V(he);
+      ASSERT_TRUE(reference.find(he) != reference.end()) << V(he);
+      count++;
     }
+    ASSERT_EQ(count, reference.size());
+  }
 
     void verifyPins(const Hypergraph& hg,
         const std::vector<HyperedgeID> hyperedges,
@@ -147,10 +149,10 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities1) {
 
     // stats
     ASSERT_EQ(3, cchg.initialNumNodes());
-    ASSERT_EQ(4, cchg.initialNumEdges());
+    ASSERT_EQ(2, cchg.initialNumEdges());
     ASSERT_EQ(12, cchg.totalVolume());
     ASSERT_EQ(4, cchg.totalEdgeWeight());
-    ASSERT_EQ(12, hg.initialNumPins());
+    ASSERT_EQ(7, hg.initialNumPins());
 
     // edgeWeight by size
     ASSERT_EQ(1, cchg.edgeWeightBySize(2));
@@ -165,22 +167,16 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities1) {
     }
 
     // verify edge sizes
-    ASSERT_EQ(2, cchg.edgeSize(0));
-    ASSERT_EQ(4, cchg.edgeSize(1));
-    ASSERT_EQ(3, cchg.edgeSize(2));
-    ASSERT_EQ(3, cchg.edgeSize(3));
+    ASSERT_EQ(4, cchg.edgeSize(0));
+    ASSERT_EQ(3, cchg.edgeSize(1));
 
     // verify edge weights
     ASSERT_EQ(1, cchg.edgeWeight(0));
     ASSERT_EQ(1, cchg.edgeWeight(1));
-    ASSERT_EQ(1, cchg.edgeWeight(2));
-    ASSERT_EQ(1, cchg.edgeWeight(3));
 
     // verify community counts
-    this->verifyCommunityCounts(cchg, 0, { {0}, {} });
+    this->verifyCommunityCounts(cchg, 0, { {0,1,2}, {} });
     this->verifyCommunityCounts(cchg, 1, { {0,1,2}, {} });
-    this->verifyCommunityCounts(cchg, 2, { {2}, {} });
-    this->verifyCommunityCounts(cchg, 3, { {0,1,2}, {} });
 
     // verify node volumes
     ASSERT_EQ(4, cchg.nodeVolume(0));
@@ -188,10 +184,10 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities1) {
     ASSERT_EQ(6, cchg.nodeVolume(2));
 
     // verify hypergraph structure
-    this->verifyIncidentNets(hg, 0, { 0, 1, 3 });
-    this->verifyIncidentNets(hg, 1, { 1, 3 });
-    this->verifyIncidentNets(hg, 2, { 1, 2, 3 });
-    this->verifyPins(hg, { 0,1,2,3 }, { {0,0}, {0,1,2,2}, {2,2,2}, {0,1,2} });
+    this->verifyIncidentNets(hg, 0, { 0, 1 }, true);
+    this->verifyIncidentNets(hg, 1, { 0, 1 }, true);
+    this->verifyIncidentNets(hg, 2, { 0, 1 }, true);
+    this->verifyPins(hg, { 0,1 }, { {0,1,2,2}, {0,1,2} });
 }
 
 TYPED_TEST(ACommunityHypergraph, ContractsCommunities2) {
@@ -210,10 +206,10 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities2) {
 
     // stats
     ASSERT_EQ(3, cchg.initialNumNodes());
-    ASSERT_EQ(4, cchg.initialNumEdges());
+    ASSERT_EQ(3, cchg.initialNumEdges());
     ASSERT_EQ(12, cchg.totalVolume());
     ASSERT_EQ(4, cchg.totalEdgeWeight());
-    ASSERT_EQ(12, hg.initialNumPins());
+    ASSERT_EQ(9, hg.initialNumPins());
 
     // edgeWeight by size
     ASSERT_EQ(1, cchg.edgeWeightBySize(2));
@@ -232,19 +228,16 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities2) {
     ASSERT_EQ(2, cchg.edgeSize(0));
     ASSERT_EQ(4, cchg.edgeSize(1));
     ASSERT_EQ(3, cchg.edgeSize(2));
-    ASSERT_EQ(3, cchg.edgeSize(3));
 
     // verify edge weights
     ASSERT_EQ(1, cchg.edgeWeight(0));
     ASSERT_EQ(1, cchg.edgeWeight(1));
     ASSERT_EQ(1, cchg.edgeWeight(2));
-    ASSERT_EQ(1, cchg.edgeWeight(3));
 
     // verify community counts
     this->verifyCommunityCounts(cchg, 0, { {0, 2}, {} });
     this->verifyCommunityCounts(cchg, 1, { {0,1}, {} });
     this->verifyCommunityCounts(cchg, 2, { {1,2}, {} });
-    this->verifyCommunityCounts(cchg, 3, { {2}, {} });
 
     // verify node volumes
     ASSERT_EQ(3, cchg.nodeVolume(0));
@@ -254,8 +247,8 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities2) {
     // verify hypergraph structure
     this->verifyIncidentNets(hg, 0, { 0, 1 });
     this->verifyIncidentNets(hg, 1, { 1, 2 });
-    this->verifyIncidentNets(hg, 2, { 0, 2, 3 });
-    this->verifyPins(hg, { 0,1,2,3 }, { {0,2}, {0,0,1,1}, {1,1,2}, {2,2,2} });
+    this->verifyIncidentNets(hg, 2, { 0, 2 });
+    this->verifyPins(hg, { 0,1,2 }, { {0,2}, {0,0,1,1}, {1,1,2} });
 }
 
 TYPED_TEST(ACommunityHypergraph, ContractsCommunities3) {
@@ -274,10 +267,10 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities3) {
 
     // stats
     ASSERT_EQ(3, cchg.initialNumNodes());
-    ASSERT_EQ(3, cchg.initialNumEdges());
+    ASSERT_EQ(2, cchg.initialNumEdges());
     ASSERT_EQ(12, cchg.totalVolume());
     ASSERT_EQ(4, cchg.totalEdgeWeight());
-    ASSERT_EQ(9, hg.initialNumPins());
+    ASSERT_EQ(7, hg.initialNumPins());
 
     // edgeWeight by size
     ASSERT_EQ(1, cchg.edgeWeightBySize(2));
@@ -292,19 +285,16 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities3) {
     }
 
     // verify edge sizes
-    ASSERT_EQ(2, cchg.edgeSize(0));
-    ASSERT_EQ(4, cchg.edgeSize(1));
-    ASSERT_EQ(3, cchg.edgeSize(2));
+    ASSERT_EQ(4, cchg.edgeSize(0));
+    ASSERT_EQ(3, cchg.edgeSize(1));
 
     // verify edge weights
     ASSERT_EQ(1, cchg.edgeWeight(0));
-    ASSERT_EQ(1, cchg.edgeWeight(1));
-    ASSERT_EQ(2, cchg.edgeWeight(2));
+    ASSERT_EQ(2, cchg.edgeWeight(1));
 
     // verify community counts
-    this->verifyCommunityCounts(cchg, 0, { {0}, {} });
-    this->verifyCommunityCounts(cchg, 1, { {0,1}, {} });
-    this->verifyCommunityCounts(cchg, 2, { {0,1,2}, {} });
+    this->verifyCommunityCounts(cchg, 0, { {0,1}, {} });
+    this->verifyCommunityCounts(cchg, 1, { {0,1,2}, {} });
 
     // verify node volumes
     ASSERT_EQ(7, cchg.nodeVolume(0));
@@ -312,10 +302,10 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities3) {
     ASSERT_EQ(2, cchg.nodeVolume(2));
 
     // verify hypergraph structure
-    this->verifyIncidentNets(hg, 0, { 0, 1, 2 });
-    this->verifyIncidentNets(hg, 1, { 1, 2 });
-    this->verifyIncidentNets(hg, 2, { 2 });
-    this->verifyPins(hg, { 0,1,2 }, { {0,0}, {0,0,0,1}, {0,1,2} });
+    this->verifyIncidentNets(hg, 0, { 0, 1 });
+    this->verifyIncidentNets(hg, 1, { 0, 1 });
+    this->verifyIncidentNets(hg, 2, { 1 });
+    this->verifyPins(hg, { 0,1 }, { {0,0,0,1}, {0,1,2} });
 }
 
 TYPED_TEST(ACommunityHypergraph, ContractsCommunities4) {
@@ -334,10 +324,10 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities4) {
 
     // stats
     ASSERT_EQ(1, cchg.initialNumNodes());
-    ASSERT_EQ(3, cchg.initialNumEdges());
+    ASSERT_EQ(0, cchg.initialNumEdges());
     ASSERT_EQ(12, cchg.totalVolume());
     ASSERT_EQ(4, cchg.totalEdgeWeight());
-    ASSERT_EQ(9, hg.initialNumPins());
+    ASSERT_EQ(0, hg.initialNumPins());
 
     // edgeWeight by size
     ASSERT_EQ(1, cchg.edgeWeightBySize(2));
@@ -351,27 +341,11 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities4) {
         ASSERT_EQ(d, expected_valid_edge_sizes[i++]);
     }
 
-    // verify edge sizes
-    ASSERT_EQ(2, cchg.edgeSize(0));
-    ASSERT_EQ(4, cchg.edgeSize(1));
-    ASSERT_EQ(3, cchg.edgeSize(2));
-
-    // verify edge weights
-    ASSERT_EQ(1, cchg.edgeWeight(0));
-    ASSERT_EQ(1, cchg.edgeWeight(1));
-    ASSERT_EQ(2, cchg.edgeWeight(2));
-
-    // verify community counts
-    this->verifyCommunityCounts(cchg, 0, { {0}, {} });
-    this->verifyCommunityCounts(cchg, 1, { {0}, {} });
-    this->verifyCommunityCounts(cchg, 2, { {0}, {} });
-
     // verify node volumes
     ASSERT_EQ(12, cchg.nodeVolume(0));
 
     // verify hypergraph structure
-    this->verifyIncidentNets(hg, 0, { 0, 1, 2 });
-    this->verifyPins(hg, { 0,1,2 }, { {0,0}, {0,0,0,0}, {0,0,0} });
+    this->verifyIncidentNets(hg, 0, {});
 }
 }
 }
