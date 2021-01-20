@@ -15,9 +15,9 @@ namespace ds {
 
 class CommunityHypergraph {
 
-    //!Contains buffers that are needed during multilevel contractions.
-    //!Struct is allocated on top level Communityhypergraph and passed to each contracted
-    //!hypergraph such that memory can be reused in consecutive contractions.
+    // ! Contains buffers that are needed during multilevel contractions.
+    // ! Struct is allocated on top level Communityhypergraph and passed to each contracted
+    // ! hypergraph such that memory can be reused in consecutive contractions.
     struct TmpCommunityHypergraphBuffer {
         explicit TmpCommunityHypergraphBuffer(const HypernodeID num_hypernodes) {
             tmp_node_volumes.resize("Preprocessing", "tmp_community_volumes", num_hypernodes);
@@ -165,12 +165,6 @@ public:
     // ! Maximum size of a hyperedge
     HypernodeID maxEdgeSize() const {
         return _hg->maxEdgeSize();
-    }
-
-    // ! Minimum size of a Hyperedge
-    HypernodeID minEdgeSize() const {
-        ASSERT(!_valid_edge_sizes.empty());
-        return _valid_edge_sizes[0];
     }
 
     // ! Number of different edge sizes that occur in the Hypergraph

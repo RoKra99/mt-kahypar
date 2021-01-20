@@ -124,8 +124,11 @@ TYPED_TEST(ACommunityHypergraph, HasCorrectEdgeSizeIterator) {
     }
 }
 
-TYPED_TEST(ACommunityHypergraph, ReturnsTheMinimumEdgeSize) {
-    ASSERT_EQ(2, this->community_hypergraph.minEdgeSize());
+TYPED_TEST(ACommunityHypergraph, HasCorrectCommunityCounts) {
+    this->verifyCommunityCounts(this->community_hypergraph, 0, { {0, 2},{} });
+    this->verifyCommunityCounts(this->community_hypergraph, 1, { {0, 1, 3, 4},{} });
+    this->verifyCommunityCounts(this->community_hypergraph, 2, { {3, 4, 6},{} });
+    this->verifyCommunityCounts(this->community_hypergraph, 3, { {2, 5, 6},{} });
 }
 
 TYPED_TEST(ACommunityHypergraph, ContractsCommunities1) {
@@ -178,6 +181,11 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities1) {
     this->verifyCommunityCounts(cchg, 1, { {0,1,2}, {} });
     this->verifyCommunityCounts(cchg, 2, { {2}, {} });
     this->verifyCommunityCounts(cchg, 3, { {0,1,2}, {} });
+
+    // verify node volumes
+    ASSERT_EQ(4, cchg.nodeVolume(0));
+    ASSERT_EQ(2, cchg.nodeVolume(1));
+    ASSERT_EQ(6, cchg.nodeVolume(2));
 
     // verify hypergraph structure
     this->verifyIncidentNets(hg, 0, { 0, 1, 3 });
@@ -238,11 +246,132 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities2) {
     this->verifyCommunityCounts(cchg, 2, { {1,2}, {} });
     this->verifyCommunityCounts(cchg, 3, { {2}, {} });
 
+    // verify node volumes
+    ASSERT_EQ(3, cchg.nodeVolume(0));
+    ASSERT_EQ(4, cchg.nodeVolume(1));
+    ASSERT_EQ(5, cchg.nodeVolume(2));
+
     // verify hypergraph structure
     this->verifyIncidentNets(hg, 0, { 0, 1 });
     this->verifyIncidentNets(hg, 1, { 1, 2 });
     this->verifyIncidentNets(hg, 2, { 0, 2, 3 });
     this->verifyPins(hg, { 0,1,2,3 }, { {0,2}, {0,0,1,1}, {1,1,2}, {2,2,2} });
+}
+
+TYPED_TEST(ACommunityHypergraph, ContractsCommunities3) {
+    parallel::scalable_vector<HypernodeID> c_communities = { 1,1,1,1,4,4,5 };
+    StaticHypergraph hg;
+    CommunityHypergraph cchg = this->community_hypergraph.contract(hg, c_communities);
+
+    // community mapping
+    ASSERT_EQ(0, c_communities[0]);
+    ASSERT_EQ(0, c_communities[1]);
+    ASSERT_EQ(0, c_communities[2]);
+    ASSERT_EQ(0, c_communities[3]);
+    ASSERT_EQ(1, c_communities[4]);
+    ASSERT_EQ(1, c_communities[5]);
+    ASSERT_EQ(2, c_communities[6]);
+
+    // stats
+    ASSERT_EQ(3, cchg.initialNumNodes());
+    ASSERT_EQ(3, cchg.initialNumEdges());
+    ASSERT_EQ(12, cchg.totalVolume());
+    ASSERT_EQ(4, cchg.totalEdgeWeight());
+    ASSERT_EQ(9, hg.initialNumPins());
+
+    // edgeWeight by size
+    ASSERT_EQ(1, cchg.edgeWeightBySize(2));
+    ASSERT_EQ(2, cchg.edgeWeightBySize(3));
+    ASSERT_EQ(1, cchg.edgeWeightBySize(4));
+
+    // valid edge sizes
+    std::vector<size_t> expected_valid_edge_sizes = { 2,3,4 };
+    size_t i = 0;
+    for (const size_t d : cchg.edgeSizes()) {
+        ASSERT_EQ(d, expected_valid_edge_sizes[i++]);
+    }
+
+    // verify edge sizes
+    ASSERT_EQ(2, cchg.edgeSize(0));
+    ASSERT_EQ(4, cchg.edgeSize(1));
+    ASSERT_EQ(3, cchg.edgeSize(2));
+
+    // verify edge weights
+    ASSERT_EQ(1, cchg.edgeWeight(0));
+    ASSERT_EQ(1, cchg.edgeWeight(1));
+    ASSERT_EQ(2, cchg.edgeWeight(2));
+
+    // verify community counts
+    this->verifyCommunityCounts(cchg, 0, { {0}, {} });
+    this->verifyCommunityCounts(cchg, 1, { {0,1}, {} });
+    this->verifyCommunityCounts(cchg, 2, { {0,1,2}, {} });
+
+    // verify node volumes
+    ASSERT_EQ(7, cchg.nodeVolume(0));
+    ASSERT_EQ(3, cchg.nodeVolume(1));
+    ASSERT_EQ(2, cchg.nodeVolume(2));
+
+    // verify hypergraph structure
+    this->verifyIncidentNets(hg, 0, { 0, 1, 2 });
+    this->verifyIncidentNets(hg, 1, { 1, 2 });
+    this->verifyIncidentNets(hg, 2, { 2 });
+    this->verifyPins(hg, { 0,1,2 }, { {0,0}, {0,0,0,1}, {0,1,2} });
+}
+
+TYPED_TEST(ACommunityHypergraph, ContractsCommunities4) {
+    parallel::scalable_vector<HypernodeID> c_communities = { 0,0,0,0,0,0,0 };
+    StaticHypergraph hg;
+    CommunityHypergraph cchg = this->community_hypergraph.contract(hg, c_communities);
+
+    // community mapping
+    ASSERT_EQ(0, c_communities[0]);
+    ASSERT_EQ(0, c_communities[1]);
+    ASSERT_EQ(0, c_communities[2]);
+    ASSERT_EQ(0, c_communities[3]);
+    ASSERT_EQ(0, c_communities[4]);
+    ASSERT_EQ(0, c_communities[5]);
+    ASSERT_EQ(0, c_communities[6]);
+
+    // stats
+    ASSERT_EQ(1, cchg.initialNumNodes());
+    ASSERT_EQ(3, cchg.initialNumEdges());
+    ASSERT_EQ(12, cchg.totalVolume());
+    ASSERT_EQ(4, cchg.totalEdgeWeight());
+    ASSERT_EQ(9, hg.initialNumPins());
+
+    // edgeWeight by size
+    ASSERT_EQ(1, cchg.edgeWeightBySize(2));
+    ASSERT_EQ(2, cchg.edgeWeightBySize(3));
+    ASSERT_EQ(1, cchg.edgeWeightBySize(4));
+
+    // valid edge sizes
+    std::vector<size_t> expected_valid_edge_sizes = { 2,3,4 };
+    size_t i = 0;
+    for (const size_t d : cchg.edgeSizes()) {
+        ASSERT_EQ(d, expected_valid_edge_sizes[i++]);
+    }
+
+    // verify edge sizes
+    ASSERT_EQ(2, cchg.edgeSize(0));
+    ASSERT_EQ(4, cchg.edgeSize(1));
+    ASSERT_EQ(3, cchg.edgeSize(2));
+
+    // verify edge weights
+    ASSERT_EQ(1, cchg.edgeWeight(0));
+    ASSERT_EQ(1, cchg.edgeWeight(1));
+    ASSERT_EQ(2, cchg.edgeWeight(2));
+
+    // verify community counts
+    this->verifyCommunityCounts(cchg, 0, { {0}, {} });
+    this->verifyCommunityCounts(cchg, 1, { {0}, {} });
+    this->verifyCommunityCounts(cchg, 2, { {0}, {} });
+
+    // verify node volumes
+    ASSERT_EQ(12, cchg.nodeVolume(0));
+
+    // verify hypergraph structure
+    this->verifyIncidentNets(hg, 0, { 0, 1, 2 });
+    this->verifyPins(hg, { 0,1,2 }, { {0,0}, {0,0,0,0}, {0,0,0} });
 }
 }
 }
