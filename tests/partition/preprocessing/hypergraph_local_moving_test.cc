@@ -136,17 +136,27 @@ TEST_F(AHypergraphLocalMoving, CalculatesModularityDelta6) {
 }
 
 
-// TEST_F(AHypergraphLocalMoving, ExecutesAMoveCorrectly) {
-//     ds::CommunityHypergraph community_hypergraph(hypergraph);
-//     HypergraphLocalMovingModularity hlmm(community_hypergraph);
-//     CommunityMove cm;
-//     cm.node_to_move = 0;
-//     cm.delta = -10.0;
-//     cm.destination_community = 2;
-//     hlmm.makeMove(cm);
-//     ASSERT_EQ(0, community_hypergraph.communityVolume(0));
-//     ASSERT_EQ(4, community_hypergraph.communityVolume(2));
-//     ASSERT_EQ(2, community_hypergraph.communityID(0));
-// }
+TEST_F(AHypergraphLocalMoving, ExecutesAMoveCorrectly) {
+    ds::CommunityHypergraph community_hypergraph(hypergraph);
+    Context context;
+    context.preprocessing.community_detection.max_pass_iterations = 100;
+    context.preprocessing.community_detection.min_vertex_move_fraction = 0.0001;
+    context.shared_memory.num_threads = 1;
+    HypergraphLocalMovingModularity hlmm(community_hypergraph, context);
+    parallel::scalable_vector<HypernodeID> communities = { 0,1,2,3,4,5,6 };
+    hlmm.initializeCommunityVolumes(community_hypergraph, communities);
+    CommunityMove cm;
+    cm.node_to_move = 0;
+    cm.delta = -10.0;
+    cm.destination_community = 2;
+    hlmm.makeMove(community_hypergraph, communities, cm);
+
+    ASSERT_EQ(2, communities[0]);
+    const std::vector<HypernodeID> exp_iterator = {0,1,4,2,2,1,2};
+    size_t pos = 0;
+    for (const HypernodeID id : hlmm.communityVolumes(community_hypergraph)) {
+        ASSERT_EQ(exp_iterator[pos++], id);
+    }
+}
 }
 }

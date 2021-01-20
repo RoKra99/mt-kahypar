@@ -116,16 +116,6 @@ public:
 
     // ######################## Community ########################
 
-    // ! Community id which hypernode u is assigned to
-    PartitionID communityID(const HypernodeID u) const {
-        return _hg->communityID(u);
-    }
-
-    // ! Assign a community to a hypernode
-    void setCommunityID(const HypernodeID u, const PartitionID community_id) {
-        _hg->setCommunityID(u, community_id);
-    }
-
     // ! increments the unique node count for the given community.
     // ! It will be added if it is not in the datastructure yet.
     void addCommunityToHyperedge(const HyperedgeID he, const PartitionID community) {
