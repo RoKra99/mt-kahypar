@@ -10,7 +10,7 @@ using ::testing::Test;
 namespace mt_kahypar {
 namespace ds {
 
-using ACommunityCount = ds::HypergraphFixture;
+using ACommunityCount = ds::HypergraphFixture<StaticHypergraph, StaticHypergraphFactory>;
 
 TEST_F(ACommunityCount, InitializesEdge0Properly) {
     CommunityHypergraph chg(hypergraph);

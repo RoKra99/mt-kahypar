@@ -2,6 +2,7 @@
 
 #include "mt-kahypar/partition/preprocessing/community_detection/hypergraph_local_moving_modularity.h"
 #include "mt-kahypar/datastructures/static_hypergraph.h"
+#include "mt-kahypar/datastructures/static_hypergraph_factory.h"
 #include "tests/datastructures/hypergraph_fixtures.h"
 #include "mt-kahypar/datastructures/static_hypergraph_factory.h"
 #include "mt-kahypar/utils/floating_point_comparisons.h"
@@ -11,7 +12,7 @@ using ::testing::Test;
 namespace mt_kahypar {
 namespace community_detection {
 
-using AHypergraphLocalMoving = ds::HypergraphFixture;
+using AHypergraphLocalMoving = ds::HypergraphFixture<ds::StaticHypergraph, ds::StaticHypergraphFactory>;
 
 // precision with which the modularity change is compared (this is the highest precision where all tests pass)
 static constexpr Volume PRECISION = 1e-18L;

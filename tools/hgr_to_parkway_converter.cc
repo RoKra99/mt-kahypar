@@ -25,16 +25,14 @@
 #include <string>
 
 #include "mt-kahypar/macros.h"
-#include "mt-kahypar/datastructures/static_hypergraph.h"
-#include "mt-kahypar/datastructures/static_hypergraph_factory.h"
+#include "mt-kahypar/definitions.h"
 #include "mt-kahypar/io/hypergraph_io.h"
 
+using namespace mt_kahypar;
 namespace po = boost::program_options;
 
 using HypernodeID = mt_kahypar::HypernodeID;
 using HyperedgeID = mt_kahypar::HyperedgeID;
-using Hypergraph = mt_kahypar::ds::StaticHypergraph;
-using Factory = mt_kahypar::ds::StaticHypergraphFactory;
 
 static void writeParkwayHypergraphForProc(const Hypergraph& hypergraph,
                                           const std::string& hgr_filename,
@@ -103,7 +101,7 @@ int main(int argc, char* argv[]) {
   po::notify(cmd_vm);
 
   Hypergraph hypergraph =
-    mt_kahypar::io::readHypergraphFile(hgr_filename, 0);
+    mt_kahypar::io::readHypergraphFile(hgr_filename, 0, true);
 
   for ( int p = 0; p < num_procs; ++p ) {
     writeParkwayHypergraphForProc(hypergraph, out_filename, num_procs, p);

@@ -1,10 +1,12 @@
 target_sources(mt_kahypar_tests PRIVATE
         graph_test.cc
         static_hypergraph_test.cc
+        dynamic_hypergraph_test.cc
         partitioned_hypergraph_test.cc
         delta_partitioned_hypergraph_test.cc
         partitioned_hypergraph_smoke_test.cc
         connectivity_set_test.cc
+        contraction_tree_test.cc
         priority_queue_test.cc
         gain_updates_test.cc
         sparsifier_hypergraph_test.cc
@@ -14,4 +16,6 @@ target_sources(mt_kahypar_tests PRIVATE
         community_hypergraph_test.cc
         hash_maps_test.cc
         community_count_test.cc
-        )
+        incident_net_array_test.cc
+        nlevel_smoke_test.cc
+)
