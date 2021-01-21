@@ -23,16 +23,16 @@ Volume hyp_modularity(const ds::CommunityHypergraph& hypergraph, const parallel:
         }
         neigh_communities.clear();
     }
+    DBG << "edge contribution" << edge_contribution;
     Volume exp_edge_contribution = 0.0;
     for (const size_t d : hypergraph.edgeSizes()) {
         Volume d_chance = 0.0L;
-        for (const HyperedgeWeight& vol_c : hlmm.communityVolumes()) {
-            DBG << "Volumes: " << vol_c;
-            d_chance += 1.0L - static_cast<Volume>(math::fast_power(vol_V - vol_c , d)) / math::fast_power(vol_V,d);
+        for (const HyperedgeWeight& vol_c : hlmm.communityVolumes(hypergraph)) {
+            d_chance += 1.0L - static_cast<Volume>(math::fast_power(vol_V - vol_c, d)) / math::fast_power(vol_V, d);
         }
         exp_edge_contribution += hypergraph.edgeWeightBySize(d) * d_chance;
-        DBG << "Edgesize: " << d << ", d_chance " << d_chance << " what is added: " << hypergraph.edgeWeightBySize(d) * d_chance;
     }
+    DBG << "exp edge contribution" << exp_edge_contribution;
     return  (edge_contribution - exp_edge_contribution);
 }
 }
