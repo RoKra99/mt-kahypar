@@ -153,11 +153,119 @@ TEST_F(AHypergraphLocalMoving, ExecutesAMoveCorrectly) {
     hlmm.makeMove(community_hypergraph, communities, cm);
 
     ASSERT_EQ(2, communities[0]);
-    const std::vector<HypernodeID> exp_iterator = {0,1,4,2,2,1,2};
+    const std::vector<HypernodeID> exp_iterator = { 0,1,4,2,2,1,2 };
     size_t pos = 0;
     for (const HypernodeID id : hlmm.communityVolumes(community_hypergraph)) {
         ASSERT_EQ(exp_iterator[pos++], id);
     }
 }
+
+TEST_F(AHypergraphLocalMoving, CalulatesBestDestinationCommunity0) {
+    ds::CommunityHypergraph community_hypergraph(hypergraph);
+    Context context;
+    context.preprocessing.community_detection.max_pass_iterations = 100;
+    context.preprocessing.community_detection.min_vertex_move_fraction = 0.0001;
+    context.shared_memory.num_threads = 1;
+    HypergraphLocalMovingModularity hlmm(community_hypergraph, context);
+    parallel::scalable_vector<HypernodeID> communities = { 0,1,2,3,4,5,6 };
+    hlmm.initializeCommunityVolumes(community_hypergraph, communities);
+
+    CommunityMove cm = hlmm.calculateBestMove(community_hypergraph, communities, 0);
+    ASSERT_EQ(1, cm.destination_community);
+
+}
+
+TEST_F(AHypergraphLocalMoving, CalulatesBestDestinationCommunity1) {
+    ds::CommunityHypergraph community_hypergraph(hypergraph);
+    Context context;
+    context.preprocessing.community_detection.max_pass_iterations = 100;
+    context.preprocessing.community_detection.min_vertex_move_fraction = 0.0001;
+    context.shared_memory.num_threads = 1;
+    HypergraphLocalMovingModularity hlmm(community_hypergraph, context);
+    parallel::scalable_vector<HypernodeID> communities = { 0,1,2,3,4,5,6 };
+    hlmm.initializeCommunityVolumes(community_hypergraph, communities);
+
+    CommunityMove cm = hlmm.calculateBestMove(community_hypergraph, communities, 1);
+    std::set<size_t> possible_best_moves = { 0,3,4 };
+    ASSERT_TRUE(possible_best_moves.end() != possible_best_moves.find(cm.destination_community));
+
+}
+
+TEST_F(AHypergraphLocalMoving, CalulatesBestDestinationCommunity2) {
+    ds::CommunityHypergraph community_hypergraph(hypergraph);
+    Context context;
+    context.preprocessing.community_detection.max_pass_iterations = 100;
+    context.preprocessing.community_detection.min_vertex_move_fraction = 0.0001;
+    context.shared_memory.num_threads = 1;
+    HypergraphLocalMovingModularity hlmm(community_hypergraph, context);
+    parallel::scalable_vector<HypernodeID> communities = { 0,1,2,3,4,5,6 };
+    hlmm.initializeCommunityVolumes(community_hypergraph, communities);
+
+    CommunityMove cm = hlmm.calculateBestMove(community_hypergraph, communities, 2);
+    ASSERT_EQ(5, cm.destination_community);
+
+}
+
+TEST_F(AHypergraphLocalMoving, CalulatesBestDestinationCommunity3) {
+    ds::CommunityHypergraph community_hypergraph(hypergraph);
+    Context context;
+    context.preprocessing.community_detection.max_pass_iterations = 100;
+    context.preprocessing.community_detection.min_vertex_move_fraction = 0.0001;
+    context.shared_memory.num_threads = 1;
+    HypergraphLocalMovingModularity hlmm(community_hypergraph, context);
+    parallel::scalable_vector<HypernodeID> communities = { 0,1,2,3,4,5,6 };
+    hlmm.initializeCommunityVolumes(community_hypergraph, communities);
+
+    CommunityMove cm = hlmm.calculateBestMove(community_hypergraph, communities, 3);
+    ASSERT_EQ(4, cm.destination_community);
+
+}
+
+TEST_F(AHypergraphLocalMoving, CalulatesBestDestinationCommunity4) {
+    ds::CommunityHypergraph community_hypergraph(hypergraph);
+    Context context;
+    context.preprocessing.community_detection.max_pass_iterations = 100;
+    context.preprocessing.community_detection.min_vertex_move_fraction = 0.0001;
+    context.shared_memory.num_threads = 1;
+    HypergraphLocalMovingModularity hlmm(community_hypergraph, context);
+    parallel::scalable_vector<HypernodeID> communities = { 0,1,2,3,4,5,6 };
+    hlmm.initializeCommunityVolumes(community_hypergraph, communities);
+
+    CommunityMove cm = hlmm.calculateBestMove(community_hypergraph, communities, 4);
+    ASSERT_EQ(3, cm.destination_community);
+
+}
+
+TEST_F(AHypergraphLocalMoving, CalulatesBestDestinationCommunity5) {
+    ds::CommunityHypergraph community_hypergraph(hypergraph);
+    Context context;
+    context.preprocessing.community_detection.max_pass_iterations = 100;
+    context.preprocessing.community_detection.min_vertex_move_fraction = 0.0001;
+    context.shared_memory.num_threads = 1;
+    HypergraphLocalMovingModularity hlmm(community_hypergraph, context);
+    parallel::scalable_vector<HypernodeID> communities = { 0,1,2,3,4,5,6 };
+    hlmm.initializeCommunityVolumes(community_hypergraph, communities);
+
+    CommunityMove cm = hlmm.calculateBestMove(community_hypergraph, communities, 5);
+    std::set<size_t> possible_best_moves = { 2,6 };
+    ASSERT_TRUE(possible_best_moves.end() != possible_best_moves.find(cm.destination_community));
+
+}
+
+TEST_F(AHypergraphLocalMoving, CalulatesBestDestinationCommunity6) {
+    ds::CommunityHypergraph community_hypergraph(hypergraph);
+    Context context;
+    context.preprocessing.community_detection.max_pass_iterations = 100;
+    context.preprocessing.community_detection.min_vertex_move_fraction = 0.0001;
+    context.shared_memory.num_threads = 1;
+    HypergraphLocalMovingModularity hlmm(community_hypergraph, context);
+    parallel::scalable_vector<HypernodeID> communities = { 0,1,2,3,4,5,6 };
+    hlmm.initializeCommunityVolumes(community_hypergraph, communities);
+
+    CommunityMove cm = hlmm.calculateBestMove(community_hypergraph, communities, 6);
+    ASSERT_EQ(5, cm.destination_community);
+
+}
+
 }
 }
