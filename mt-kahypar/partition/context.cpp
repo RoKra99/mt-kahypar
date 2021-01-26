@@ -47,6 +47,7 @@ namespace mt_kahypar {
     str << "    Maximum Louvain-Pass Iterations:  " << params.max_pass_iterations << std::endl;
     str << "    Minimum Vertex Move Fraction:     " << params.min_vertex_move_fraction << std::endl;
     str << "    Vertex Degree Sampling Threshold: " << params.vertex_degree_sampling_threshold << std::endl;
+    str << "    Hyperedge Size Caching Threshold: " << params.hyperedge_size_caching_threshold << std::endl;
     return str;
   }
 

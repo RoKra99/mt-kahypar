@@ -1,10 +1,15 @@
 #include "mt-kahypar/partition/preprocessing/community_detection/hypergraph_louvain.h"
 
 namespace mt_kahypar::community_detection {
+
+    size_t local_moving_round = 0;
 parallel::scalable_vector<HypernodeID> hypergraph_local_moving_contract_recurse(ds::CommunityHypergraph& chg, HypergraphLocalMovingModularity& hlmm) {
-    static constexpr bool debug = true;
+    static constexpr bool debug = false;
     parallel::scalable_vector<HypernodeID> communities(chg.initialNumNodes());
+    utils::Timer::instance().start_timer("local_moving" + std::to_string(local_moving_round), "Local Moving" + std::to_string(local_moving_round));
     bool clustering_changed = hlmm.localMoving(chg, communities);
+    utils::Timer::instance().stop_timer("local_moving" + std::to_string(local_moving_round));
+    local_moving_round++;
     if (clustering_changed) {
         ds::StaticHypergraph coarse_hg;
         if (debug) {

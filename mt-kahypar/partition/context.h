@@ -74,6 +74,7 @@ struct CommunityDetectionParameters {
   uint32_t max_pass_iterations = std::numeric_limits<uint32_t>::max();
   long double min_vertex_move_fraction = std::numeric_limits<long double>::max();
   size_t vertex_degree_sampling_threshold = std::numeric_limits<size_t>::max();
+  size_t hyperedge_size_caching_threshold = std::numeric_limits<size_t>::max();
 };
 
 std::ostream & operator<< (std::ostream& str, const CommunityDetectionParameters& params);

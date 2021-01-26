@@ -143,7 +143,11 @@ namespace mt_kahypar {
             ("p-vertex-degree-sampling-threshold",
              po::value<size_t>(&context.preprocessing.community_detection.vertex_degree_sampling_threshold)->value_name(
                      "<size_t>")->default_value(std::numeric_limits<size_t>::max()),
-             "If set, then neighbors of a vertex are sampled during rating if its degree is greater than this threshold.");
+             "If set, then neighbors of a vertex are sampled during rating if its degree is greater than this threshold.")
+             ("p-hyperedge-size-caching-threshold",
+              po::value<size_t>(&context.preprocessing.community_detection.hyperedge_size_caching_threshold)->value_name(
+                     "<size_t>")->default_value(0),
+             "Cache the communities cut by edges with edge size greater than the threshold");
     return options;
   }
 
