@@ -22,8 +22,9 @@ namespace ds {
 //     context.preprocessing.community_detection.max_pass_iterations = 100;
 //     context.preprocessing.community_detection.min_vertex_move_fraction = 0.0001;
 //     context.shared_memory.num_threads = 1;
+//     context.preprocessing.community_detection.hyperedge_size_caching_threshold = 0;
 //     utils::Timer::instance().start_timer("comm_init", "Initialize Community Hypergraph");
-//     CommunityHypergraph chg(hg);
+//     CommunityHypergraph chg(hg, context);
 //     utils::Timer::instance().stop_timer("comm_init");
 //     parallel::scalable_vector<HypernodeID> communities = community_detection::hypergraph_louvain(chg, context);
 //     LOG << "community count " << *std::max_element(communities.begin(), communities.end());

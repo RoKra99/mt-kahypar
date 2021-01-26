@@ -4,6 +4,7 @@
 #include "tests/datastructures/hypergraph_fixtures.h"
 #include "mt-kahypar/datastructures/static_hypergraph_factory.h"
 #include "mt-kahypar/datastructures/community_hypergraph.h"
+#include "mt-kahypar/partition/context.h"
 
 using ::testing::Test;
 
@@ -13,7 +14,9 @@ namespace ds {
 using ACommunityCount = ds::HypergraphFixture<StaticHypergraph, StaticHypergraphFactory>;
 
 TEST_F(ACommunityCount, InitializesEdge0Properly) {
-    CommunityHypergraph chg(hypergraph);
+    Context context;
+    context.preprocessing.community_detection.hyperedge_size_caching_threshold = 0;
+    CommunityHypergraph chg(hypergraph, context);
     const std::vector<size_t>  expected_iterator = { 0,2 };
     int pos = 0;
     for (const auto& e : chg.singleCuts(0)) {
@@ -26,7 +29,9 @@ TEST_F(ACommunityCount, InitializesEdge0Properly) {
 }
 
 TEST_F(ACommunityCount, InitializesEdge1Properly) {
-    CommunityHypergraph chg(hypergraph);
+    Context context;
+    context.preprocessing.community_detection.hyperedge_size_caching_threshold = 0;
+    CommunityHypergraph chg(hypergraph, context);
     const std::vector<size_t>  expected_iterator = { 0, 1, 3, 4 };
     int pos = 0;
     for (const auto& e : chg.singleCuts(1)) {
@@ -39,7 +44,9 @@ TEST_F(ACommunityCount, InitializesEdge1Properly) {
 }
 
 TEST_F(ACommunityCount, InitializesEdge2Properly) {
-    CommunityHypergraph chg(hypergraph);
+    Context context;
+    context.preprocessing.community_detection.hyperedge_size_caching_threshold = 0;
+    CommunityHypergraph chg(hypergraph, context);
     const std::vector<size_t>  expected_iterator = { 3,4,6 };
     int pos = 0;
     for (const auto& e : chg.singleCuts(2)) {
@@ -52,7 +59,9 @@ TEST_F(ACommunityCount, InitializesEdge2Properly) {
 }
 
 TEST_F(ACommunityCount, InitializesEdge3Properly) {
-    CommunityHypergraph chg(hypergraph);
+    Context context;
+    context.preprocessing.community_detection.hyperedge_size_caching_threshold = 0;
+    CommunityHypergraph chg(hypergraph, context);
     const std::vector<size_t>  expected_iterator = { 2,5,6 };
     int pos = 0;
     for (const auto& e : chg.singleCuts(3)) {
@@ -65,7 +74,9 @@ TEST_F(ACommunityCount, InitializesEdge3Properly) {
 }
 
 TEST_F(ACommunityCount, AddsANewCommunity) {
-    CommunityHypergraph chg(hypergraph);
+    Context context;
+    context.preprocessing.community_detection.hyperedge_size_caching_threshold = 0;
+    CommunityHypergraph chg(hypergraph, context);
     chg.addCommunityToHyperedge(0, 1);
     const std::vector<size_t>  expected_iterator = { 0,2,1 };
     int pos = 0;
@@ -75,7 +86,9 @@ TEST_F(ACommunityCount, AddsANewCommunity) {
 }
 
 TEST_F(ACommunityCount, MovesAcommunityToTheHashmap) {
-    CommunityHypergraph chg(hypergraph);
+    Context context;
+    context.preprocessing.community_detection.hyperedge_size_caching_threshold = 0;
+    CommunityHypergraph chg(hypergraph, context);
     chg.addCommunityToHyperedge(0, 2);
     const std::vector<size_t>  expected_iterator = { 0 };
     const std::vector<size_t>  expected_iterator2 = { 2 };
@@ -93,8 +106,10 @@ TEST_F(ACommunityCount, MovesAcommunityToTheHashmap) {
 }
 
 TEST_F(ACommunityCount, RemovesACommunity) {
-    CommunityHypergraph chg(hypergraph);
-    chg.removeCommunityFromHyperedge(0,0);
+    Context context;
+    context.preprocessing.community_detection.hyperedge_size_caching_threshold = 0;
+    CommunityHypergraph chg(hypergraph, context);
+    chg.removeCommunityFromHyperedge(0, 0);
     const std::vector<size_t>  expected_iterator = { 2 };
     int pos = 0;
     for (const auto& e : chg.singleCuts(0)) {
@@ -107,10 +122,12 @@ TEST_F(ACommunityCount, RemovesACommunity) {
 }
 
 TEST_F(ACommunityCount, RemovesAcommunityFromTheHashmap) {
-    CommunityHypergraph chg(hypergraph);
-    chg.addCommunityToHyperedge(0,0);
-    chg.removeCommunityFromHyperedge(0,0);
-    chg.removeCommunityFromHyperedge(0,0);
+    Context context;
+    context.preprocessing.community_detection.hyperedge_size_caching_threshold = 0;
+    CommunityHypergraph chg(hypergraph, context);
+    chg.addCommunityToHyperedge(0, 0);
+    chg.removeCommunityFromHyperedge(0, 0);
+    chg.removeCommunityFromHyperedge(0, 0);
     const std::vector<size_t>  expected_iterator = { 2 };
     int pos = 0;
     for (const auto& e : chg.singleCuts(0)) {

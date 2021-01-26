@@ -15,7 +15,6 @@ using CommunityMove = mt_kahypar::community_detection::CommunityMove;
 namespace mt_kahypar {
 namespace ds {
 
-
 template< typename CommunityHG,
     typename HG,
     typename HGFactory>
@@ -36,20 +35,22 @@ public:
     ACommunityHypergraph() :
         hypergraph(Factory::construct(TBBNumaArena::GLOBAL_TASK_GROUP,
             7, 4, { {0, 2}, {0, 1, 3, 4}, {3, 4, 6}, {2, 5, 6} })),
-        community_hypergraph(hypergraph) {}
+        context() {
+        context.preprocessing.community_detection.hyperedge_size_caching_threshold = 0;
+    }
 
     void verifyIncidentNets(const Hypergraph& hg,
-                          const HypernodeID hn,
-                          const std::set<HypernodeID>& reference,
-                          bool log = false) {
-    size_t count = 0;
-    for (const HyperedgeID& he : hg.incidentEdges(hn)) {
-      if (log) LOG << V(he) << V(he);
-      ASSERT_TRUE(reference.find(he) != reference.end()) << V(he);
-      count++;
+        const HypernodeID hn,
+        const std::set<HypernodeID>& reference,
+        bool log = false) {
+        size_t count = 0;
+        for (const HyperedgeID& he : hg.incidentEdges(hn)) {
+            if (log) LOG << V(he) << V(he);
+            ASSERT_TRUE(reference.find(he) != reference.end()) << V(he);
+            count++;
+        }
+        ASSERT_EQ(count, reference.size());
     }
-    ASSERT_EQ(count, reference.size());
-  }
 
     void verifyPins(const Hypergraph& hg,
         const std::vector<HyperedgeID> hyperedges,
@@ -85,7 +86,7 @@ public:
     }
 
     Hypergraph hypergraph;
-    CommunityHypergraph community_hypergraph;
+    Context context;
 };
 
 using CommunityHypergraphTestTypes =
@@ -99,44 +100,49 @@ using CommunityHypergraphTestTypes =
 TYPED_TEST_CASE(ACommunityHypergraph, CommunityHypergraphTestTypes);
 
 TYPED_TEST(ACommunityHypergraph, HasCorrectInitialNodeVolumes) {
-    ASSERT_EQ(12, this->community_hypergraph.totalVolume());
-    ASSERT_EQ(2, this->community_hypergraph.nodeVolume(0));
-    ASSERT_EQ(1, this->community_hypergraph.nodeVolume(1));
-    ASSERT_EQ(2, this->community_hypergraph.nodeVolume(2));
-    ASSERT_EQ(2, this->community_hypergraph.nodeVolume(3));
-    ASSERT_EQ(2, this->community_hypergraph.nodeVolume(4));
-    ASSERT_EQ(1, this->community_hypergraph.nodeVolume(5));
-    ASSERT_EQ(2, this->community_hypergraph.nodeVolume(6));
+    CommunityHypergraph chg(this->hypergraph, this->context);
+    ASSERT_EQ(12, chg.totalVolume());
+    ASSERT_EQ(2, chg.nodeVolume(0));
+    ASSERT_EQ(1, chg.nodeVolume(1));
+    ASSERT_EQ(2, chg.nodeVolume(2));
+    ASSERT_EQ(2, chg.nodeVolume(3));
+    ASSERT_EQ(2, chg.nodeVolume(4));
+    ASSERT_EQ(1, chg.nodeVolume(5));
+    ASSERT_EQ(2, chg.nodeVolume(6));
 }
 
 TYPED_TEST(ACommunityHypergraph, HasCorrectSumOfEdgeWeights) {
-    ASSERT_EQ(4, this->community_hypergraph.totalEdgeWeight());
-    ASSERT_EQ(0, this->community_hypergraph.edgeWeightBySize(0));
-    ASSERT_EQ(0, this->community_hypergraph.edgeWeightBySize(1));
-    ASSERT_EQ(1, this->community_hypergraph.edgeWeightBySize(2));
-    ASSERT_EQ(2, this->community_hypergraph.edgeWeightBySize(3));
-    ASSERT_EQ(1, this->community_hypergraph.edgeWeightBySize(4));
+        CommunityHypergraph chg(this->hypergraph, this->context);
+    ASSERT_EQ(4, chg.totalEdgeWeight());
+    ASSERT_EQ(0, chg.edgeWeightBySize(0));
+    ASSERT_EQ(0, chg.edgeWeightBySize(1));
+    ASSERT_EQ(1, chg.edgeWeightBySize(2));
+    ASSERT_EQ(2, chg.edgeWeightBySize(3));
+    ASSERT_EQ(1, chg.edgeWeightBySize(4));
 }
 
 TYPED_TEST(ACommunityHypergraph, HasCorrectEdgeSizeIterator) {
+        CommunityHypergraph chg(this->hypergraph, this->context);
     const std::vector<size_t> expected_iterator = { 2, 3, 4 };
     size_t pos = 0;
-    for (const PartitionID& d : this->community_hypergraph.edgeSizes()) {
+    for (const PartitionID& d : chg.edgeSizes()) {
         ASSERT_EQ(expected_iterator[pos++], d);
     }
 }
 
 TYPED_TEST(ACommunityHypergraph, HasCorrectCommunityCounts) {
-    this->verifyCommunityCounts(this->community_hypergraph, 0, { {0, 2},{} });
-    this->verifyCommunityCounts(this->community_hypergraph, 1, { {0, 1, 3, 4},{} });
-    this->verifyCommunityCounts(this->community_hypergraph, 2, { {3, 4, 6},{} });
-    this->verifyCommunityCounts(this->community_hypergraph, 3, { {2, 5, 6},{} });
+        CommunityHypergraph chg(this->hypergraph, this->context);
+    this->verifyCommunityCounts(chg, 0, { {0, 2},{} });
+    this->verifyCommunityCounts(chg, 1, { {0, 1, 3, 4},{} });
+    this->verifyCommunityCounts(chg, 2, { {3, 4, 6},{} });
+    this->verifyCommunityCounts(chg, 3, { {2, 5, 6},{} });
 }
 
 TYPED_TEST(ACommunityHypergraph, ContractsCommunities1) {
+        CommunityHypergraph chg(this->hypergraph, this->context);
     parallel::scalable_vector<HypernodeID> c_communities = { 1,4,1,5,5,4,5 };
     StaticHypergraph hg;
-    CommunityHypergraph cchg = this->community_hypergraph.contract(hg, c_communities);
+    CommunityHypergraph cchg = chg.contract(hg, c_communities);
 
     // community mapping
     ASSERT_EQ(0, c_communities[0]);
@@ -191,9 +197,10 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities1) {
 }
 
 TYPED_TEST(ACommunityHypergraph, ContractsCommunities2) {
+        CommunityHypergraph chg(this->hypergraph, this->context);
     parallel::scalable_vector<HypernodeID> c_communities = { 1,1,5,4,4,5,5 };
     StaticHypergraph hg;
-    CommunityHypergraph cchg = this->community_hypergraph.contract(hg, c_communities);
+    CommunityHypergraph cchg = chg.contract(hg, c_communities);
 
     // community mapping
     ASSERT_EQ(0, c_communities[0]);
@@ -252,9 +259,10 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities2) {
 }
 
 TYPED_TEST(ACommunityHypergraph, ContractsCommunities3) {
+        CommunityHypergraph chg(this->hypergraph, this->context);
     parallel::scalable_vector<HypernodeID> c_communities = { 1,1,1,1,4,4,5 };
     StaticHypergraph hg;
-    CommunityHypergraph cchg = this->community_hypergraph.contract(hg, c_communities);
+    CommunityHypergraph cchg = chg.contract(hg, c_communities);
 
     // community mapping
     ASSERT_EQ(0, c_communities[0]);
@@ -309,9 +317,10 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities3) {
 }
 
 TYPED_TEST(ACommunityHypergraph, ContractsCommunities4) {
+        CommunityHypergraph chg(this->hypergraph, this->context);
     parallel::scalable_vector<HypernodeID> c_communities = { 0,0,0,0,0,0,0 };
     StaticHypergraph hg;
-    CommunityHypergraph cchg = this->community_hypergraph.contract(hg, c_communities);
+    CommunityHypergraph cchg = chg.contract(hg, c_communities);
 
     // community mapping
     ASSERT_EQ(0, c_communities[0]);

@@ -39,7 +39,7 @@ public:
     using MapIterator = typename Map::Iterator;
     static constexpr size_t EDGESIZE_THRESHHOLD = 0;
 
-    CommunityHypergraph() :
+    CommunityHypergraph(const Context& context) :
         _community_counts(),
         _hg(nullptr),
         _node_volumes(),
@@ -47,9 +47,16 @@ public:
         _d_edge_weights(),
         _valid_edge_sizes(),
         _total_edge_weight(0),
+        _context(context),
         _tmp_community_hypergraph_buffer(nullptr) {}
 
-    explicit CommunityHypergraph(Hypergraph& hypergraph) : _community_counts(hypergraph.initialNumEdges()), _hg(&hypergraph), _vol_v(0), _total_edge_weight(0), _tmp_community_hypergraph_buffer(nullptr) {
+    explicit CommunityHypergraph(Hypergraph& hypergraph, const Context& context) :
+        _community_counts(hypergraph.initialNumEdges()),
+        _hg(&hypergraph),
+        _vol_v(0),
+        _total_edge_weight(0),
+        _context(context),
+        _tmp_community_hypergraph_buffer(nullptr) {
         tbb::parallel_invoke([&] {
             _node_volumes.resize("Preprocessing", "node_volumes", hypergraph.initialNumNodes(), true, true);
             }, [&] {
@@ -119,14 +126,20 @@ public:
     // ! increments the unique node count for the given community.
     // ! It will be added if it is not in the datastructure yet.
     void addCommunityToHyperedge(const HyperedgeID he, const PartitionID community) {
-        _community_counts[he]->addToCommunity(community);
+        if (_community_counts[he]) {
+            ASSERT(edgeSize(he) > _context.preprocessing.community_detection.hyperedge_size_caching_threshold);
+            _community_counts[he]->addToCommunity(community);
+        }
     }
 
     // ! expects the community to be in the datastructure already, else undefined
     // ! decrements the unique node count for the given community. 
     // ! Community will be removed if the count is zero afterwards
     void removeCommunityFromHyperedge(const HyperedgeID he, const PartitionID community) {
-        _community_counts[he]->removeFromCommunity(community);
+        if (_community_counts[he]) {
+            ASSERT(edgeSize(he) > _context.preprocessing.community_detection.hyperedge_size_caching_threshold);
+            _community_counts[he]->removeFromCommunity(community);
+        }
     }
 
 
@@ -219,7 +232,8 @@ private:
     // ! initializes a community count datastructures for all edges above a certain edgesize
     void computeAndSetCommunityCounts() {
         for (const HyperedgeID& he : _hg->edges()) {
-            _community_counts[he] = edgeSize(he) > EDGESIZE_THRESHHOLD ? std::make_unique<CommunityCount<Map>>(edgeSize(he), pins(he)) : std::unique_ptr<CommunityCount<Map>>(nullptr);
+            _community_counts[he] = edgeSize(he) > _context.preprocessing.community_detection.hyperedge_size_caching_threshold
+                ? std::make_unique<CommunityCount<Map>>(edgeSize(he), pins(he)) : std::unique_ptr<CommunityCount<Map>>(nullptr);
         }
     }
 
@@ -251,6 +265,9 @@ private:
 
     // ! sum of all edgeweights
     HyperedgeWeight _total_edge_weight;
+
+    // ! contains Hyperparameters for the algorithms
+    const Context& _context;
 
     // ! contains structures used in contaction to avoid allocations
     TmpCommunityHypergraphBuffer* _tmp_community_hypergraph_buffer;

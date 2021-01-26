@@ -12,7 +12,7 @@ namespace mt_kahypar::ds {
 CommunityHypergraph CommunityHypergraph::contract(StaticHypergraph& hypergraph, parallel::scalable_vector<HypernodeID>& communities) {
     hypergraph = _hg->contract(communities, 0, false);
     utils::Timer::instance().start_timer("community_hypergraph_contract", "CommunityHypergaph Contraction");
-    CommunityHypergraph chg;
+    CommunityHypergraph chg(_context);
     chg._hg = &hypergraph;
     chg._vol_v = _vol_v;
     chg._valid_edge_sizes = std::move(_valid_edge_sizes);
@@ -20,7 +20,7 @@ CommunityHypergraph CommunityHypergraph::contract(StaticHypergraph& hypergraph, 
     chg._total_edge_weight = _total_edge_weight;
 
     Array<parallel::AtomicWrapper<HyperedgeWeight>>& tmp_node_volumes = _tmp_community_hypergraph_buffer->tmp_node_volumes;
-    
+
     tbb::parallel_for(0U, initialNumNodes(), [&](const HypernodeID i) {
         tmp_node_volumes[i].store(0);
         });
@@ -39,8 +39,9 @@ CommunityHypergraph CommunityHypergraph::contract(StaticHypergraph& hypergraph, 
     utils::Timer::instance().start_timer("community_count", "Map Community Counts");
     chg._community_counts.resize(chg.initialNumEdges());
     tbb::parallel_for(0U, chg.initialNumEdges(), [&](const HyperedgeID he) {
-        chg._community_counts[he] = chg.edgeSize(he) > EDGESIZE_THRESHHOLD ? std::make_unique<CommunityCount<Map>>(chg.edgeSize(he), chg.pins(he), true) : std::unique_ptr<CommunityCount<Map>>(nullptr);
-    });
+        chg._community_counts[he] = chg.edgeSize(he) > _context.preprocessing.community_detection.hyperedge_size_caching_threshold
+            ? std::make_unique<CommunityCount<Map>>(chg.edgeSize(he), chg.pins(he), true) : std::unique_ptr<CommunityCount<Map>>(nullptr);
+        });
     utils::Timer::instance().stop_timer("community_count");
 
     chg._tmp_community_hypergraph_buffer = _tmp_community_hypergraph_buffer;

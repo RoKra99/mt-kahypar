@@ -33,6 +33,8 @@ public:
         tbb::parallel_invoke([&] {
             _community_edge_contribution.resize("Preprocessing", "clearlist_edge_contribution", hypergraph.initialNumNodes(), true, true);
             }, [&] {
+                _pins_in_community.resize("Preprocessing", "clearlist_small_hyperedges", hypergraph.initialNumNodes(), true, true);
+            }, [&] {
                 _powers_of_source_community.resize("Preprocessing", "powers_of_source_community", hypergraph.maxEdgeSize() + 1);
             });
 
@@ -57,23 +59,48 @@ public:
         for (const HyperedgeID& he : chg.incidentEdges(v)) {
             const HyperedgeWeight edge_weight = chg.edgeWeight(he);
             sum_of_edgeweights += edge_weight;
-            for (auto& community : chg.singleCuts(he)) {
-                if (community != comm_v && !_community_edge_contribution[community]) {
-                    _community_neighbours_of_node.emplace_back(community);
-                }
-                _community_edge_contribution[community] -= edge_weight;
-
-            }
-
-            for (auto& e : chg.multiCuts(he)) {
-                if (e.first != comm_v) {
-                    if (!_community_edge_contribution[e.first]) {
-                        _community_neighbours_of_node.emplace_back(e.first);
+            // cuts for this hyperedge are cached
+            if (chg.edgeSize(he) > _context.preprocessing.community_detection.hyperedge_size_caching_threshold) {
+                for (auto& community : chg.singleCuts(he)) {
+                    if (community != comm_v && !_community_edge_contribution[community]) {
+                        _community_neighbours_of_node.emplace_back(community);
                     }
-                    _community_edge_contribution[e.first] -= edge_weight;
-                } else if (e.second == 1) {
+                    _community_edge_contribution[community] -= edge_weight;
+
+                }
+
+                for (auto& e : chg.multiCuts(he)) {
+                    if (e.first != comm_v) {
+                        if (!_community_edge_contribution[e.first]) {
+                            _community_neighbours_of_node.emplace_back(e.first);
+                        }
+                        _community_edge_contribution[e.first] -= edge_weight;
+                    } else if (e.second == 1) {
+                        _community_edge_contribution[comm_v] -= edge_weight;
+                    }
+                }
+            } else { // hyperedge is not cached
+                for (const HypernodeID& hn : chg.pins(he)) {
+                    const PartitionID comm_hn = communities[hn];
+                    if (hn != v && !_pins_in_community[comm_hn]) {
+                        _pins_in_community[comm_hn] = true;
+                        _community_neighbours_of_edge.emplace_back(comm_hn);
+                    }
+                }
+
+                if (!_pins_in_community[comm_v]) {
                     _community_edge_contribution[comm_v] -= edge_weight;
                 }
+                _pins_in_community[comm_v] = false;
+
+                for (const PartitionID& community : _community_neighbours_of_edge) {
+                    if (!_community_edge_contribution[community]) {
+                        _community_neighbours_of_node.emplace_back(community);
+                    }
+                    _community_edge_contribution[community] -= edge_weight;
+                    _pins_in_community[community] = false;
+                }
+                _community_neighbours_of_edge.clear();
             }
         }
         edge_contribution_c = -_community_edge_contribution[comm_v];
@@ -251,6 +278,7 @@ private:
 
     // ! for clearlists
     ds::Array<HyperedgeWeight> _community_edge_contribution;
+    ds::Array<bool> _pins_in_community;
 
     // ! contains (vol_V - vol(C)+vol(v))^d - (vol(V)-vol(C))^d for all valid edgesizes d
     // ! Note the values in here are not cleared after each call to calculateBestMove
@@ -258,6 +286,9 @@ private:
 
     // ! used in clearlist for calculating the edge contribution
     parallel::scalable_vector<PartitionID> _community_neighbours_of_node;
+
+    // used in clearlist for calculating the edge contribution
+    parallel::scalable_vector<PartitionID> _community_neighbours_of_edge;
 
     // ! volumes of each community
     parallel::scalable_vector<AtomicHyperedgeWeight> _community_volumes;
