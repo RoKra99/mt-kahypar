@@ -112,7 +112,7 @@ TYPED_TEST(ACommunityHypergraph, HasCorrectInitialNodeVolumes) {
 }
 
 TYPED_TEST(ACommunityHypergraph, HasCorrectSumOfEdgeWeights) {
-        CommunityHypergraph chg(this->hypergraph, this->context);
+    CommunityHypergraph chg(this->hypergraph, this->context);
     ASSERT_EQ(4, chg.totalEdgeWeight());
     ASSERT_EQ(0, chg.edgeWeightBySize(0));
     ASSERT_EQ(0, chg.edgeWeightBySize(1));
@@ -122,7 +122,7 @@ TYPED_TEST(ACommunityHypergraph, HasCorrectSumOfEdgeWeights) {
 }
 
 TYPED_TEST(ACommunityHypergraph, HasCorrectEdgeSizeIterator) {
-        CommunityHypergraph chg(this->hypergraph, this->context);
+    CommunityHypergraph chg(this->hypergraph, this->context);
     const std::vector<size_t> expected_iterator = { 2, 3, 4 };
     size_t pos = 0;
     for (const PartitionID& d : chg.edgeSizes()) {
@@ -131,7 +131,7 @@ TYPED_TEST(ACommunityHypergraph, HasCorrectEdgeSizeIterator) {
 }
 
 TYPED_TEST(ACommunityHypergraph, HasCorrectCommunityCounts) {
-        CommunityHypergraph chg(this->hypergraph, this->context);
+    CommunityHypergraph chg(this->hypergraph, this->context);
     this->verifyCommunityCounts(chg, 0, { {0, 2},{} });
     this->verifyCommunityCounts(chg, 1, { {0, 1, 3, 4},{} });
     this->verifyCommunityCounts(chg, 2, { {3, 4, 6},{} });
@@ -139,7 +139,7 @@ TYPED_TEST(ACommunityHypergraph, HasCorrectCommunityCounts) {
 }
 
 TYPED_TEST(ACommunityHypergraph, ContractsCommunities1) {
-        CommunityHypergraph chg(this->hypergraph, this->context);
+    CommunityHypergraph chg(this->hypergraph, this->context);
     parallel::scalable_vector<HypernodeID> c_communities = { 1,4,1,5,5,4,5 };
     StaticHypergraph hg;
     CommunityHypergraph cchg = chg.contract(hg, c_communities);
@@ -197,7 +197,7 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities1) {
 }
 
 TYPED_TEST(ACommunityHypergraph, ContractsCommunities2) {
-        CommunityHypergraph chg(this->hypergraph, this->context);
+    CommunityHypergraph chg(this->hypergraph, this->context);
     parallel::scalable_vector<HypernodeID> c_communities = { 1,1,5,4,4,5,5 };
     StaticHypergraph hg;
     CommunityHypergraph cchg = chg.contract(hg, c_communities);
@@ -259,7 +259,7 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities2) {
 }
 
 TYPED_TEST(ACommunityHypergraph, ContractsCommunities3) {
-        CommunityHypergraph chg(this->hypergraph, this->context);
+    CommunityHypergraph chg(this->hypergraph, this->context);
     parallel::scalable_vector<HypernodeID> c_communities = { 1,1,1,1,4,4,5 };
     StaticHypergraph hg;
     CommunityHypergraph cchg = chg.contract(hg, c_communities);
@@ -317,7 +317,7 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities3) {
 }
 
 TYPED_TEST(ACommunityHypergraph, ContractsCommunities4) {
-        CommunityHypergraph chg(this->hypergraph, this->context);
+    CommunityHypergraph chg(this->hypergraph, this->context);
     parallel::scalable_vector<HypernodeID> c_communities = { 0,0,0,0,0,0,0 };
     StaticHypergraph hg;
     CommunityHypergraph cchg = chg.contract(hg, c_communities);
