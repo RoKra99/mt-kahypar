@@ -10,12 +10,11 @@ template<typename Map>
 class HashMapIterator {
 private:
     using Element = typename Map::Element;
-
 public:
     HashMapIterator(const Map& map, const size_t offset = 0) : _map(map), _offset(offset) {}
 
     const Element& operator*() {
-        return _map._entries[_map._positions[_offset]];
+        return _map._entries[_map._positions[_offset]].element;
     }
 
     HashMapIterator& operator++ () {
@@ -91,11 +90,23 @@ public:
 
 template<typename Key, typename Value, typename Hash>
 class HashMap {
+
+    struct HashMapElement {
+        Key first;
+        Value second;
+    };
+
+    struct PrivateElement {
+        PrivateElement(const Key& empty_element) : element{empty_element, Value()}, pos_in_dense(0) {}
+        HashMapElement element;
+        size_t pos_in_dense;
+    };
+
 private:
     using MyType = HashMap<Key, Value, Hash>;
 
 public:
-    using Element = std::pair<Key, Value>;
+    using Element = HashMapElement;
     using Iterator = HashMapIterator<MyType>;
 
 public:
@@ -103,7 +114,7 @@ public:
         _empty_element(std::numeric_limits<Key>::max()),
         _size(std::max(2, static_cast<int>(pow(2, floor(log2(size)))))),
         _hash(),
-        _entries(_size * 2, std::make_pair(_empty_element, Value())) {
+        _entries(_size * 2, PrivateElement(_empty_element)) {
         _positions.reserve(_size);
     }
 
@@ -119,7 +130,7 @@ public:
 
     // ! returns true if the key is in the hashmap already
     bool contains(const Key key) const {
-        return _entries[getPosition(key)].first == key;
+        return _entries[getPosition(key)].element.first == key;
     }
 
     // ! inserts the key value pair into the hashmap, might trigger a resize
@@ -144,8 +155,8 @@ public:
     // ! returns false if not
     bool increment(const Key key) {
         size_t pos = getPosition(key);
-        if (_entries[pos].first == key) {
-            ++_entries[pos].second;
+        if (_entries[pos].element.first == key) {
+            ++_entries[pos].element.second;
             return true;
         }
         return false;
@@ -156,8 +167,8 @@ public:
     // ! returns false if not
     bool decrement(const Key key) {
         const size_t pos = getPosition(key);
-        if (_entries[pos].first == key) {
-            const Value v = --_entries[pos].second;
+        if (_entries[pos].element.first == key) {
+            const Value v = --_entries[pos].element.second;
             if (v == 0) {
                 eraseAtPosition(pos);
             }
@@ -169,18 +180,19 @@ public:
     // ! removes the Element with the given key from the Hashmap
     void erase(const Key key) {
         const size_t pos = getPosition(key);
-        if (_entries[pos].first == key) {
+        if (_entries[pos].element.first == key) {
             eraseAtPosition(pos);
         }
     }
 
     // ! returns the Key, Value pair with the given key. If it was not inserted before returns a placeholder element.
-    Element get(const Key key) const {
+    HashMapElement get(const Key key) const {
         size_t pos = getPosition(key);
-        if (_entries[pos].first == key) {
-            return _entries[pos];
+        if (_entries[pos].element.first == key) {
+            return _entries[pos].element;
         }
-        return std::make_pair(_empty_element, Value());
+        HashMapElement e {_empty_element, Value()};
+        return e;
     }
 
     Iterator begin() const {
@@ -191,55 +203,44 @@ public:
         return Iterator(*this, size());
     }
 
-    void clear() {
-        clearEntries();
-        _positions.clear();
-    }
-
 private:
-
-    // TODO: This is O(n), improve?
-    // ! removes a given position from the list of positions
-    void removePosition(size_t pos) {
-        for (size_t i = 0; i < _positions.size(); ++i) {
-            if (_positions[i] == pos) {
-                std::swap(_positions[i], _positions[_positions.size() - 1]);
-                _positions.pop_back();
-                return;
-            }
-        }
-        ASSERT(false, "Trying to remove a position which is not occupied");
-    }
 
     // ! erases the element at the given position
     // ! expects a valid entry at that position
-    void eraseAtPosition(size_t pos) {
-        ASSERT(_entries[pos].first != _empty_element, "trying to erase an empty element");
+    inline void eraseAtPosition(size_t pos) {
+        ASSERT(_entries[pos].element.first != _empty_element, "trying to erase an empty element");
         ASSERT(pos < _entries.size() - 1, "trying to erase a element past the table at position");
         // erasing element
-        _entries[pos].first = _empty_element;
+        _entries[pos].element.first = _empty_element;
+        size_t pos_in_dense = _entries[pos].pos_in_dense;
         size_t j = pos;
         // fixing the invariant
-        while (_entries[++j].first != _empty_element) {
-            size_t h = _hash(_entries[j].first);
+        while (_entries[++j].element.first != _empty_element) {
+            size_t h = _hash(_entries[j].element.first);
             size_t s = _size - 1;
             size_t result = h & s;
             if (result <= pos) {
-                std::swap(_entries[pos], _entries[j]);
+                std::swap(_entries[pos].element, _entries[j].element);
                 pos = j;
+                pos_in_dense = _entries[j].pos_in_dense;
             }
         }
-        removePosition(pos);
+        // removing the entry from the positions array
+        _entries[_positions[_positions.size() - 1]].pos_in_dense = pos_in_dense;
+        std::swap(_positions[_positions.size() - 1], _positions[pos_in_dense]);
+        _positions.pop_back();
     }
 
     // ! actual implementation of the insertion algorithm
-    void insertAlgorithm(const Key key, const Value v) {
+    inline void insertAlgorithm(const Key key, const Value v) {
         // if half full, resize
         if (_positions.size() >= _size) {
             resize();
         }
         size_t pos = getPosition(key);
-        _entries[pos] = std::make_pair(key, v);
+        _entries[pos].element.first = key;
+        _entries[pos].element.second = v;
+        _entries[pos].pos_in_dense = _positions.size();
         _positions.push_back(pos);
     }
 
@@ -249,33 +250,28 @@ private:
         MyType other(_size);
         ASSERT(other._entries.size() > _entries.size(), "resize doesn't increase the size of the table");
         for (const size_t pos : _positions) {
-            other.insert(_entries[pos]);
+            other.insert(_entries[pos].element);
         }
         swap(other);
     }
 
     // finds a free position
-    size_t getPosition(const Key key) const {
+    inline size_t getPosition(const Key key) const {
         size_t pos = _hash(key) & (_size - 1);
         // there should always be empty_elements in the table
-        while (!(_entries[pos].first == _empty_element || _entries[pos].first == key)) {
+        while (!(_entries[pos].element.first == _empty_element || _entries[pos].element.first == key)) {
             ++pos;
             ASSERT(pos < _entries.size(), "get Position runs out of the table");
         }
         return pos;
     }
 
-    void clearEntries() {
-        for(const size_t p : _positions) {
-            _entries[p].first = _empty_element;
-        }
-    }
 
     friend Iterator;
     Key _empty_element;
     size_t _size;
     Hash _hash;
-    std::vector<Element> _entries;
+    std::vector<PrivateElement> _entries;
     std::vector<size_t> _positions;
 };
 }
