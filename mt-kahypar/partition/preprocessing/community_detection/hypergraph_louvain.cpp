@@ -6,9 +6,11 @@ namespace mt_kahypar::community_detection {
 parallel::scalable_vector<HypernodeID> hypergraph_local_moving_contract_recurse(ds::CommunityHypergraph& chg, HypergraphLocalMovingModularity& hlmm) {
     static constexpr bool debug = false;
     parallel::scalable_vector<HypernodeID> communities(chg.initialNumNodes());
-    utils::Timer::instance().start_timer("local_moving" + std::to_string(local_moving_round), "Local Moving" + std::to_string(local_moving_round));
+    //utils::Timer::instance().start_timer("local_moving" + std::to_string(local_moving_round), "Local Moving" + std::to_string(local_moving_round));
+    utils::Timer::instance().start_timer("hyp_local_moving", "Hypergraph Local Moving");
     bool clustering_changed = hlmm.localMoving(chg, communities);
-    utils::Timer::instance().stop_timer("local_moving" + std::to_string(local_moving_round));
+    utils::Timer::instance().stop_timer("hyp_local_moving");
+    //utils::Timer::instance().stop_timer("local_moving" + std::to_string(local_moving_round));
     local_moving_round++;
     if (clustering_changed) {
         ds::StaticHypergraph coarse_hg;
@@ -16,8 +18,9 @@ parallel::scalable_vector<HypernodeID> hypergraph_local_moving_contract_recurse(
             Volume after = metrics::hyp_modularity(chg, communities, hlmm);
             LOG << "after" << after;
         }
+        utils::Timer::instance().start_timer("community_contraction", "Community Hypergraph Contraction");
         ds::CommunityHypergraph coarse_chg = chg.contract(coarse_hg, communities);
-
+        utils::Timer::instance().stop_timer("community_contraction");
 
         if (debug) {
             hlmm.initializeCommunityVolumes(chg, communities);

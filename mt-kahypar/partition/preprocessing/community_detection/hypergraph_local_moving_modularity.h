@@ -37,7 +37,7 @@ public:
             }, [&] {
                 _powers_of_source_community.resize("Preprocessing", "powers_of_source_community", hypergraph.maxEdgeSize() + 1);
             });
-            
+
         _reciprocal_vol_total = 1.0L / hypergraph.totalVolume();
     }
 
@@ -234,9 +234,12 @@ public:
             && round < _context.preprocessing.community_detection.max_pass_iterations; ++round) {
             nr_nodes_moved = 0;
             for (HypernodeID& hn : nodes) {
-                if (makeMove(chg, communities, calculateBestMove(chg, communities, hn))) {
+                const CommunityMove cm = calculateBestMove(chg, communities, hn);
+                utils::Timer::instance().start_timer("execute_move", "Make a Move");
+                if (makeMove(chg, communities, cm)) {
                     ++nr_nodes_moved;
                 }
+                utils::Timer::instance().stop_timer("execute_move");
             }
             changed_clustering |= nr_nodes_moved > 0;
         }
