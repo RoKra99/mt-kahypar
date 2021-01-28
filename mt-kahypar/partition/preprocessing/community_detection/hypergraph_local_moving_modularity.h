@@ -37,7 +37,7 @@ public:
             }, [&] {
                 _powers_of_source_community.resize("Preprocessing", "powers_of_source_community", hypergraph.maxEdgeSize() + 1);
             });
-
+            
         _reciprocal_vol_total = 1.0L / hypergraph.totalVolume();
     }
 
@@ -51,8 +51,6 @@ public:
         HEAVY_PREPROCESSING_ASSERT(communityEdgeContributionisEmpty());
         utils::Timer::instance().start_timer("calculate_best_move", "Calculate best move");
         const PartitionID comm_v = communities[v];
-        // the sum of edgeweights which only have v in that community
-        HyperedgeWeight edge_contribution_c = 0;
         // sum of all edgeweights incident to v
         HyperedgeWeight sum_of_edgeweights = 0;
         utils::Timer::instance().start_timer("edge_contribution", "EdgeContribution");
@@ -80,11 +78,14 @@ public:
                     }
                 }
             } else { // hyperedge is not cached
+                ASSERT(_community_neighbours_of_edge.empty());
                 for (const HypernodeID& hn : chg.pins(he)) {
                     const PartitionID comm_hn = communities[hn];
                     if (hn != v && !_pins_in_community[comm_hn]) {
                         _pins_in_community[comm_hn] = true;
-                        _community_neighbours_of_edge.emplace_back(comm_hn);
+                        if (comm_hn != comm_v) {
+                            _community_neighbours_of_edge.emplace_back(comm_hn);
+                        }
                     }
                 }
 
@@ -103,7 +104,7 @@ public:
                 _community_neighbours_of_edge.clear();
             }
         }
-        edge_contribution_c = -_community_edge_contribution[comm_v];
+        const HyperedgeWeight edge_contribution_c = -_community_edge_contribution[comm_v];
         _community_edge_contribution[comm_v] = 0;
         utils::Timer::instance().stop_timer("edge_contribution");
 
