@@ -37,7 +37,6 @@ public:
     using Map = HashMap<PartitionID, size_t, xxhash<uint32_t>>;
     using VectorIterator = typename std::vector<PartitionID>::const_iterator;
     using MapIterator = typename Map::Iterator;
-    static constexpr size_t EDGESIZE_THRESHHOLD = 0;
 
     CommunityHypergraph(const Context& context) :
         _community_counts(),
@@ -48,7 +47,8 @@ public:
         _valid_edge_sizes(),
         _total_edge_weight(0),
         _context(context),
-        _tmp_community_hypergraph_buffer(nullptr) {}
+        _tmp_community_hypergraph_buffer(nullptr),
+        _community_count_locks() {}
 
     explicit CommunityHypergraph(Hypergraph& hypergraph, const Context& context) :
         _community_counts(hypergraph.initialNumEdges()),
@@ -61,6 +61,8 @@ public:
             _node_volumes.resize("Preprocessing", "node_volumes", hypergraph.initialNumNodes(), true, true);
             }, [&] {
                 _d_edge_weights.resize("Preprocessing", "d_edge_weights", hypergraph.maxEdgeSize() + 1, true, true);
+            }, [&] {
+                _community_count_locks.resize("Preprocessing", "community_count_locks", hypergraph.initialNumEdges());
             });
 
         computeAndSetTotalEdgeWeight();
@@ -111,14 +113,20 @@ public:
     }
 
     // ! IteratorRange over all communities with single cuts of the hyperedge
-    IteratorRange<VectorIterator> singleCuts(const HyperedgeID he) const {
-        return _community_counts[he]->singleCuts();
+    IteratorRange<VectorIterator> singleCuts(const HyperedgeID he) {
+        _community_count_locks[he].lock();
+        IteratorRange<VectorIterator> it = _community_counts[he]->singleCuts();
+        _community_count_locks[he].unlock();
+        return it;
     }
 
     // ! IteratorRange over all communities with multiple cuts
     // TODO: cbegin() and cend()
-    IteratorRange<MapIterator> multiCuts(const HyperedgeID he) const {
-        return _community_counts[he]->multiCuts();
+    IteratorRange<MapIterator> multiCuts(const HyperedgeID he) {
+        _community_count_locks[he].lock();
+        IteratorRange<MapIterator> it = _community_counts[he]->multiCuts();
+        _community_count_locks[he].unlock();
+        return it;
     }
 
     // ######################## Community ########################
@@ -126,20 +134,24 @@ public:
     // ! increments the unique node count for the given community.
     // ! It will be added if it is not in the datastructure yet.
     void addCommunityToHyperedge(const HyperedgeID he, const PartitionID community) {
+        _community_count_locks[he].lock();
         if (_community_counts[he]) {
             ASSERT(edgeSize(he) > _context.preprocessing.community_detection.hyperedge_size_caching_threshold);
             _community_counts[he]->addToCommunity(community);
         }
+        _community_count_locks[he].unlock();
     }
 
     // ! expects the community to be in the datastructure already, else undefined
     // ! decrements the unique node count for the given community. 
     // ! Community will be removed if the count is zero afterwards
     void removeCommunityFromHyperedge(const HyperedgeID he, const PartitionID community) {
+        _community_count_locks[he].lock();
         if (_community_counts[he]) {
             ASSERT(edgeSize(he) > _context.preprocessing.community_detection.hyperedge_size_caching_threshold);
             _community_counts[he]->removeFromCommunity(community);
         }
+        _community_count_locks[he].unlock();
     }
 
 
@@ -271,6 +283,8 @@ private:
 
     // ! contains structures used in contaction to avoid allocations
     TmpCommunityHypergraphBuffer* _tmp_community_hypergraph_buffer;
+
+    Array<SpinLock> _community_count_locks;
 
 };
 }

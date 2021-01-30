@@ -18,6 +18,7 @@ CommunityHypergraph CommunityHypergraph::contract(StaticHypergraph& hypergraph, 
     chg._valid_edge_sizes = std::move(_valid_edge_sizes);
     chg._d_edge_weights = std::move(_d_edge_weights);
     chg._total_edge_weight = _total_edge_weight;
+    chg._community_count_locks = std::move(_community_count_locks);
 
     Array<parallel::AtomicWrapper<HyperedgeWeight>>& tmp_node_volumes = _tmp_community_hypergraph_buffer->tmp_node_volumes;
 
