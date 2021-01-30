@@ -28,32 +28,25 @@ public:
 
     HypergraphLocalMovingModularity(ds::CommunityHypergraph& hypergraph, const Context& context, const bool deactivate_random = false) :
         _context(context),
+        _reciprocal_vol_total(1.0L / hypergraph.totalVolume()),
+        _community_edge_contribution(hypergraph.initialNumNodes(), 0U),
+        _pins_in_community(hypergraph.initialNumNodes(), false),
+        _powers_of_source_community(hypergraph.maxEdgeSize() + 1, 0.L),
         _community_volumes(hypergraph.initialNumNodes()),
-        _deactivate_random(deactivate_random) {
-        tbb::parallel_invoke([&] {
-            _community_edge_contribution.resize("Preprocessing", "clearlist_edge_contribution", hypergraph.initialNumNodes(), true, true);
-            }, [&] {
-                _pins_in_community.resize("Preprocessing", "clearlist_small_hyperedges", hypergraph.initialNumNodes(), true, true);
-            }, [&] {
-                _powers_of_source_community.resize("Preprocessing", "powers_of_source_community", hypergraph.maxEdgeSize() + 1);
-            });
+        _deactivate_random(deactivate_random) {}
 
-        _reciprocal_vol_total = 1.0L / hypergraph.totalVolume();
-    }
 
-    ~HypergraphLocalMovingModularity() {
-        parallel::parallel_free(_community_edge_contribution, _powers_of_source_community);
-    }
+    ~HypergraphLocalMovingModularity() = default;
 
     // ! calculates the best modularity move for the given node
     KAHYPAR_ATTRIBUTE_ALWAYS_INLINE CommunityMove calculateBestMove(ds::CommunityHypergraph& chg, parallel::scalable_vector<HypernodeID>& communities, const HypernodeID v) {
-        ASSERT(_community_neighbours_of_node.empty());
+        ASSERT(_community_neighbours_of_node.local().empty());
         HEAVY_PREPROCESSING_ASSERT(communityEdgeContributionisEmpty());
-        utils::Timer::instance().start_timer("calculate_best_move", "Calculate best move");
+        //utils::Timer::instance().start_timer("calculate_best_move", "Calculate best move");
         const PartitionID comm_v = communities[v];
         // sum of all edgeweights incident to v
         HyperedgeWeight sum_of_edgeweights = 0;
-        utils::Timer::instance().start_timer("edge_contribution", "EdgeContribution");
+        //utils::Timer::instance().start_timer("edge_contribution", "EdgeContribution");
         for (const HyperedgeID& he : chg.incidentEdges(v)) {
             const HyperedgeWeight edge_weight = chg.edgeWeight(he);
             sum_of_edgeweights += edge_weight;
@@ -106,11 +99,11 @@ public:
         }
         const HyperedgeWeight edge_contribution_c = -_community_edge_contribution.local()[comm_v];
         _community_edge_contribution.local()[comm_v] = 0;
-        utils::Timer::instance().stop_timer("edge_contribution");
+        //utils::Timer::instance().stop_timer("edge_contribution");
 
 
 
-        utils::Timer::instance().start_timer("exp_edge_contribution", "ExpectedEdgeContribution");
+        //utils::Timer::instance().start_timer("exp_edge_contribution", "ExpectedEdgeContribution");
 
         const HyperedgeWeight vol_v = chg.nodeVolume(v);
         const HyperedgeWeight vol_c = _community_volumes[comm_v];
@@ -186,14 +179,14 @@ public:
             }
             _community_edge_contribution.local()[community] = 0;
         }
-        utils::Timer::instance().stop_timer("exp_edge_contribution");
+        //utils::Timer::instance().stop_timer("exp_edge_contribution");
 
-        _community_neighbours_of_node.clear();
+        _community_neighbours_of_node.local().clear();
         CommunityMove cm;
         cm.destination_community = best_community;
         cm.delta = best_community == comm_v ? 0.0L : best_delta;
         cm.node_to_move = v;
-        utils::Timer::instance().stop_timer("calculate_best_move");
+        //utils::Timer::instance().stop_timer("calculate_best_move");
         return cm;
     }
 
@@ -233,14 +226,12 @@ public:
             }
 
             tbb::enumerable_thread_specific<size_t> local_nr_nodes_moved(0);
-                tbb::parallel_for(0UL, nodes.size(), [&](const size_t i) {
-                    const CommunityMove cm = calculateBestMove(chg, communities, nodes[i]);
-                    utils::Timer::instance().start_timer("execute_move", "Make a Move");
-                    if (makeMove(chg, communities, cm)) {
-                        ++local_nr_nodes_moved.local();
-                    }
-                    utils::Timer::instance().stop_timer("execute_move");
-                    });
+            tbb::parallel_for(0UL, nodes.size(), [&](const size_t i) {
+                const CommunityMove cm = calculateBestMove(chg, communities, nodes[i]);
+                if (makeMove(chg, communities, cm)) {
+                    ++local_nr_nodes_moved.local();
+                }
+                });
             nr_nodes_moved = local_nr_nodes_moved.combine(std::plus<>());
             changed_clustering |= nr_nodes_moved > 0;
         }
@@ -282,12 +273,12 @@ private:
     Volume _reciprocal_vol_total = 0.0L;
 
     // ! for clearlists
-    tbb::enumerable_thread_specific<ds::Array<HyperedgeWeight>> _community_edge_contribution;
-    tbb::enumerable_thread_specific<ds::Array<bool>>_pins_in_community;
+    tbb::enumerable_thread_specific<parallel::scalable_vector<HyperedgeWeight>> _community_edge_contribution;
+    tbb::enumerable_thread_specific<parallel::scalable_vector<bool>>_pins_in_community;
 
     // ! contains (vol_V - vol(C)+vol(v))^d - (vol(V)-vol(C))^d for all valid edgesizes d
     // ! Note the values in here are not cleared after each call to calculateBestMove
-    tbb::enumerable_thread_specific<ds::Array<Volume>> _powers_of_source_community;
+    tbb::enumerable_thread_specific<parallel::scalable_vector<Volume>> _powers_of_source_community;
 
     // ! used in clearlist for calculating the edge contribution
     tbb::enumerable_thread_specific<parallel::scalable_vector<PartitionID>> _community_neighbours_of_node;
