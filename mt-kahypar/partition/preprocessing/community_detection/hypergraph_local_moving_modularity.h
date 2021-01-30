@@ -46,7 +46,7 @@ public:
     }
 
     // ! calculates the best modularity move for the given node
-    KAHYPAR_ATTRIBUTE_ALWAYS_INLINE CommunityMove calculateBestMove(const ds::CommunityHypergraph& chg, parallel::scalable_vector<HypernodeID>& communities, const HypernodeID v) {
+    KAHYPAR_ATTRIBUTE_ALWAYS_INLINE CommunityMove calculateBestMove(ds::CommunityHypergraph& chg, parallel::scalable_vector<HypernodeID>& communities, const HypernodeID v) {
         ASSERT(_community_neighbours_of_node.empty());
         HEAVY_PREPROCESSING_ASSERT(communityEdgeContributionisEmpty());
         utils::Timer::instance().start_timer("calculate_best_move", "Calculate best move");
