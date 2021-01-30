@@ -217,22 +217,23 @@ public:
     bool localMoving(ds::CommunityHypergraph& chg, parallel::scalable_vector<HypernodeID>& communities) {
         parallel::scalable_vector<HypernodeID> nodes(chg.initialNumNodes());
 
-        //        for (HypernodeID i = 0; i < chg.initialNumNodes(); ++i) {
         tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID i) {
             communities[i] = i;
             nodes[i] = i;
             _community_volumes[i].store(chg.nodeVolume(i));
             });
-        //}
-        if (!_deactivate_random) {
-            utils::Randomize::instance().parallelShuffleVector(nodes, 0UL, nodes.size());
-        }
+
         bool changed_clustering = false;
         size_t nr_nodes_moved = chg.initialNumNodes();
         for (size_t round = 0;
             nr_nodes_moved >= _context.preprocessing.community_detection.min_vertex_move_fraction * chg.initialNumNodes()
             && round < _context.preprocessing.community_detection.max_pass_iterations; ++round) {
+
             nr_nodes_moved = 0;
+            if (!_deactivate_random) {
+                utils::Randomize::instance().parallelShuffleVector(nodes, 0UL, nodes.size());
+            }
+
             for (HypernodeID& hn : nodes) {
                 const CommunityMove cm = calculateBestMove(chg, communities, hn);
                 utils::Timer::instance().start_timer("execute_move", "Make a Move");
