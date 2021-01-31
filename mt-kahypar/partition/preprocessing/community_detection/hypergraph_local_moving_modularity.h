@@ -44,6 +44,8 @@ public:
         HEAVY_PREPROCESSING_ASSERT(communityEdgeContributionisEmpty());
         //utils::Timer::instance().start_timer("calculate_best_move", "Calculate best move");
         const PartitionID comm_v = communities[v];
+        ASSERT(static_cast<size_t>(comm_v) < _community_edge_contribution.local().size());
+        ASSERT(static_cast<size_t>(comm_v) < _community_edge_contribution.local().size());
         // sum of all edgeweights incident to v
         HyperedgeWeight sum_of_edgeweights = 0;
         //utils::Timer::instance().start_timer("edge_contribution", "EdgeContribution");
@@ -60,7 +62,9 @@ public:
 
                 }
 
-                for (auto& e : chg.multiCuts(he)) {
+                for (const auto& e : chg.multiCuts(he)) {
+                    //LOG << _community_edge_contribution.local().size() << e.first;
+                    ASSERT(_community_edge_contribution.local().size() > static_cast<size_t>(e.first), "size: " << _community_edge_contribution.local().size() << ", e.first: " << e.first);
                     if (e.first != comm_v) {
                         if (!_community_edge_contribution.local()[e.first]) {
                             _community_neighbours_of_node.local().emplace_back(e.first);
@@ -71,7 +75,7 @@ public:
                     }
                 }
             } else { // hyperedge is not cached
-                ASSERT(_community_neighbours_of_edge.empty());
+                ASSERT(_community_neighbours_of_edge.local().empty());
                 for (const HypernodeID& hn : chg.pins(he)) {
                     const PartitionID comm_hn = communities[hn];
                     if (hn != v && !_pins_in_community.local()[comm_hn]) {
@@ -94,7 +98,7 @@ public:
                     _community_edge_contribution.local()[community] -= edge_weight;
                     _pins_in_community.local()[community] = false;
                 }
-                _community_neighbours_of_edge.clear();
+                _community_neighbours_of_edge.local().clear();
             }
         }
         const HyperedgeWeight edge_contribution_c = -_community_edge_contribution.local()[comm_v];
