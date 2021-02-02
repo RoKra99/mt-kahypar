@@ -91,7 +91,6 @@ public:
                 //utils::Timer::instance().stop_timer("edge_contribution");
 
 
-
                 //utils::Timer::instance().start_timer("exp_edge_contribution", "ExpectedEdgeContribution");
 
                 const HyperedgeWeight vol_v = chg.nodeVolume(v);
@@ -215,8 +214,10 @@ public:
                         const PartitionID source_community = communities[node_to_move];
                         const size_t map_size = ratingsFitIntoSmallMap(chg, node_to_move);
                         if (!map_size) {
+                            //LOG << "small";
                             destination_community = calculateBestMove(chg, communities, node_to_move, _small_edge_contribution_map.local());
                         } else {
+                            //LOG << "large";
                             LargeTmpRatingMap& large_map = _large_edge_contribution_map.local();
                             large_map.setMaxSize(map_size);
                             destination_community = calculateBestMove(chg, communities, node_to_move, large_map);
@@ -272,7 +273,7 @@ private:
         for (const HyperedgeID& he : chg.incidentEdges(v)) {
             const HypernodeID edge_size = chg.edgeSize(he);
             // Ignore large hyperedges
-            ub_neighbors_v += edge_size < _context.partition.ignore_hyperedge_size_threshold ? edge_size : 0;
+            ub_neighbors_v += edge_size;
             // If the number of estimated neighbors is greater than the size of the cache efficient rating map / 3, we
             // use the large sparse map. The division by 3 also ensures that the fill grade
             // of the cache efficient sparse map would be small enough such that linear probing
