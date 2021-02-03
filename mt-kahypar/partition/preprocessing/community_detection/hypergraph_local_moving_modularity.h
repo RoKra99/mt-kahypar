@@ -8,14 +8,10 @@
 #include "mt-kahypar/partition/context.h"
 #include "mt-kahypar/datastructures/sparse_map.h"
 
+#include "gtest/gtest_prod.h"
+
 
 namespace mt_kahypar::community_detection {
-
-struct CommunityMove {
-    HypernodeID node_to_move;
-    PartitionID destination_community;
-    Volume delta;
-};
 
 class HypergraphLocalMovingModularity {
 private:
@@ -81,8 +77,14 @@ public:
                             }
                         }
 
+                        if (!community_neighbours_of_edge.contains(comm_v)) {
+                            community_edge_contribution[comm_v] -= edge_weight;
+                        }
+
                         for (const auto& e : community_neighbours_of_edge) {
-                            community_edge_contribution[e.key] -= edge_weight;
+                            if (e.key != comm_v) {
+                                community_edge_contribution[e.key] -= edge_weight;
+                            }    
                         }
                         community_neighbours_of_edge.clear();
                     }
@@ -314,6 +316,28 @@ private:
     // ! deactivates random node order in local moving
     const bool _deactivate_random;
 
+
+    FRIEND_TEST(AHypergraphLocalMoving, CalulatesBestDestinationCommunity0);
+    FRIEND_TEST(AHypergraphLocalMoving, CalulatesBestDestinationCommunity1);
+    FRIEND_TEST(AHypergraphLocalMoving, CalulatesBestDestinationCommunity2);
+    FRIEND_TEST(AHypergraphLocalMoving, CalulatesBestDestinationCommunity3);
+    FRIEND_TEST(AHypergraphLocalMoving, CalulatesBestDestinationCommunity4);
+    FRIEND_TEST(AHypergraphLocalMoving, CalulatesBestDestinationCommunity5);
+    FRIEND_TEST(AHypergraphLocalMoving, CalulatesBestDestinationCommunity6);
+    FRIEND_TEST(AHypergraphLocalMoving, CalulatesBestDestinationCommunityWithPartiallyCachedHyperedges0);
+    FRIEND_TEST(AHypergraphLocalMoving, CalulatesBestDestinationCommunityWithPartiallyCachedHyperedges1);
+    FRIEND_TEST(AHypergraphLocalMoving, CalulatesBestDestinationCommunityWithPartiallyCachedHyperedges2);
+    FRIEND_TEST(AHypergraphLocalMoving, CalulatesBestDestinationCommunityWithPartiallyCachedHyperedges3);
+    FRIEND_TEST(AHypergraphLocalMoving, CalulatesBestDestinationCommunityWithPartiallyCachedHyperedges4);
+    FRIEND_TEST(AHypergraphLocalMoving, CalulatesBestDestinationCommunityWithPartiallyCachedHyperedges5);
+    FRIEND_TEST(AHypergraphLocalMoving, CalulatesBestDestinationCommunityWithPartiallyCachedHyperedges6);
+    FRIEND_TEST(AHypergraphLocalMoving, CalulatesBestDestinationCommunityWithoutCachedHyperedges0);
+    FRIEND_TEST(AHypergraphLocalMoving, CalulatesBestDestinationCommunityWithoutCachedHyperedges1);
+    FRIEND_TEST(AHypergraphLocalMoving, CalulatesBestDestinationCommunityWithoutCachedHyperedges2);
+    FRIEND_TEST(AHypergraphLocalMoving, CalulatesBestDestinationCommunityWithoutCachedHyperedges3);
+    FRIEND_TEST(AHypergraphLocalMoving, CalulatesBestDestinationCommunityWithoutCachedHyperedges4);
+    FRIEND_TEST(AHypergraphLocalMoving, CalulatesBestDestinationCommunityWithoutCachedHyperedges5);
+    FRIEND_TEST(AHypergraphLocalMoving, CalulatesBestDestinationCommunityWithoutCachedHyperedges6);
 };
 }
 

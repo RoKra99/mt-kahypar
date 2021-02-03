@@ -70,7 +70,7 @@ public:
         }
     }
 
-    void verifyCommunityCounts(const CommunityHypergraph& chg, const HyperedgeID he, std::vector<std::set<HypernodeID>> exp_communities) {
+    void verifyCommunityCounts(CommunityHypergraph& chg, const HyperedgeID he, std::vector<std::set<HypernodeID>> exp_communities) {
         size_t count = 0;
         for (auto& e : chg.singleCuts(he)) {
             ASSERT_TRUE(exp_communities[0].find(e) != exp_communities[0].end());
