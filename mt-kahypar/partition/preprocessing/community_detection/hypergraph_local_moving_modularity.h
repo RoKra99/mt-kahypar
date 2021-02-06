@@ -57,14 +57,20 @@ public:
                     sum_of_edgeweights += edge_weight;
                     // cuts for this hyperedge are cached
                     if (chg.edgeSize(he) > _context.preprocessing.community_detection.hyperedge_size_caching_threshold) {
-                        for (auto& community : chg.singleCuts(he)) {
-                            community_edge_contribution[community] -= edge_weight;
+                        for (const PartitionID community : chg.singleCuts(he)) {
+                            //ASSERT(static_cast<HypernodeID>(community) < chg.initialNumNodes());
+                            if (static_cast<HypernodeID>(community) < chg.initialNumNodes() && community >= 0) {
+                                community_edge_contribution[community] -= edge_weight;
+                            }
                         }
 
-                        for (const auto e : chg.multiCuts(he)) {
-                            // not by reference to avoid race conditions
-                            if (static_cast<HypernodeID>(e.first) < chg.initialNumNodes() && (e.first != comm_v || e.second == 1)) {
-                                community_edge_contribution[e.first] -= edge_weight;
+                        for (const auto& e : chg.multiCuts(he)) {
+                            const PartitionID community = e.first;
+                            const size_t count = e.second;
+                            if (static_cast<HypernodeID>(community) < chg.initialNumNodes() && (community != comm_v || count == 1)) {
+                                ASSERT(count > 0);
+                                ASSERT(static_cast<HypernodeID>(community) < chg.initialNumNodes() && community >= 0);
+                                community_edge_contribution[community] -= edge_weight;
                             }
                         }
                     } else { // hyperedge is not cached
@@ -84,7 +90,7 @@ public:
                         for (const auto& e : community_neighbours_of_edge) {
                             if (e.key != comm_v) {
                                 community_edge_contribution[e.key] -= edge_weight;
-                            }    
+                            }
                         }
                         community_neighbours_of_edge.clear();
                     }
