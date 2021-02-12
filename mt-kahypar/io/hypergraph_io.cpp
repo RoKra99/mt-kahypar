@@ -364,4 +364,16 @@ namespace mt_kahypar::io {
     }
   }
 
+  void writeCommunityPartitionFile(const ds::Clustering& communities, const std::string& filename) {
+    if (filename.empty()) {
+      LOG << "No filename for partition file specified";
+    } else {
+      std::ofstream out_stream(filename.c_str());
+      for (const PartitionID& part : communities) {
+        out_stream << part << std::endl;
+      }
+      out_stream.close();
+    }
+  }
+
 } // namespace

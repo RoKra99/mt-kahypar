@@ -21,6 +21,7 @@
 
 #include "partitioner.h"
 
+#include "mt-kahypar/io/hypergraph_io.h"
 #include "mt-kahypar/io/partitioning_output.h"
 #include "mt-kahypar/partition/multilevel.h"
 #include "mt-kahypar/partition/preprocessing/sparsification/degree_zero_hn_remover.h"
@@ -120,6 +121,7 @@ namespace mt_kahypar {
         clustering[i] = communities[i];
       }
       //graph.restrictClusteringToHypernodes(hypergraph, communities);
+      mt_kahypar::io::writeCommunityPartitionFile(clustering, context.partition.graph_partition_filename);
       //hypergraph.setCommunityIDs(std::move(communities));
       hypergraph.setCommunityIDs(std::move(clustering));
       utils::Timer::instance().stop_timer("perform_community_detection");

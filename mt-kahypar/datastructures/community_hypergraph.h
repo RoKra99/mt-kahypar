@@ -28,7 +28,7 @@ class CommunityHypergraph {
 
 public:
 
-    using EdgeSizes = parallel::scalable_vector<PartitionID>;
+    using EdgeSizes = parallel::scalable_vector<size_t>;
     using HyperedgeIterator = typename Hypergraph::HyperedgeIterator;
     using IncidenceIterator = typename Hypergraph::IncidenceIterator;
     using IncidentNetsIterator = typename Hypergraph::IncidentNetsIterator;
@@ -273,7 +273,7 @@ private:
     Array<HyperedgeWeight> _d_edge_weights;
 
     // ! contains the indexes to all edgeSizes which occur in the graph
-    parallel::scalable_vector<PartitionID> _valid_edge_sizes;
+    parallel::scalable_vector<size_t> _valid_edge_sizes;
 
     // ! sum of all edgeweights
     HyperedgeWeight _total_edge_weight;

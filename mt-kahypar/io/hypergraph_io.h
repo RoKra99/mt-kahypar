@@ -44,6 +44,7 @@ namespace io {
                                 const bool stable_construction_of_incident_edges = false);
   void readPartitionFile(const std::string& filename, std::vector<PartitionID>& partition);
   void writePartitionFile(const PartitionedHypergraph& phg, const std::string& filename);
+  void writeCommunityPartitionFile(const ds::Clustering& communities, const std::string& filename);
 
 }  // namespace io
 }  // namespace mt_kahypar
