@@ -28,6 +28,10 @@ public:
     static constexpr bool enable_heavy_assert = false;
 
     HypergraphLocalMovingModularity(ds::CommunityHypergraph& hypergraph, const Context& context, const bool deactivate_random = false) :
+        overall_checks(0UL),
+        pruned_by_old(0UL),
+        edge_contribution_time(0.0L),
+        exp_edge_contribution_time(0.0L),
         _vertex_degree_sampling_threshold(context.coarsening.vertex_degree_sampling_threshold),
         _context(context),
         _reciprocal_vol_total(1.0L / hypergraph.totalVolume()),
@@ -257,10 +261,10 @@ public:
                 return IteratorRange<CommunityVolumeIterator>(_community_volumes.cbegin(), _community_volumes.cbegin() + chg.initialNumNodes());
             }
 
-            size_t overall_checks = 0;
-            size_t pruned_by_old = 0;
-            double edge_contribution_time = 0.0;
-            double exp_edge_contribution_time = 0.0;
+            parallel::AtomicWrapper<size_t> overall_checks;
+            parallel::AtomicWrapper<size_t> pruned_by_old;
+            parallel::AtomicWrapper<double> edge_contribution_time;
+            parallel::AtomicWrapper<double> exp_edge_contribution_time;
 
 private:
 
