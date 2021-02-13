@@ -69,6 +69,11 @@ public:
         computeAndSetInitialVolumes();
         computeAndSetCommunityCounts();
         allocateTmpCommunityHypergraphBuffer();
+        size_t sum_of_d = 0;
+        for (const auto& d : _valid_edge_sizes) {
+            sum_of_d += d;
+        }
+        std::cout << _valid_edge_sizes.size() << ',' << _valid_edge_sizes[_valid_edge_sizes.size() - 1] << ',' << sum_of_d << ',';
     }
 
 

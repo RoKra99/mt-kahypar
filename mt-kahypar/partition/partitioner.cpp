@@ -121,7 +121,7 @@ namespace mt_kahypar {
         clustering[i] = communities[i];
       }
       //graph.restrictClusteringToHypernodes(hypergraph, communities);
-      mt_kahypar::io::writeCommunityPartitionFile(clustering, context.partition.graph_partition_filename);
+      //mt_kahypar::io::writeCommunityPartitionFile(communities, context.partition.graph_partition_filename);
       //hypergraph.setCommunityIDs(std::move(communities));
       hypergraph.setCommunityIDs(std::move(clustering));
       utils::Timer::instance().stop_timer("perform_community_detection");

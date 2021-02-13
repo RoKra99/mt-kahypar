@@ -44,6 +44,9 @@ parallel::scalable_vector<HypernodeID> hypergraph_local_moving_contract_recurse(
 parallel::scalable_vector<HypernodeID> hypergraph_louvain(ds::CommunityHypergraph& chg, const Context& context, const bool deactivate_random) {
     HypergraphLocalMovingModularity hlmm(chg, context, deactivate_random);
     parallel::scalable_vector<HypernodeID> communities = community_detection::hypergraph_local_moving_contract_recurse(chg, hlmm);
+    // LOG << "Edge Contribution: " << hlmm.edge_contribution_time;
+    // LOG << "Expected Edge Contribution: " << hlmm.exp_edge_contribution_time;
+    std::cout << hlmm.overall_checks << ',' << hlmm.pruned_by_old << ',' << hlmm.edge_contribution_time << ',' << hlmm.exp_edge_contribution_time << ',';
     return communities;
 }
 }

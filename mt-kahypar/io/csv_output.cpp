@@ -68,11 +68,11 @@ namespace mt_kahypar::io::csv {
     s << timer.get("coarsening") << sep;
     s << timer.get("initial_partitioning") << sep;
     s << timer.get("preprocessing") << sep;
-    s << timer.get("community_contraction") << sep;
-    s << timer.get("hyp_local_moving") << sep;
-    s << timer.get("edge_contribution") << sep;
-    s << timer.get("exp_edge_contribution") << sep;
-    s << timer.get("execute_move");
+    // s << timer.get("community_contraction") << sep;
+    // s << timer.get("hyp_local_moving") << sep;
+    // s << timer.get("edge_contribution") << sep;
+    // s << timer.get("exp_edge_contribution") << sep;
+    // s << timer.get("execute_move");
 
     return s.str();
   }

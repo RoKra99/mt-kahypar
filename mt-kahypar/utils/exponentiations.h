@@ -3,7 +3,7 @@
 
 namespace mt_kahypar::math {
 
-inline Volume fast_power(Volume base, HyperedgeWeight exp) {
+inline Volume fast_power(Volume base, size_t exp) {
     
     Volume result = 1;
     //const Volume int_max = std::numeric_limits<Volume>::max();

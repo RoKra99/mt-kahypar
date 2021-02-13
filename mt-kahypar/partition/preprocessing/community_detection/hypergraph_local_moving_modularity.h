@@ -48,6 +48,7 @@ public:
             KAHYPAR_ATTRIBUTE_ALWAYS_INLINE PartitionID calculateBestMove(ds::CommunityHypergraph& chg, parallel::scalable_vector<HypernodeID>& communities, const HypernodeID v, Map& community_edge_contribution) {
                 ASSERT(community_edge_contribution.size() == 0);
                 //utils::Timer::instance().start_timer("calculate_best_move", "Calculate best move");
+                auto t = tbb::tick_count::now();
                 const PartitionID comm_v = communities[v];
                 // sum of all edgeweights incident to v
                 HyperedgeWeight sum_of_edgeweights = 0;
@@ -97,8 +98,8 @@ public:
                 }
                 const HyperedgeWeight edge_contribution_c = -community_edge_contribution[comm_v];
                 //utils::Timer::instance().stop_timer("edge_contribution");
-
-
+                edge_contribution_time += (tbb::tick_count::now() - t).seconds();
+                t = tbb::tick_count::now();
                 //utils::Timer::instance().start_timer("exp_edge_contribution", "ExpectedEdgeContribution");
 
                 const HyperedgeWeight vol_v = chg.nodeVolume(v);
@@ -118,7 +119,7 @@ public:
 
                 // expected edgecontribution starts here
                 for (const auto& e : community_edge_contribution) {
-                    //++overall_checks;
+                    ++overall_checks;
                     const PartitionID community = e.key;
                     if (community == comm_v) {
                         continue;
@@ -130,7 +131,7 @@ public:
                     // delta will not be < 0
                     if ((destination_edge_contribution >= 0 || best_delta < destination_edge_contribution)
                         && vol_c_minus_vol_v <= vol_destination_minus) {
-                        //++pruned_by_old;
+                        ++pruned_by_old;
                         continue;
                     }
 
@@ -180,6 +181,7 @@ public:
                 //utils::Timer::instance().stop_timer("exp_edge_contribution");
 
                 community_edge_contribution.clear();
+                exp_edge_contribution_time += (tbb::tick_count::now() - t).seconds();
                 //utils::Timer::instance().stop_timer("calculate_best_move");
                 return best_community;
             }
@@ -255,8 +257,10 @@ public:
                 return IteratorRange<CommunityVolumeIterator>(_community_volumes.cbegin(), _community_volumes.cbegin() + chg.initialNumNodes());
             }
 
-            //size_t overall_checks = 0;
-            //size_t pruned_by_old = 0;
+            size_t overall_checks = 0;
+            size_t pruned_by_old = 0;
+            double edge_contribution_time = 0.0;
+            double exp_edge_contribution_time = 0.0;
 
 private:
 
