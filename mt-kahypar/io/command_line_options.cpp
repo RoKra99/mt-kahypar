@@ -147,7 +147,11 @@ namespace mt_kahypar {
              ("p-hyperedge-size-caching-threshold",
               po::value<size_t>(&context.preprocessing.community_detection.hyperedge_size_caching_threshold)->value_name(
                      "<size_t>")->default_value(0),
-             "Cache the communities cut by edges with edge size greater than the threshold");
+             "Cache the communities cut by edges with edge size greater than the threshold")
+             ("p-community-neighbour-sampling-threshold",
+             po::value<size_t>(&context.preprocessing.community_detection.community_neighbour_sampling_threshold)->value_name(
+                     "<size_t>")->default_value(std::numeric_limits<size_t>::max()),
+             "If set, then only this many neighbouring communities are considered in local moving");
     return options;
   }
 
