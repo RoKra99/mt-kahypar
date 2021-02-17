@@ -196,10 +196,6 @@ public:
                             //exp_edge_contribution += static_cast<Volume>(chg.edgeWeightBySize(d)) * (powers_of_source_community[d] + power_d_fraction - power_d_fraction_minus);
                             biggest_d_yet = d;
                             delta += static_cast<Volume>(chg.edgeWeightBySize(d)) * (powers_of_source_community[d] + power_d_fraction - power_d_fraction_minus);
-                            if (delta > 0.0L) {
-                                //++exp_makes_it_bad;
-                                break;
-                            }
                         }
                         ASSERT((vol_c_minus_vol_v > vol_destination_minus && exp_edge_contribution < 0.0L)
                             || (vol_c_minus_vol_v < vol_destination_minus&& exp_edge_contribution > 0.0L)
