@@ -10,7 +10,6 @@
 
 
 using ::testing::Test;
-using CommunityMove = mt_kahypar::community_detection::CommunityMove;
 
 namespace mt_kahypar {
 namespace ds {
