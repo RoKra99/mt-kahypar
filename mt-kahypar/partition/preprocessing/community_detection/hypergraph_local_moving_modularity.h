@@ -108,9 +108,9 @@ public:
                 //utils::Timer::instance().start_timer("exp_edge_contribution", "ExpectedEdgeContribution");
 
                 // ------------------------- Sampling --------------------------------------
-                std::sort(community_edge_contribution.begin(), community_edge_contribution.end(), [&](const auto a, const auto b) {
-                    return a.value < b.value;
-                    });
+                // std::sort(community_edge_contribution.begin(), community_edge_contribution.end(), [&](const auto a, const auto b) {
+                //     return a.value < b.value;
+                //     });
                 // -------------------------------------------------------------------------
 
                 const HyperedgeWeight vol_v = chg.nodeVolume(v);
@@ -134,14 +134,14 @@ public:
                 // #############################################################
 
                 // expected edgecontribution starts here
-                //for (const auto& e : community_edge_contribution) {
+                for (const auto& e : community_edge_contribution) {
 
-                for (auto it = community_edge_contribution.begin();
-                    !(it == community_edge_contribution.begin() + _context.preprocessing.community_detection.community_neighbour_sampling_threshold
-                        || it == community_edge_contribution.end());
-                    ++it) {
-                    //++overall_checks;
-                    const auto& e = *it;
+                // for (auto it = community_edge_contribution.begin();
+                //     !(it == community_edge_contribution.begin() + _context.preprocessing.community_detection.community_neighbour_sampling_threshold
+                //         || it == community_edge_contribution.end());
+                //     ++it) {
+                //     //++overall_checks;
+                //     const auto& e = *it;
                     const PartitionID community = e.key;
 
                     if (community == comm_v) {
@@ -196,6 +196,9 @@ public:
                             //exp_edge_contribution += static_cast<Volume>(chg.edgeWeightBySize(d)) * (powers_of_source_community[d] + power_d_fraction - power_d_fraction_minus);
                             biggest_d_yet = d;
                             delta += static_cast<Volume>(chg.edgeWeightBySize(d)) * (powers_of_source_community[d] + power_d_fraction - power_d_fraction_minus);
+                            if (delta > best_delta) {
+                                break;
+                            }
                         }
                         ASSERT((vol_c_minus_vol_v > vol_destination_minus && exp_edge_contribution < 0.0L)
                             || (vol_c_minus_vol_v < vol_destination_minus&& exp_edge_contribution > 0.0L)
