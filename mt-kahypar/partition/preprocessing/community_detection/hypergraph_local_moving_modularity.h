@@ -108,8 +108,10 @@ public:
                 //utils::Timer::instance().start_timer("exp_edge_contribution", "ExpectedEdgeContribution");
 
                 // ------------------------- Sampling --------------------------------------
-                std::sort(community_edge_contribution.begin(), community_edge_contribution.end(), [&](const auto a, const auto b) {
-                    return a.value < b.value;
+                std::nth_element(community_edge_contribution.begin(),
+                    std::min(community_edge_contribution.begin() + _context.preprocessing.community_detection.community_neighbour_sampling_threshold, community_edge_contribution.end()),
+                    community_edge_contribution.end(), [&](const auto a, const auto b) {
+                        return a.value < b.value;
                     });
                 // -------------------------------------------------------------------------
 
