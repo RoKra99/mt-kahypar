@@ -217,15 +217,12 @@ public:
                         ++i;
                     }
                     distance.push_back(i);
-                    if (ranking_after_km1.local()[i].second > 0.0L) {
+                    com_neighbours.push_back(community_edge_contribution.size());
+                    if (community_edge_contribution[best_community] + sum_of_edgeweights_minus_edgecontribution_c > 0) {
                         ++positive_edgeContribution_count;
                     }
-                    com_neighbours.push_back(community_edge_contribution.size());
                 }
                 ranking_after_km1.local().clear();
-                if (community_edge_contribution[best_community] > 0) {
-                    ++positive_edgeContribution_count;
-                }
                 // #############################################################
                 community_edge_contribution.clear();
                 exp_edge_contribution_time += (tbb::tick_count::now() - t).seconds();
