@@ -28,11 +28,14 @@ public:
     static constexpr bool enable_heavy_assert = false;
 
     HypergraphLocalMovingModularity(ds::CommunityHypergraph& hypergraph, const Context& context, const bool deactivate_random = false) :
+        positive_edgeContribution_count(0),
         //exp_makes_it_bad(0UL),
         //overall_checks(0UL),
         //pruned_by_old(0UL),
         edge_contribution_time(0.0L),
         exp_edge_contribution_time(0.0L),
+        _community_neighbour_sampling_threshold(context.preprocessing.community_detection.community_neighbour_sampling_threshold),
+        _hyperedge_size_caching_threshold(context.preprocessing.community_detection.hyperedge_size_caching_threshold),
         _vertex_degree_sampling_threshold(context.coarsening.vertex_degree_sampling_threshold),
         _context(context),
         _reciprocal_vol_total(1.0L / hypergraph.totalVolume()),
@@ -62,7 +65,7 @@ public:
                     const HyperedgeWeight edge_weight = chg.edgeWeight(he);
                     sum_of_edgeweights += edge_weight;
                     // cuts for this hyperedge are cached
-                    if (chg.edgeSize(he) > _context.preprocessing.community_detection.hyperedge_size_caching_threshold) {
+                    if (chg.edgeSize(he) > _hyperedge_size_caching_threshold) {
                         for (const PartitionID community : chg.singleCuts(he)) {
                             //ASSERT(static_cast<HypernodeID>(community) < chg.initialNumNodes());
                             if (static_cast<HypernodeID>(community) < chg.initialNumNodes() && community >= 0) {
@@ -108,12 +111,13 @@ public:
                 //utils::Timer::instance().start_timer("exp_edge_contribution", "ExpectedEdgeContribution");
 
                 // ------------------------- Sampling --------------------------------------
-                const auto end = std::min(community_edge_contribution.begin() + _context.preprocessing.community_detection.community_neighbour_sampling_threshold, community_edge_contribution.end());
-                if (end != community_edge_contribution.end()) {
-                    std::nth_element(community_edge_contribution.begin(), end, community_edge_contribution.end(), [&](const auto a, const auto b) {
-                            return a.value < b.value;
-                        });
-                }
+                const auto end = community_edge_contribution.end();
+                // const auto end = std::min(community_edge_contribution.begin() + _community_neighbour_sampling_threshold, community_edge_contribution.end());
+                // if (end != community_edge_contribution.end()) {
+                //     std::nth_element(community_edge_contribution.begin(), end, community_edge_contribution.end(), [&](const auto a, const auto b) {
+                //         return a.value < b.value;
+                //         });
+                // }
                 // -------------------------------------------------------------------------
 
                 const HyperedgeWeight vol_v = chg.nodeVolume(v);
@@ -130,11 +134,6 @@ public:
                 PartitionID best_community = comm_v;
                 Volume best_delta = 0.0L;
                 const HyperedgeWeight sum_of_edgeweights_minus_edgecontribution_c = sum_of_edgeweights - edge_contribution_c;
-
-                // #############################################################
-                //ranking_after_km1.local().reserve(community_edge_contribution.size());
-                //ranking_end.local().reserve(community_edge_contribution.size());
-                // #############################################################
 
                 // expected edgecontribution starts here
                 // for (const auto& e : community_edge_contribution) {
@@ -160,7 +159,7 @@ public:
                     }
 
                     // #############################################################
-                    //ranking_after_km1.local().push_back(std::pair<PartitionID, Volume>(e.key, e.value));
+                    ranking_after_km1.local().push_back(std::pair<PartitionID, Volume>(e.key, e.value));
                     // #############################################################
 
                     const Volume destination_fraction = 1.0L - static_cast<Volume>(vol_destination) * _reciprocal_vol_total;
@@ -192,9 +191,8 @@ public:
                             const size_t remaining_d = d - biggest_d_yet;
                             power_d_fraction_minus *= math::fast_power(destination_fraction_minus, remaining_d);
                             power_d_fraction *= math::fast_power(destination_fraction, remaining_d);
-                            //exp_edge_contribution += static_cast<Volume>(chg.edgeWeightBySize(d)) * (powers_of_source_community[d] + power_d_fraction - power_d_fraction_minus);
-                            biggest_d_yet = d;
                             delta += static_cast<Volume>(chg.edgeWeightBySize(d)) * (powers_of_source_community[d] + power_d_fraction - power_d_fraction_minus);
+                            biggest_d_yet = d;
                             // if (delta > best_delta) {
                             //     break;
                             // }
@@ -203,11 +201,6 @@ public:
                             || (vol_c_minus_vol_v < vol_destination_minus&& exp_edge_contribution > 0.0L)
                             || (vol_c_minus_vol_v == vol_destination_minus));
                     }
-
-                    //Volume delta = static_cast<Volume>(destination_edge_contribution) + exp_edge_contribution;
-                    // #############################################################
-                    //ranking_end.local().push_back(std::make_pair<PartitionID, Volume>(community, delta));
-                    // #############################################################
                     if (delta < best_delta) {
                         best_delta = delta;
                         best_community = community;
@@ -215,18 +208,24 @@ public:
                 }
                 //utils::Timer::instance().stop_timer("exp_edge_contribution");
                 // #############################################################
-                // std::sort(ranking_after_km1.local().begin(), ranking_after_km1.local().end(), [&](const auto a, const auto b) {
-                //     return a.second < b.second;
-                //     });
-                // PartitionID i = 0;
-                // if (best_community != comm_v) {
-                //     while (ranking_after_km1.local()[i].first != best_community) {
-                //         ++i;
-                //     }
-                //     distance.push_back(i);
-                //     com_neighbours.push_back(community_edge_contribution.size());
-                // }
-                // ranking_after_km1.local().clear();
+                std::sort(ranking_after_km1.local().begin(), ranking_after_km1.local().end(), [&](const auto a, const auto b) {
+                    return a.second < b.second;
+                    });
+                PartitionID i = 0;
+                if (best_community != comm_v) {
+                    while (ranking_after_km1.local()[i].first != best_community) {
+                        ++i;
+                    }
+                    distance.push_back(i);
+                    if (ranking_after_km1.local()[i].second > 0.0L) {
+                        ++positive_edgeContribution_count;
+                    }
+                    com_neighbours.push_back(community_edge_contribution.size());
+                }
+                ranking_after_km1.local().clear();
+                if (community_edge_contribution[best_community] > 0) {
+                    ++positive_edgeContribution_count;
+                }
                 // #############################################################
                 community_edge_contribution.clear();
                 exp_edge_contribution_time += (tbb::tick_count::now() - t).seconds();
@@ -305,11 +304,12 @@ public:
                 return IteratorRange<CommunityVolumeIterator>(_community_volumes.cbegin(), _community_volumes.cbegin() + chg.initialNumNodes());
             }
 
-            //tbb::enumerable_thread_specific<parallel::scalable_vector<std::pair<PartitionID, Volume>>> ranking_after_km1;
+            parallel::AtomicWrapper<size_t> positive_edgeContribution_count;
+            tbb::enumerable_thread_specific<parallel::scalable_vector<std::pair<PartitionID, Volume>>> ranking_after_km1;
             //tbb::enumerable_thread_specific<parallel::scalable_vector<Volume>> ranking_end;
             // parallel::AtomicWrapper<size_t> exp_makes_it_bad;
-            // tbb::concurrent_vector<int> distance;
-            // tbb::concurrent_vector<int> com_neighbours;
+            tbb::concurrent_vector<int> distance;
+            tbb::concurrent_vector<int> com_neighbours;
             //parallel::AtomicWrapper<size_t> overall_checks;
             //parallel::AtomicWrapper<size_t> pruned_by_old;
             parallel::AtomicWrapper<double> edge_contribution_time;
@@ -354,8 +354,9 @@ private:
         return LargeTmpRatingMap(3UL * std::min(num_nodes, _vertex_degree_sampling_threshold));
     }
 
-
-    size_t _vertex_degree_sampling_threshold;
+    const size_t _community_neighbour_sampling_threshold;
+    const size_t _hyperedge_size_caching_threshold;
+    const size_t _vertex_degree_sampling_threshold;
     // ! contains Hyperparameters for the algorithms
     const Context& _context;
 

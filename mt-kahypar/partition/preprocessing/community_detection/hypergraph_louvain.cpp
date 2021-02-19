@@ -36,7 +36,7 @@ parallel::scalable_vector<HypernodeID> hypergraph_local_moving_contract_recurse(
         tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID i) {
             ASSERT(communities[i] < static_cast<HypernodeID>(coarse_communities.size()));
             communities[i] = coarse_communities[communities[i]];
-        });
+            });
 
     }
     return communities;
@@ -48,21 +48,21 @@ parallel::scalable_vector<HypernodeID> hypergraph_louvain(ds::CommunityHypergrap
     //LOG << "Edge Contribution: " << hlmm.edge_contribution_time;
     //LOG << "Expected Edge Contribution: " << hlmm.exp_edge_contribution_time;
     //std::cout << hlmm.overall_checks << ',' << hlmm.pruned_by_old << ',' << hlmm.edge_contribution_time << ',' << hlmm.exp_edge_contribution_time << ',';
-
-    // LOG << "Max" << *std::max_element(hlmm.distance.begin(), hlmm.distance.end()) << *std::max_element(hlmm.com_neighbours.begin(),hlmm.com_neighbours.end());
-    // LOG << "Min" << *std::min_element(hlmm.distance.begin(), hlmm.distance.end()) << *std::min_element(hlmm.com_neighbours.begin(),hlmm.com_neighbours.end());
-    // LOG << "Avg" << static_cast<Volume>(std::accumulate(hlmm.distance.begin(), hlmm.distance.end(), 0, std::plus<int>())) / hlmm.distance.size()
-    //             << static_cast<Volume>(std::accumulate(hlmm.com_neighbours.begin(), hlmm.com_neighbours.end(), 0, std::plus<int>())) / hlmm.com_neighbours.size();
-    // const int middle = hlmm.distance.size() / 2;
-    // std::sort(hlmm.distance.begin(), hlmm.distance.end());
-    // std::sort(hlmm.com_neighbours.begin(), hlmm.com_neighbours.end());
-    // LOG << "Mean" << hlmm.distance[middle] << hlmm.com_neighbours[middle];
-    // size_t count = 0;
-    // while(hlmm.distance[count] == 0) {
-    //     ++count;
-    // }
-    // LOG << "Zeros" << count << hlmm.distance.size();
-    // LOG << "additional calcs" << hlmm.exp_makes_it_bad;
+    auto sep = ',';
+    std::cout /*<< "Max" */ << *std::max_element(hlmm.distance.begin(), hlmm.distance.end()) << sep << *std::max_element(hlmm.com_neighbours.begin(), hlmm.com_neighbours.end()) << sep;
+    std::cout /*<< "Min"*/ << *std::min_element(hlmm.distance.begin(), hlmm.distance.end()) << sep << *std::min_element(hlmm.com_neighbours.begin(), hlmm.com_neighbours.end()) << sep;
+    std::cout /*<< "Avg"*/ << static_cast<Volume>(std::accumulate(hlmm.distance.begin(), hlmm.distance.end(), 0, std::plus<int>())) / hlmm.distance.size()
+  << sep << static_cast<Volume>(std::accumulate(hlmm.com_neighbours.begin(), hlmm.com_neighbours.end(), 0, std::plus<int>())) / hlmm.com_neighbours.size() << sep;
+    const int middle = hlmm.distance.size() / 2;
+    std::sort(hlmm.distance.begin(), hlmm.distance.end());
+    std::sort(hlmm.com_neighbours.begin(), hlmm.com_neighbours.end());
+    std::cout /*<< "Mean" */ << hlmm.distance[middle] << sep << hlmm.com_neighbours[middle] << sep;
+    size_t count = 0;
+    while (hlmm.distance[count] == 0) {
+        ++count;
+    }
+    std::cout /*<< "Zeros"*/ << count  << sep << hlmm.distance.size() << sep;
+    std::cout /*<< "positive edge count"*/ << hlmm.positive_edgeContribution_count << sep;
     std::cout << hlmm.edge_contribution_time << ',' << hlmm.exp_edge_contribution_time << ',';
     return communities;
 }
