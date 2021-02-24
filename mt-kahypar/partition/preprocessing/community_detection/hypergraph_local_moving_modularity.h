@@ -28,8 +28,6 @@ public:
     static constexpr bool enable_heavy_assert = false;
 
     HypergraphLocalMovingModularity(ds::CommunityHypergraph& hypergraph, const Context& context, const bool deactivate_random = false) :
-        positive_edgeContribution_count(0),
-        //exp_makes_it_bad(0UL),
         //overall_checks(0UL),
         //pruned_by_old(0UL),
         edge_contribution_time(0.0L),
@@ -156,10 +154,6 @@ public:
                         continue;
                     }
 
-                    // #############################################################
-                    ranking_after_km1.local().push_back(std::pair<PartitionID, Volume>(e.key, e.value));
-                    // #############################################################
-
                     const Volume destination_fraction = 1.0L - static_cast<Volume>(vol_destination) * _reciprocal_vol_total;
                     const Volume destination_fraction_minus = 1.0L - static_cast<Volume>(vol_destination_minus) * _reciprocal_vol_total;
                     parallel::scalable_vector<Volume>& powers_of_source_community = _powers_of_source_community.local();
@@ -177,7 +171,6 @@ public:
                         calculated_c = true;
                     }
 
-                    //Volume exp_edge_contribution = 0.0L;
                     Volume delta = destination_edge_contribution;
                     // if this is equal the expected_edge_contribution will be 0
                     if (vol_c_minus_vol_v != vol_destination_minus) {
@@ -196,7 +189,7 @@ public:
                             // }
                         }
                         // ASSERT((vol_c_minus_vol_v > vol_destination_minus && exp_edge_contribution < 0.0L)
-                        //     || (vol_c_minus_vol_v < vol_destination_minus&& exp_edge_contribution > 0.0L)
+                        //     || (vol_c_minus_vol_v < vol_destination_minus && exp_edge_contribution > 0.0L)
                         //     || (vol_c_minus_vol_v == vol_destination_minus));
                     }
                     if (delta < best_delta) {
@@ -205,23 +198,6 @@ public:
                     }
                 }
                 //utils::Timer::instance().stop_timer("exp_edge_contribution");
-                // #############################################################
-                std::sort(ranking_after_km1.local().begin(), ranking_after_km1.local().end(), [&](const auto a, const auto b) {
-                    return a.second < b.second;
-                    });
-                PartitionID i = 0;
-                if (best_community != comm_v) {
-                    while (ranking_after_km1.local()[i].first != best_community) {
-                        ++i;
-                    }
-                    distance.push_back(i);
-                    com_neighbours.push_back(community_edge_contribution.size());
-                    if (community_edge_contribution[best_community] + sum_of_edgeweights_minus_edgecontribution_c > 0) {
-                        ++positive_edgeContribution_count;
-                    }
-                }
-                ranking_after_km1.local().clear();
-                // #############################################################
                 community_edge_contribution.clear();
                 exp_edge_contribution_time += (tbb::tick_count::now() - t).seconds();
                 //utils::Timer::instance().stop_timer("calculate_best_move");
@@ -266,10 +242,8 @@ public:
                         const PartitionID source_community = communities[node_to_move];
                         const size_t map_size = ratingsFitIntoSmallMap(chg, node_to_move);
                         if (!map_size) {
-                            //LOG << "small";
                             destination_community = calculateBestMove(chg, communities, node_to_move, _small_edge_contribution_map.local());
                         } else {
-                            //LOG << "large";
                             LargeTmpRatingMap& large_map = _large_edge_contribution_map.local();
                             large_map.setMaxSize(map_size);
                             destination_community = calculateBestMove(chg, communities, node_to_move, large_map);
@@ -299,12 +273,6 @@ public:
                 return IteratorRange<CommunityVolumeIterator>(_community_volumes.cbegin(), _community_volumes.cbegin() + chg.initialNumNodes());
             }
 
-            parallel::AtomicWrapper<size_t> positive_edgeContribution_count;
-            tbb::enumerable_thread_specific<parallel::scalable_vector<std::pair<PartitionID, Volume>>> ranking_after_km1;
-            //tbb::enumerable_thread_specific<parallel::scalable_vector<Volume>> ranking_end;
-            // parallel::AtomicWrapper<size_t> exp_makes_it_bad;
-            tbb::concurrent_vector<int> distance;
-            tbb::concurrent_vector<int> com_neighbours;
             //parallel::AtomicWrapper<size_t> overall_checks;
             //parallel::AtomicWrapper<size_t> pruned_by_old;
             parallel::AtomicWrapper<double> edge_contribution_time;
