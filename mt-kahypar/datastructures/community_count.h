@@ -34,6 +34,7 @@ public:
                 }
             }
         }
+        end_of_single_cuts = _single_cut_communities.size();
     }
 
     ~CommunityCount() = default;
@@ -54,14 +55,17 @@ public:
             if (removeFromSingleCut(id)) {
                 _communities.insert(id, 2);
             } else {
-                _single_cut_communities.push_back(id);
+                ASSERT(end_of_single_cuts < _single_cut_communities.size(), V(end_of_single_cuts) << V(_single_cut_communities.size()));
+                _single_cut_communities[end_of_single_cuts] = id;
+                ++end_of_single_cuts;
             }
         }
     }
 
     // ! IteratorRange over all communities with single cuts
     IteratorRange<VectorIterator> singleCuts() const {
-        return IteratorRange<VectorIterator>(_single_cut_communities.cbegin(), _single_cut_communities.cend());
+        ASSERT(_single_cut_communities.cbegin() + end_of_single_cuts <= _single_cut_communities.cend(), V(end_of_single_cuts) << V(_single_cut_communities.size()));
+        return IteratorRange<VectorIterator>(_single_cut_communities.cbegin(), _single_cut_communities.cbegin() + end_of_single_cuts);
     }
 
     // ! IteratorRange over all communities with multiple cuts
@@ -74,15 +78,18 @@ private:
     // TODO: This is O(n), improve?
     // ! Removes the community from the single cut datastructure
     bool removeFromSingleCut(const PartitionID id) {
-        for (size_t i = 0; i < _single_cut_communities.size(); ++i) {
+        for (size_t i = 0; i < end_of_single_cuts; ++i) {
             if (_single_cut_communities[i] == id) {
-                _single_cut_communities[i] = _single_cut_communities[_single_cut_communities.size() - 1];
-                _single_cut_communities.pop_back();
+                ASSERT(end_of_single_cuts > 0 && end_of_single_cuts <= _single_cut_communities.size(), V(end_of_single_cuts) << V(_single_cut_communities.size()));
+                _single_cut_communities[i] = _single_cut_communities[--end_of_single_cuts];
                 return true;
             }
         }
         return false;
     }
+
+    //! index of the first invalid entry
+    size_t end_of_single_cuts;
 
     //! communities which only contain a single node of this hyperedge
     std::vector<PartitionID> _single_cut_communities;

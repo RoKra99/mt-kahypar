@@ -67,10 +67,8 @@ public:
                     // cuts for this hyperedge are cached
                     if (chg.edgeSize(he) > _hyperedge_size_caching_threshold) {
                         for (const PartitionID community : chg.singleCuts(he)) {
-                            //ASSERT(static_cast<HypernodeID>(community) < chg.initialNumNodes());
-                            if (static_cast<HypernodeID>(community) < chg.initialNumNodes() && community >= 0) {
-                                community_edge_contribution[community] -= edge_weight;
-                            }
+                            ASSERT(static_cast<HypernodeID>(community) < chg.initialNumNodes() && community > 0);
+                            community_edge_contribution[community] -= edge_weight;
                         }
 
                         for (const auto& e : chg.multiCuts(he)) {
@@ -197,9 +195,9 @@ public:
                             //     break;
                             // }
                         }
-                        ASSERT((vol_c_minus_vol_v > vol_destination_minus && exp_edge_contribution < 0.0L)
-                            || (vol_c_minus_vol_v < vol_destination_minus&& exp_edge_contribution > 0.0L)
-                            || (vol_c_minus_vol_v == vol_destination_minus));
+                        // ASSERT((vol_c_minus_vol_v > vol_destination_minus && exp_edge_contribution < 0.0L)
+                        //     || (vol_c_minus_vol_v < vol_destination_minus&& exp_edge_contribution > 0.0L)
+                        //     || (vol_c_minus_vol_v == vol_destination_minus));
                     }
                     if (delta < best_delta) {
                         best_delta = delta;
@@ -238,8 +236,8 @@ public:
                 _community_volumes[source_community] -= chg.nodeVolume(node_to_move);
                 communities[node_to_move] = destination_community;
                 for (const HyperedgeID& he : chg.incidentEdges(node_to_move)) {
-                    chg.addCommunityToHyperedge(he, destination_community);
                     chg.removeCommunityFromHyperedge(he, source_community);
+                    chg.addCommunityToHyperedge(he, destination_community);
                 }
             }
 
