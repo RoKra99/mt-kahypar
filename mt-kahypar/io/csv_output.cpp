@@ -73,7 +73,7 @@ namespace mt_kahypar::io::csv {
     s << timer.get("local_moving 1") << sep;
     s << timer.get("local_moving 2") << sep;
     s << timer.get("local_moving 3") << sep;
-    s << timer.get("local_moving 4") << sep;
+    s << timer.get("local_moving 4");
     //s << timer.get("edge_contribution") << sep;
     //s << timer.get("exp_edge_contribution");
 
