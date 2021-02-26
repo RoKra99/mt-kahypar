@@ -208,6 +208,16 @@ public:
     // ! contracts the Hypergraph according to the given communities
     CommunityHypergraph contract(StaticHypergraph& hypergraph, parallel::scalable_vector<HypernodeID>& communities);
 
+    // ! Weight of a vertex
+    HypernodeWeight nodeWeight(const HypernodeID u) const {
+        return _hg->nodeWeight(u);
+    }
+
+    // ! Total weight of hypergraph
+    HypernodeWeight totalWeight() const {
+        return _hg->totalWeight();
+    }
+
 private:
 
     void freeInternalData() {
