@@ -151,6 +151,10 @@ namespace mt_kahypar {
              ("p-community-neighbour-sampling-threshold",
              po::value<size_t>(&context.preprocessing.community_detection.community_neighbour_sampling_threshold)->value_name(
                      "<size_t>")->default_value(std::numeric_limits<size_t>::max()),
+             "If set, then only sample if there are more neighbouring communities than the threshold")
+             ("p-community-neighbour-samples",
+             po::value<size_t>(&context.preprocessing.community_detection.community_neighbour_samples)->value_name(
+                     "<size_t>")->default_value(std::numeric_limits<size_t>::max()),
              "If set, then only this many neighbouring communities are considered in local moving");
     return options;
   }

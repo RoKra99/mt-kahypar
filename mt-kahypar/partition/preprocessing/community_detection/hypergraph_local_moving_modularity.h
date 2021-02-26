@@ -30,8 +30,7 @@ public:
     HypergraphLocalMovingModularity(ds::CommunityHypergraph& hypergraph, const Context& context, const bool deactivate_random = false) :
         //overall_checks(0UL),
         //pruned_by_old(0UL),
-        edge_contribution_time(0.0L),
-        exp_edge_contribution_time(0.0L),
+        _community_neighbour_samples(context.preprocessing.community_detection.community_neighbour_samples),
         _community_neighbour_sampling_threshold(context.preprocessing.community_detection.community_neighbour_sampling_threshold),
         _hyperedge_size_caching_threshold(context.preprocessing.community_detection.hyperedge_size_caching_threshold),
         _vertex_degree_sampling_threshold(context.coarsening.vertex_degree_sampling_threshold),
@@ -51,14 +50,12 @@ public:
 
             // ! calculates the best modularity move for the given node
             template<typename Map>
-            KAHYPAR_ATTRIBUTE_ALWAYS_INLINE PartitionID calculateBestMove(ds::CommunityHypergraph& chg, parallel::scalable_vector<HypernodeID>& communities, const HypernodeID v, Map& community_edge_contribution) {
+            PartitionID calculateBestMove(ds::CommunityHypergraph& chg, parallel::scalable_vector<HypernodeID>& communities, const HypernodeID v, Map& community_edge_contribution) {
                 ASSERT(community_edge_contribution.size() == 0);
-                //utils::Timer::instance().start_timer("calculate_best_move", "Calculate best move");
-                auto t = tbb::tick_count::now();
+                //utils::Timer::instance().start_timer("edge_contribution", "EdgeContribution");
                 const PartitionID comm_v = communities[v];
                 // sum of all edgeweights incident to v
                 HyperedgeWeight sum_of_edgeweights = 0;
-                //utils::Timer::instance().start_timer("edge_contribution", "EdgeContribution");
                 for (const HyperedgeID& he : chg.incidentEdges(v)) {
                     const HyperedgeWeight edge_weight = chg.edgeWeight(he);
                     sum_of_edgeweights += edge_weight;
@@ -102,18 +99,18 @@ public:
                 }
                 const HyperedgeWeight edge_contribution_c = -community_edge_contribution[comm_v];
                 //utils::Timer::instance().stop_timer("edge_contribution");
-                edge_contribution_time += (tbb::tick_count::now() - t).seconds();
-                t = tbb::tick_count::now();
                 //utils::Timer::instance().start_timer("exp_edge_contribution", "ExpectedEdgeContribution");
 
                 // ------------------------- Sampling --------------------------------------
-                const auto end = community_edge_contribution.end();
-                // const auto end = std::min(community_edge_contribution.begin() + _community_neighbour_sampling_threshold, community_edge_contribution.end());
-                // if (end != community_edge_contribution.end()) {
-                //     std::nth_element(community_edge_contribution.begin(), end, community_edge_contribution.end(), [&](const auto a, const auto b) {
-                //         return a.value < b.value;
-                //         });
-                // }
+                // const auto end = community_edge_contribution.end();
+                const auto end = _community_neighbour_sampling_threshold < community_edge_contribution.size()
+                    ? community_edge_contribution.begin() + _community_neighbour_samples : community_edge_contribution.end();
+                if (end != community_edge_contribution.end()) {
+                    // sorting on the dense part of the map => the sparse part isn't correct anymore
+                    std::nth_element(community_edge_contribution.begin(), end, community_edge_contribution.end(), [&](const auto a, const auto b) {
+                        return a.value < b.value;
+                        });
+                }
                 // -------------------------------------------------------------------------
 
                 const HyperedgeWeight vol_v = chg.nodeVolume(v);
@@ -132,7 +129,6 @@ public:
                 const HyperedgeWeight sum_of_edgeweights_minus_edgecontribution_c = sum_of_edgeweights - edge_contribution_c;
 
                 // expected edgecontribution starts here
-                // for (const auto& e : community_edge_contribution) {
                 for (auto it = community_edge_contribution.begin(); it != end; ++it) {
                     //++overall_checks;
                     const auto& e = *it;
@@ -144,8 +140,6 @@ public:
                     const HyperedgeWeight vol_destination_minus = _community_volumes[community];
                     const HyperedgeWeight vol_destination = vol_destination_minus + vol_v;
                     const HyperedgeWeight destination_edge_contribution = e.value + sum_of_edgeweights_minus_edgecontribution_c;
-
-
 
                     // delta will not be < 0
                     if ((destination_edge_contribution >= 0 || best_delta < destination_edge_contribution)
@@ -197,10 +191,8 @@ public:
                         best_community = community;
                     }
                 }
-                //utils::Timer::instance().stop_timer("exp_edge_contribution");
                 community_edge_contribution.clear();
-                exp_edge_contribution_time += (tbb::tick_count::now() - t).seconds();
-                //utils::Timer::instance().stop_timer("calculate_best_move");
+                //utils::Timer::instance().stop_timer("exp_edge_contribution");
                 return best_community;
             }
 
@@ -212,6 +204,7 @@ public:
                 _community_volumes[source_community] -= chg.nodeVolume(node_to_move);
                 communities[node_to_move] = destination_community;
                 for (const HyperedgeID& he : chg.incidentEdges(node_to_move)) {
+                    // remove has to be before add to ensure the amount of distinct communities per edge < edgeSize
                     chg.removeCommunityFromHyperedge(he, source_community);
                     chg.addCommunityToHyperedge(he, destination_community);
                 }
@@ -275,8 +268,6 @@ public:
 
             //parallel::AtomicWrapper<size_t> overall_checks;
             //parallel::AtomicWrapper<size_t> pruned_by_old;
-            parallel::AtomicWrapper<double> edge_contribution_time;
-            parallel::AtomicWrapper<double> exp_edge_contribution_time;
 
 private:
 
@@ -317,6 +308,7 @@ private:
         return LargeTmpRatingMap(3UL * std::min(num_nodes, _vertex_degree_sampling_threshold));
     }
 
+    const size_t _community_neighbour_samples;
     const size_t _community_neighbour_sampling_threshold;
     const size_t _hyperedge_size_caching_threshold;
     const size_t _vertex_degree_sampling_threshold;
