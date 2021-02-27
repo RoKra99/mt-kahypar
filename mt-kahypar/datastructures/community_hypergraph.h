@@ -69,11 +69,6 @@ public:
         computeAndSetInitialVolumes();
         computeAndSetCommunityCounts();
         allocateTmpCommunityHypergraphBuffer();
-        // size_t sum_of_d = 0;
-        // for (const auto& d : _valid_edge_sizes) {
-        //     sum_of_d += d;
-        // }
-        // std::cout << _valid_edge_sizes.size() << ',' << _valid_edge_sizes[_valid_edge_sizes.size() - 1] << ',' << sum_of_d << ',';
     }
 
 
@@ -212,8 +207,6 @@ private:
 
     void freeInternalData() {
         parallel::parallel_free(_node_volumes, _d_edge_weights);
-        _vol_v = 0;
-        _total_edge_weight = 0;
         if (_tmp_community_hypergraph_buffer) {
             delete(_tmp_community_hypergraph_buffer);
         }
@@ -223,22 +216,28 @@ private:
     // ! The volumes of the communities are the same since it starts with singleton communities
     // ! The total volume is the sum of all node volumes
     void computeAndSetInitialVolumes() {
-        for (const HypernodeID& hn : _hg->nodes()) {
+        tbb::enumerable_thread_specific<HyperedgeWeight> local_total_volume(0);
+        _hg->doParallelForAllNodes([&](const HypernodeID hn) {
             for (const HyperedgeID& he : _hg->incidentEdges(hn)) {
                 const HyperedgeWeight weight = _hg->edgeWeight(he);
                 _node_volumes[hn] += weight;
-                _vol_v += weight;
+                local_total_volume.local() += weight;
             }
-        }
+            });
+        _vol_v = local_total_volume.combine(std::plus<HyperedgeWeight>());
         ASSERT(_vol_v > 0);
     }
 
     // ! computes and sets the total edgeweight
     void computeAndSetTotalEdgeWeight() {
-        for (const HyperedgeID& hn : _hg->edges()) {
-            _total_edge_weight += edgeWeight(hn);
-            _d_edge_weights[edgeSize(hn)] += edgeWeight(hn);
-        }
+        tbb::enumerable_thread_specific<HyperedgeWeight> local_total_edge_weight(0);
+        _hg->doParallelForAllEdges([&](const HyperedgeID he) {
+            const HyperedgeWeight weight = _hg->edgeWeight(he);
+            _d_edge_weights[edgeSize(he)] += weight;
+             local_total_edge_weight.local() += weight;
+            });
+        _total_edge_weight = local_total_edge_weight.combine(std::plus<HyperedgeWeight>());
+
         for (size_t i = 0; i < _d_edge_weights.size(); ++i) {
             if (_d_edge_weights[i] > 0) {
                 _valid_edge_sizes.emplace_back(i);
@@ -248,10 +247,10 @@ private:
 
     // ! initializes a community count datastructures for all edges above a certain edgesize
     void computeAndSetCommunityCounts() {
-        for (const HyperedgeID& he : _hg->edges()) {
+        _hg->doParallelForAllEdges([&](const HyperedgeID he) {
             _community_counts[he] = edgeSize(he) > _context.preprocessing.community_detection.hyperedge_size_caching_threshold
                 ? std::make_unique<CommunityCount<Map>>(edgeSize(he), pins(he)) : std::unique_ptr<CommunityCount<Map>>(nullptr);
-        }
+            });
     }
 
     // ! Allocate the temporary contraction buffer
@@ -275,7 +274,7 @@ private:
     HyperedgeWeight _vol_v;
 
     // ! summed edgeweight for each edgesize
-    Array<HyperedgeWeight> _d_edge_weights;
+    Array<parallel::AtomicWrapper<HyperedgeWeight>> _d_edge_weights;
 
     // ! contains the indexes to all edgeSizes which occur in the graph
     parallel::scalable_vector<size_t> _valid_edge_sizes;
