@@ -142,8 +142,8 @@ public:
                     const HyperedgeWeight destination_edge_contribution = e.value + sum_of_edgeweights_minus_edgecontribution_c;
 
                     // delta will not be < 0
-                    if ((destination_edge_contribution >= 0 || best_delta < destination_edge_contribution)
-                        && vol_c_minus_vol_v <= vol_destination_minus) {
+                    if (destination_edge_contribution >= 0 || (best_delta < destination_edge_contribution
+                        && vol_c_minus_vol_v <= vol_destination_minus)) {
                         //++pruned_by_old;
                         continue;
                     }
@@ -178,9 +178,9 @@ public:
                             power_d_fraction *= math::fast_power(destination_fraction, remaining_d);
                             delta += static_cast<Volume>(chg.edgeWeightBySize(d)) * (powers_of_source_community[d] + power_d_fraction - power_d_fraction_minus);
                             biggest_d_yet = d;
-                            // if (delta > best_delta) {
-                            //     break;
-                            // }
+                            if (delta > best_delta) {
+                                break;
+                            }
                         }
                         // ASSERT((vol_c_minus_vol_v > vol_destination_minus && exp_edge_contribution < 0.0L)
                         //     || (vol_c_minus_vol_v < vol_destination_minus && exp_edge_contribution > 0.0L)
