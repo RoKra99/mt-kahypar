@@ -48,6 +48,8 @@ namespace mt_kahypar {
     str << "    Minimum Vertex Move Fraction:     " << params.min_vertex_move_fraction << std::endl;
     str << "    Vertex Degree Sampling Threshold: " << params.vertex_degree_sampling_threshold << std::endl;
     str << "    Hyperedge Size Caching Threshold: " << params.hyperedge_size_caching_threshold << std::endl;
+    str << "    Community Neighbour Sampling Threshold: " << params.community_neighbour_sampling_threshold << std::endl;
+    str << "    Community Neighbour Samples: " << params.community_neighbour_samples << std::endl;
     return str;
   }
 
