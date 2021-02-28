@@ -216,7 +216,8 @@ public:
 private:
 
     inline bool communityIsEligible(const ds::CommunityHypergraph& chg, PartitionID community, const HypernodeID v) {
-        return _community_sizes[community] + chg.nodeWeight(v) <= _community_size_threshold;
+        return _community_volumes[community] + chg.nodeVolume(v) <= _community_size_threshold;
+        //return _community_sizes[community] + chg.nodeWeight(v) <= _community_size_threshold;
     }
 
     KAHYPAR_ATTRIBUTE_ALWAYS_INLINE size_t ratingsFitIntoSmallMap(const ds::CommunityHypergraph& chg, const HypernodeID v) const {
