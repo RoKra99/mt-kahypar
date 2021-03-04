@@ -26,11 +26,17 @@ class CommunityHypergraph {
         Array<parallel::AtomicWrapper<HyperedgeWeight>> tmp_node_volumes;
     };
 
+    struct Multipin {
+        HypernodeID id;
+        HypernodeID multiplicity;
+    };
+
 public:
 
     using EdgeSizes = parallel::scalable_vector<size_t>;
     using HyperedgeIterator = typename Hypergraph::HyperedgeIterator;
     using IncidenceIterator = typename Hypergraph::IncidenceIterator;
+    using MultipinIterator = typename Array<Multipin>::const_iterator;
     using IncidentNetsIterator = typename Hypergraph::IncidentNetsIterator;
     using EdgeSizeIterator = typename EdgeSizes::const_iterator;
     //using Map = RobinHoodMap<PartitionID, size_t>;
@@ -63,6 +69,14 @@ public:
                 _d_edge_weights.resize("Preprocessing", "d_edge_weights", hypergraph.maxEdgeSize() + 1, true, true);
             }, [&] {
                 _community_count_locks.resize("Preprocessing", "community_count_locks", hypergraph.initialNumEdges());
+            }, [&] {
+                _multipin_incidence_array.resize("Preprocessing", "multipin_incidence_array", hypergraph.initialNumPins());
+            });
+
+        // TODO: without accessing private members of hypergraph
+        tbb::parallel_for(0U, hypergraph.initialNumPins(), [&](const HypernodeID hn) {
+            _multipin_incidence_array[hn].id = hypergraph._incidence_array[hn];
+            _multipin_incidence_array[hn].multiplicity = 1U;
             });
 
         computeAndSetTotalEdgeWeight();
@@ -100,6 +114,16 @@ public:
     // ! Returns a range to loop over the pins of hyperedge e.
     IteratorRange<IncidenceIterator> pins(const HyperedgeID he) const {
         return _hg->pins(he);
+    }
+
+    // ! Returns a range to loop over the pins and multiplicities of hyperedge e.
+    IteratorRange<MultipinIterator> multipins(const HyperedgeID e) const {
+        ASSERT(!_hg->hyperedge(e).isDisabled(), "Hyperedge" << e << "is disabled");
+        const size_t start = _hg->hyperedge(e).firstEntry();
+        const size_t end = _hg->hyperedge(e).firstInvalidEntry();
+        return IteratorRange<MultipinIterator>(
+            _multipin_incidence_array.cbegin() + start,
+            _multipin_incidence_array.cbegin() + end);
     }
 
     // ! Returns a range to loop over the incident nets of hypernode u.
@@ -234,7 +258,7 @@ private:
         _hg->doParallelForAllEdges([&](const HyperedgeID he) {
             const HyperedgeWeight weight = _hg->edgeWeight(he);
             _d_edge_weights[edgeSize(he)] += weight;
-             local_total_edge_weight.local() += weight;
+            local_total_edge_weight.local() += weight;
             });
         _total_edge_weight = local_total_edge_weight.combine(std::plus<HyperedgeWeight>());
 
@@ -260,6 +284,8 @@ private:
                 _hg->_num_hypernodes);
         }
     }
+
+    Array<Multipin> _multipin_incidence_array;
 
     // ! contains the cut communities for each hyperedge
     parallel::scalable_vector<std::unique_ptr<CommunityCount<Map>>> _community_counts;

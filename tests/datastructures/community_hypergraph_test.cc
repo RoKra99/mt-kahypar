@@ -69,6 +69,24 @@ public:
         }
     }
 
+    void verifyMultipins(const CommunityHypergraph& chg,
+        const std::vector<HyperedgeID> hyperedges,
+        const std::vector<std::set<std::pair<HypernodeID, HypernodeID>>>& references,
+        bool log = false) {
+        ASSERT(hyperedges.size() == references.size());
+        for (size_t i = 0; i < hyperedges.size(); ++i) {
+            const HyperedgeID he = hyperedges[i];
+            const std::set<std::pair<HypernodeID, HypernodeID>>& reference = references[i];
+            size_t count = 0;
+            for (const auto& mp : chg.multipins(he)) {
+                if (log) LOG << V(he) << V(mp.id) << V(mp.multiplicity);
+                ASSERT_TRUE(reference.find(std::make_pair(mp.id, mp.multiplicity)) != reference.end()) << V(he) << V(mp.id) << V(mp.multiplicity);
+                count++;
+            }
+            ASSERT_EQ(count, reference.size());
+        }
+    }
+
     void verifyCommunityCounts(CommunityHypergraph& chg, const HyperedgeID he, std::vector<std::set<HypernodeID>> exp_communities) {
         size_t count = 0;
         for (auto& e : chg.singleCuts(he)) {
@@ -137,6 +155,11 @@ TYPED_TEST(ACommunityHypergraph, HasCorrectCommunityCounts) {
     this->verifyCommunityCounts(chg, 3, { {2, 5, 6},{} });
 }
 
+TYPED_TEST(ACommunityHypergraph, HasCorrectMultipinIncidenceArray) {
+    CommunityHypergraph chg(this->hypergraph, this->context);
+    this->verifyMultipins(chg, {0,1,2,3}, {{{0,1},{2,1}}, {{0,1},{1,1},{3,1},{4,1}}, {{3,1},{4,1},{6,1}}, {{2,1},{5,1},{6,1}}});
+}
+
 TYPED_TEST(ACommunityHypergraph, ContractsCommunities1) {
     CommunityHypergraph chg(this->hypergraph, this->context);
     parallel::scalable_vector<HypernodeID> c_communities = { 1,4,1,5,5,4,5 };
@@ -189,9 +212,9 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities1) {
     ASSERT_EQ(6, cchg.nodeVolume(2));
 
     // verify hypergraph structure
-    this->verifyIncidentNets(hg, 0, { 0, 1 }, true);
-    this->verifyIncidentNets(hg, 1, { 0, 1 }, true);
-    this->verifyIncidentNets(hg, 2, { 0, 1 }, true);
+    this->verifyIncidentNets(hg, 0, { 0, 1 });
+    this->verifyIncidentNets(hg, 1, { 0, 1 });
+    this->verifyIncidentNets(hg, 2, { 0, 1 });
     this->verifyPins(hg, { 0,1 }, { {0,1,2,2}, {0,1,2} });
 }
 
