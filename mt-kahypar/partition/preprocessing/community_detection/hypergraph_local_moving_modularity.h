@@ -52,7 +52,6 @@ public:
             template<typename Map>
             PartitionID calculateBestMove(ds::CommunityHypergraph& chg, parallel::scalable_vector<HypernodeID>& communities, const HypernodeID v, Map& community_edge_contribution) {
                 ASSERT(community_edge_contribution.size() == 0);
-                //utils::Timer::instance().start_timer("edge_contribution", "EdgeContribution");
                 const PartitionID comm_v = communities[v];
                 // sum of all edgeweights incident to v
                 HyperedgeWeight sum_of_edgeweights = 0;
@@ -98,8 +97,6 @@ public:
                     }
                 }
                 const HyperedgeWeight edge_contribution_c = -community_edge_contribution[comm_v];
-                //utils::Timer::instance().stop_timer("edge_contribution");
-                //utils::Timer::instance().start_timer("exp_edge_contribution", "ExpectedEdgeContribution");
 
                 // ------------------------- Sampling --------------------------------------
                 // const auto end = community_edge_contribution.end();
@@ -192,7 +189,6 @@ public:
                     }
                 }
                 community_edge_contribution.clear();
-                //utils::Timer::instance().stop_timer("exp_edge_contribution");
                 return best_community;
             }
 
