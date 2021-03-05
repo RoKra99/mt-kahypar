@@ -19,16 +19,17 @@ class CommunityHypergraph {
     // ! Struct is allocated on top level Communityhypergraph and passed to each contracted
     // ! hypergraph such that memory can be reused in consecutive contractions.
     struct TmpCommunityHypergraphBuffer {
-        explicit TmpCommunityHypergraphBuffer(const HypernodeID num_hypernodes) {
-            tmp_node_volumes.resize("Preprocessing", "tmp_community_volumes", num_hypernodes);
+        explicit TmpCommunityHypergraphBuffer(const HypernodeID num_hypernodes, const HypernodeID num_pins) {
+            tbb::parallel_invoke([&]{
+                tmp_node_volumes.resize("Preprocessing", "tmp_community_volumes", num_hypernodes);
+            }, [&] {
+                multipin_mapping.resize("Preprocessing", "multipin_mapping", num_pins);
+            });
+            
         }
 
         Array<parallel::AtomicWrapper<HyperedgeWeight>> tmp_node_volumes;
-    };
-
-    struct Multipin {
-        HypernodeID id;
-        HypernodeID multiplicity;
+        Array<HypernodeID> multipin_mapping;
     };
 
 public:
@@ -71,6 +72,8 @@ public:
                 _community_count_locks.resize("Preprocessing", "community_count_locks", hypergraph.initialNumEdges());
             }, [&] {
                 _multipin_incidence_array.resize("Preprocessing", "multipin_incidence_array", hypergraph.initialNumPins());
+            }, [&] {
+                _multipin_indexes.resize("Preprocessing", "multipin_indexes", hypergraph.initialNumEdges() + 1);
             });
 
         // TODO: without accessing private members of hypergraph
@@ -78,6 +81,11 @@ public:
             _multipin_incidence_array[hn].id = hypergraph._incidence_array[hn];
             _multipin_incidence_array[hn].multiplicity = 1U;
             });
+
+        tbb::parallel_for(0U, hypergraph.initialNumEdges(), [&](const HyperedgeID he) {
+            _multipin_indexes[he] = _hg->hyperedge(he).firstEntry();
+        });
+        _multipin_indexes[hypergraph.initialNumEdges()] = hypergraph.initialNumPins();
 
         computeAndSetTotalEdgeWeight();
         computeAndSetInitialVolumes();
@@ -119,8 +127,10 @@ public:
     // ! Returns a range to loop over the pins and multiplicities of hyperedge e.
     IteratorRange<MultipinIterator> multipins(const HyperedgeID e) const {
         ASSERT(!_hg->hyperedge(e).isDisabled(), "Hyperedge" << e << "is disabled");
-        const size_t start = _hg->hyperedge(e).firstEntry();
-        const size_t end = _hg->hyperedge(e).firstInvalidEntry();
+        ASSERT(e < _multipin_indexes.size());
+        ASSERT(e + 1 < _multipin_indexes.size());
+        const size_t start = _multipin_indexes[e];
+        const size_t end = _multipin_indexes[e + 1];
         return IteratorRange<MultipinIterator>(
             _multipin_incidence_array.cbegin() + start,
             _multipin_incidence_array.cbegin() + end);
@@ -281,11 +291,13 @@ private:
     void allocateTmpCommunityHypergraphBuffer() {
         if (!_tmp_community_hypergraph_buffer) {
             _tmp_community_hypergraph_buffer = new TmpCommunityHypergraphBuffer(
-                _hg->_num_hypernodes);
+                _hg->_num_hypernodes, _hg->_num_pins);
         }
     }
 
     Array<Multipin> _multipin_incidence_array;
+
+    Array<size_t> _multipin_indexes;
 
     // ! contains the cut communities for each hyperedge
     parallel::scalable_vector<std::unique_ptr<CommunityCount<Map>>> _community_counts;

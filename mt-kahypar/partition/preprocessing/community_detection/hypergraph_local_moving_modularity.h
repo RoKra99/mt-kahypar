@@ -61,7 +61,7 @@ public:
                     // cuts for this hyperedge are cached
                     if (chg.edgeSize(he) > _hyperedge_size_caching_threshold) {
                         for (const PartitionID community : chg.singleCuts(he)) {
-                            ASSERT(static_cast<HypernodeID>(community) < chg.initialNumNodes() && community > 0);
+                            ASSERT(static_cast<HypernodeID>(community) < chg.initialNumNodes() && community >= 0);
                             community_edge_contribution[community] -= edge_weight;
                         }
 
@@ -78,6 +78,7 @@ public:
                         CacheEfficientRatingMap& community_neighbours_of_edge = _community_neighbours_of_edge.local();
                         ASSERT(community_neighbours_of_edge.size() == 0);
                         for (const auto& mp : chg.multipins(he)) {
+                            ASSERT(mp.id < chg.initialNumNodes());
                             const HypernodeID hn = mp.id;
                             const PartitionID comm_hn = communities[hn];
                             if (hn != v) {

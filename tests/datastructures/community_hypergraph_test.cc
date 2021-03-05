@@ -216,6 +216,7 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities1) {
     this->verifyIncidentNets(hg, 1, { 0, 1 });
     this->verifyIncidentNets(hg, 2, { 0, 1 });
     this->verifyPins(hg, { 0,1 }, { {0,1,2,2}, {0,1,2} });
+    this->verifyMultipins(cchg, {0,1}, {{{0,1},{1,1},{2,2}}, {{0,1},{1,1},{2,1}}}, true);
 }
 
 TYPED_TEST(ACommunityHypergraph, ContractsCommunities2) {
@@ -278,6 +279,7 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities2) {
     this->verifyIncidentNets(hg, 1, { 1, 2 });
     this->verifyIncidentNets(hg, 2, { 0, 2 });
     this->verifyPins(hg, { 0,1,2 }, { {0,2}, {0,0,1,1}, {1,1,2} });
+    this->verifyMultipins(cchg, {0,1,2}, {{{0,1},{2,1}}, {{0,2},{1,2}}, {{1,2},{2,1}}}, true);
 }
 
 TYPED_TEST(ACommunityHypergraph, ContractsCommunities3) {
@@ -336,6 +338,7 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities3) {
     this->verifyIncidentNets(hg, 1, { 0, 1 });
     this->verifyIncidentNets(hg, 2, { 1 });
     this->verifyPins(hg, { 0,1 }, { {0,0,0,1}, {0,1,2} });
+    this->verifyMultipins(cchg, {0,1}, {{{0,3},{1,1}}, {{0,1},{1,1},{2,1}}}, true);
 }
 
 TYPED_TEST(ACommunityHypergraph, ContractsCommunities4) {

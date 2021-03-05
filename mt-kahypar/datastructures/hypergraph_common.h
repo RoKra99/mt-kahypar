@@ -51,17 +51,22 @@ using ArcWeight = double;
 //Community Hypergraph
 using Volume = long double;
 
+struct Multipin {
+  HypernodeID id;
+  HypernodeID multiplicity;
+};
+
 struct Arc {
   NodeID head;
   ArcWeight weight;
 
   Arc() :
     head(0),
-    weight(0) { }
+    weight(0) {}
 
   Arc(NodeID head, ArcWeight weight) :
     head(head),
-    weight(weight) { }
+    weight(weight) {}
 };
 
 // Constant Declarations
@@ -75,7 +80,7 @@ static constexpr HypernodeID invalidNode = std::numeric_limits<HypernodeID>::max
 static constexpr Gain invalidGain = std::numeric_limits<Gain>::min();
 
 namespace ds {
-  using Clustering = vec<PartitionID>;
+using Clustering = vec<PartitionID>;
 }
 
 struct Move {
@@ -98,7 +103,7 @@ using MoveID = uint32_t;
 using SearchID = uint32_t;
 
 struct NoOpDeltaFunc {
-  void operator() (const HyperedgeID, const HyperedgeWeight, const HypernodeID, const HypernodeID, const HypernodeID) { }
+  void operator() (const HyperedgeID, const HyperedgeWeight, const HypernodeID, const HypernodeID, const HypernodeID) {}
 };
 
 
@@ -109,15 +114,15 @@ struct ParallelHyperedge {
 
 // ! Helper function to compute delta for cut-metric after changeNodePart
 static HyperedgeWeight cutDelta(const HyperedgeID,
-                                const HyperedgeWeight edge_weight,
-                                const HypernodeID edge_size,
-                                const HypernodeID pin_count_in_from_part_after,
-                                const HypernodeID pin_count_in_to_part_after) {
-  if ( edge_size > 1 ) {
+  const HyperedgeWeight edge_weight,
+  const HypernodeID edge_size,
+  const HypernodeID pin_count_in_from_part_after,
+  const HypernodeID pin_count_in_to_part_after) {
+  if (edge_size > 1) {
     if (pin_count_in_to_part_after == edge_size) {
       return -edge_weight;
     } else if (pin_count_in_from_part_after == edge_size - 1 &&
-               pin_count_in_to_part_after == 1) {
+      pin_count_in_to_part_after == 1) {
       return edge_weight;
     }
   }
@@ -126,12 +131,12 @@ static HyperedgeWeight cutDelta(const HyperedgeID,
 
 // ! Helper function to compute delta for km1-metric after changeNodePart
 static HyperedgeWeight km1Delta(const HyperedgeID,
-                                const HyperedgeWeight edge_weight,
-                                const HypernodeID,
-                                const HypernodeID pin_count_in_from_part_after,
-                                const HypernodeID pin_count_in_to_part_after) {
+  const HyperedgeWeight edge_weight,
+  const HypernodeID,
+  const HypernodeID pin_count_in_from_part_after,
+  const HypernodeID pin_count_in_to_part_after) {
   return (pin_count_in_to_part_after == 1 ? edge_weight : 0) +
-         (pin_count_in_from_part_after == 0 ? -edge_weight : 0);
+    (pin_count_in_from_part_after == 0 ? -edge_weight : 0);
 }
 
 } // namespace mt_kahypar

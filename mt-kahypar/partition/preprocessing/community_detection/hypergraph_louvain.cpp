@@ -23,9 +23,9 @@ parallel::scalable_vector<HypernodeID> hypergraph_local_moving_contract_recurse(
             LOG << "after" << after;
         }
         ds::CommunityHypergraph coarse_chg = chg.contract(coarse_hg, communities);
-        if (local_moving_round >= 1 && local_moving_round <= 5) {
-            std::cout << coarse_chg.initialNumNodes() << ',' << coarse_chg.initialNumEdges() << ',';
-        }
+        // if (local_moving_round >= 1 && local_moving_round <= 5) {
+        //     std::cout << coarse_chg.initialNumNodes() << ',' << coarse_chg.initialNumEdges() << ',';
+        // }
         if (debug) {
             hlmm.initializeCommunityVolumes(chg, communities);
             parallel::scalable_vector<HypernodeID> comm(coarse_chg.initialNumNodes());
@@ -48,9 +48,9 @@ parallel::scalable_vector<HypernodeID> hypergraph_local_moving_contract_recurse(
 parallel::scalable_vector<HypernodeID> hypergraph_louvain(ds::CommunityHypergraph& chg, const Context& context, const bool deactivate_random) {
     HypergraphLocalMovingModularity hlmm(chg, context, deactivate_random);
     parallel::scalable_vector<HypernodeID> communities = community_detection::hypergraph_local_moving_contract_recurse(chg, hlmm);
-    for (size_t i = local_moving_round; i <= 5; ++i) {
-        std::cout << 0 << ',' << 0 << ',';
-    }
+    // for (size_t i = local_moving_round; i <= 5; ++i) {
+    //     std::cout << 0 << ',' << 0 << ',';
+    // }
     return communities;
 }
 }
