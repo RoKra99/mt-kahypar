@@ -6,10 +6,6 @@ static size_t local_moving_round = 0;
 parallel::scalable_vector<HypernodeID> hypergraph_local_moving_contract_recurse(ds::CommunityHypergraph& chg, HypergraphLocalMovingModularity& hlmm) {
     static constexpr bool debug = false;
     parallel::scalable_vector<HypernodeID> communities(chg.initialNumNodes());
-    //LOG << local_moving_round << ": " << chg.initialNumNodes();
-    if (local_moving_round == 0) {
-        std::cout << chg.initialNumNodes() << ',' << chg.initialNumEdges() << ',';
-    }
     utils::Timer::instance().start_timer("local_moving " + std::to_string(local_moving_round), "Local Moving" + std::to_string(local_moving_round));
     //utils::Timer::instance().start_timer("hyp_local_moving", "Hypergraph Local Moving");
     bool clustering_changed = hlmm.localMoving(chg, communities);
@@ -23,9 +19,6 @@ parallel::scalable_vector<HypernodeID> hypergraph_local_moving_contract_recurse(
             LOG << "after" << after;
         }
         ds::CommunityHypergraph coarse_chg = chg.contract(coarse_hg, communities);
-        // if (local_moving_round >= 1 && local_moving_round <= 5) {
-        //     std::cout << coarse_chg.initialNumNodes() << ',' << coarse_chg.initialNumEdges() << ',';
-        // }
         if (debug) {
             hlmm.initializeCommunityVolumes(chg, communities);
             parallel::scalable_vector<HypernodeID> comm(coarse_chg.initialNumNodes());
