@@ -20,12 +20,12 @@ class CommunityHypergraph {
     // ! hypergraph such that memory can be reused in consecutive contractions.
     struct TmpCommunityHypergraphBuffer {
         explicit TmpCommunityHypergraphBuffer(const HypernodeID num_hypernodes, const HypernodeID num_pins) {
-            tbb::parallel_invoke([&]{
+            tbb::parallel_invoke([&] {
                 tmp_node_volumes.resize("Preprocessing", "tmp_community_volumes", num_hypernodes);
-            }, [&] {
-                multipin_mapping.resize("Preprocessing", "multipin_mapping", num_pins);
-            });
-            
+                }, [&] {
+                    multipin_mapping.resize("Preprocessing", "multipin_mapping", num_pins);
+                });
+
         }
 
         Array<parallel::AtomicWrapper<HyperedgeWeight>> tmp_node_volumes;
@@ -37,7 +37,8 @@ public:
     using EdgeSizes = parallel::scalable_vector<size_t>;
     using HyperedgeIterator = typename Hypergraph::HyperedgeIterator;
     using IncidenceIterator = typename Hypergraph::IncidenceIterator;
-    using MultipinIterator = typename Array<Multipin>::const_iterator;
+    //using MultipinIterator = typename Array<Multipin>::const_iterator;
+    using IDIterator = typename Array<HypernodeID>::const_iterator;
     using IncidentNetsIterator = typename Hypergraph::IncidentNetsIterator;
     using EdgeSizeIterator = typename EdgeSizes::const_iterator;
     //using Map = RobinHoodMap<PartitionID, size_t>;
@@ -71,20 +72,27 @@ public:
             }, [&] {
                 _community_count_locks.resize("Preprocessing", "community_count_locks", hypergraph.initialNumEdges());
             }, [&] {
-                _multipin_incidence_array.resize("Preprocessing", "multipin_incidence_array", hypergraph.initialNumPins());
+                //_multipin_incidence_array.resize("Preprocessing", "multipin_incidence_array", hypergraph.initialNumPins());
+                _multipin_id.resize("Preprocessing", "multipin_id", hypergraph.initialNumPins());
+            }, [&] {
+                _multipin_multiplicity.resize("Preprocessing", "multipin_mulitplicity", hypergraph.initialNumPins());
             }, [&] {
                 _multipin_indexes.resize("Preprocessing", "multipin_indexes", hypergraph.initialNumEdges() + 1);
             });
 
         // TODO: without accessing private members of hypergraph
-        tbb::parallel_for(0U, hypergraph.initialNumPins(), [&](const HypernodeID hn) {
-            _multipin_incidence_array[hn].id = hypergraph._incidence_array[hn];
-            _multipin_incidence_array[hn].multiplicity = 1U;
+        // tbb::parallel_for(0U, hypergraph.initialNumPins(), [&](const HypernodeID hn) {
+        //     _multipin_incidence_array[hn].id = hypergraph._incidence_array[hn];
+        //     _multipin_incidence_array[hn].multiplicity = 1U;
+        //     });
+        _multipin_multiplicity.assign(hypergraph.initialNumPins(), 1);
+        tbb::parallel_for(0U, hypergraph.initialNumPins(), [&](const HypernodeID i) {
+            _multipin_id[i] = hypergraph._incidence_array[i];
             });
 
         tbb::parallel_for(0U, hypergraph.initialNumEdges(), [&](const HyperedgeID he) {
             _multipin_indexes[he] = _hg->hyperedge(he).firstEntry();
-        });
+            });
         _multipin_indexes[hypergraph.initialNumEdges()] = hypergraph.initialNumPins();
 
         computeAndSetTotalEdgeWeight();
@@ -125,15 +133,21 @@ public:
     }
 
     // ! Returns a range to loop over the pins and multiplicities of hyperedge e.
-    IteratorRange<MultipinIterator> multipins(const HyperedgeID e) const {
-        ASSERT(!_hg->hyperedge(e).isDisabled(), "Hyperedge" << e << "is disabled");
-        ASSERT(e < _multipin_indexes.size());
-        ASSERT(e + 1 < _multipin_indexes.size());
+    // IteratorRange<MultipinIterator> multipins(const HyperedgeID e) const {
+    //     ASSERT(!_hg->hyperedge(e).isDisabled(), "Hyperedge" << e << "is disabled");
+    //     ASSERT(e < _multipin_indexes.size());
+    //     ASSERT(e + 1 < _multipin_indexes.size());
+    //     const size_t start = _multipin_indexes[e];
+    //     const size_t end = _multipin_indexes[e + 1];
+    //     return IteratorRange<MultipinIterator>(
+    //         _multipin_incidence_array.cbegin() + start,
+    //         _multipin_incidence_array.cbegin() + end);
+    // }
+
+    IteratorRange<IDIterator> multipins(const HyperedgeID e) const {
         const size_t start = _multipin_indexes[e];
         const size_t end = _multipin_indexes[e + 1];
-        return IteratorRange<MultipinIterator>(
-            _multipin_incidence_array.cbegin() + start,
-            _multipin_incidence_array.cbegin() + end);
+        return IteratorRange<IDIterator>(_multipin_id.cbegin() + start, _multipin_id.cbegin() + end);
     }
 
     // ! Returns a range to loop over the incident nets of hypernode u.
@@ -295,7 +309,11 @@ private:
         }
     }
 
-    Array<Multipin> _multipin_incidence_array;
+    //Array<Multipin> _multipin_incidence_array;
+
+    Array<HypernodeID> _multipin_id;
+
+    Array<HypernodeID> _multipin_multiplicity;
 
     Array<size_t> _multipin_indexes;
 

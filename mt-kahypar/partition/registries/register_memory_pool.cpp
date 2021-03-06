@@ -52,7 +52,9 @@ namespace mt_kahypar {
       pool.register_memory_chunk("Preprocessing", "node_volumes", num_hypernodes, sizeof(HyperedgeWeight));
       pool.register_memory_chunk("Preprocessing", "d_edge_weights", max_edge_size + 1, sizeof(HyperedgeWeight));
       pool.register_memory_chunk("Preprocessing", "multipin_mapping", num_pins, sizeof(HypernodeID));
-      pool.register_memory_chunk("Preprocessing", "multipin_incidence_array", num_pins, sizeof(Multipin));
+      //pool.register_memory_chunk("Preprocessing", "multipin_incidence_array", num_pins, sizeof(Multipin));
+      pool.register_memory_chunk("Preprocessing", "multipin_id", num_pins, sizeof(HypernodeID));
+      pool.register_memory_chunk("Preprocessing", "multipin_mulitplicity", num_pins, sizeof(HypernodeID));
       pool.register_memory_chunk("Preprocessing", "multipin_indexes", num_hyperedges + 1, sizeof(size_t));
 
       // Old Modualrity

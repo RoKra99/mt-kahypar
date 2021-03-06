@@ -70,15 +70,17 @@ CommunityHypergraph CommunityHypergraph::contract(StaticHypergraph& hypergraph, 
         const size_t incidence_array_end = hypergraph.hyperedge(he).firstInvalidEntry();
         HypernodeID previous = incidence_array[incidence_array_start];
         size_t write_pos = multipin_mapping_prefix_sum[incidence_array_start];
-        ASSERT(he < _multipin_indexes.size() && write_pos < _multipin_incidence_array.size());
+        //ASSERT(he < _multipin_indexes.size() && write_pos < _multipin_incidence_array.size());
         _multipin_indexes[he] = write_pos;
         HypernodeID count = 0;
         for (size_t i = incidence_array_start; i < incidence_array_end; ++i) {
             if (previous != incidence_array[i]) {
-                ASSERT(_multipin_incidence_array.begin() + write_pos < _multipin_incidence_array.end());
+                //ASSERT(_multipin_incidence_array.begin() + write_pos < _multipin_incidence_array.end());
                 ASSERT(previous < hypergraph.initialNumNodes());
-                _multipin_incidence_array[write_pos].id = previous;
-                _multipin_incidence_array[write_pos].multiplicity = count;
+                //_multipin_incidence_array[write_pos].id = previous;
+                //_multipin_incidence_array[write_pos].multiplicity = count;
+                _multipin_id[write_pos] = previous;
+                _multipin_multiplicity[write_pos] = count;
                 previous = incidence_array[i];
                 count = 1;
                 ++write_pos;
@@ -86,12 +88,16 @@ CommunityHypergraph CommunityHypergraph::contract(StaticHypergraph& hypergraph, 
                 ++count;
             }
         }
-        _multipin_incidence_array[write_pos].id = previous;
-        _multipin_incidence_array[write_pos].multiplicity = count;
+        //_multipin_incidence_array[write_pos].id = previous;
+        //_multipin_incidence_array[write_pos].multiplicity = count;
+        _multipin_id[write_pos] = previous;
+        _multipin_multiplicity[write_pos] = count;
         });
     _multipin_indexes[num_hyperedges] = multipin_mapping_prefix_sum[num_pins];
     chg._multipin_indexes = std::move(_multipin_indexes);
-    chg._multipin_incidence_array = std::move(_multipin_incidence_array);
+    //chg._multipin_incidence_array = std::move(_multipin_incidence_array);
+    chg._multipin_id = std::move(_multipin_id);
+    chg._multipin_multiplicity = std::move(_multipin_multiplicity);
     chg._tmp_community_hypergraph_buffer = _tmp_community_hypergraph_buffer;
     _tmp_community_hypergraph_buffer = nullptr;
     utils::Timer::instance().stop_timer("community_specific");
