@@ -77,9 +77,7 @@ public:
                     } else { // hyperedge is not cached
                         CacheEfficientRatingMap& community_neighbours_of_edge = _community_neighbours_of_edge.local();
                         ASSERT(community_neighbours_of_edge.size() == 0);
-                        for (const HypernodeID& hn : chg.multipins(he)) {
-                            ASSERT(mp.id < chg.initialNumNodes());
-                            //const HypernodeID hn = mp.id;
+                        for (const HypernodeID& hn : chg.pins(he)) {
                             const PartitionID comm_hn = communities[hn];
                             if (hn != v) {
                                 community_neighbours_of_edge[comm_hn] += 1U;

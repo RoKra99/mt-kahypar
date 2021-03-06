@@ -180,19 +180,16 @@ namespace mt_kahypar::ds {
           // Remove duplicates and disabled vertices
           auto first_entry_it = tmp_incidence_array.begin() + incidence_array_start;
           std::sort(first_entry_it, tmp_incidence_array.begin() + incidence_array_end);
-          //TODO: save inner edges for debugging (modularity calculation) always remove multipins
-          if ( remove_multi_pins || (*first_entry_it == *(tmp_incidence_array.begin() + incidence_array_end - 1))) {
-            auto first_invalid_entry_it = std::unique(first_entry_it, tmp_incidence_array.begin() + incidence_array_end);
-            while ( first_entry_it != first_invalid_entry_it && *(first_invalid_entry_it - 1) == kInvalidHypernode ) {
-              --first_invalid_entry_it;
-            }
-          
-            // Update size of hyperedge in temporary hyperedge buffer
-            contracted_size = std::distance(
-                    tmp_incidence_array.begin() + incidence_array_start, first_invalid_entry_it);
-          } else {
-            contracted_size = edgeSize(he);
+
+          auto first_invalid_entry_it = std::unique(first_entry_it, tmp_incidence_array.begin() + incidence_array_end);
+          while ( first_entry_it != first_invalid_entry_it && *(first_invalid_entry_it - 1) == kInvalidHypernode ) {
+            --first_invalid_entry_it;
           }
+          
+          // Update size of hyperedge in temporary hyperedge buffer
+          contracted_size = std::distance(
+                  tmp_incidence_array.begin() + incidence_array_start, first_invalid_entry_it);
+
           tmp_hyperedges[he].setSize(contracted_size);
 
           
