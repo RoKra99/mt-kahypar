@@ -1,17 +1,14 @@
 #include "community_hypergraph.h"
 
 #include "mt-kahypar/parallel/parallel_prefix_sum.h"
-#include "mt-kahypar/datastructures/concurrent_bucket_map.h"
 #include "mt-kahypar/utils/timer.h"
-
-#include <tbb/parallel_reduce.h>
 
 namespace mt_kahypar::ds {
 
 //TODO:  "single pin edges" save them for dbg purposes
 CommunityHypergraph CommunityHypergraph::contract(StaticHypergraph& hypergraph, parallel::scalable_vector<HypernodeID>& communities) {
     //utils::Timer::instance().start_timer("community_hypergraph_contract", "CommunityHypergaph Contraction");
-    hypergraph = _hg->contract(communities, 0, false);
+    hypergraph = _hg->contract(communities, 0);
     //utils::Timer::instance().start_timer("community_specific", "Community Specific");
     CommunityHypergraph chg(_context);
     chg._hg = &hypergraph;

@@ -57,8 +57,7 @@ namespace mt_kahypar::ds {
    */
   StaticHypergraph StaticHypergraph::contract(
           parallel::scalable_vector<HypernodeID>& communities,
-          const TaskGroupID /* task_group_id */,
-          const bool remove_multi_pins) {
+          const TaskGroupID /* task_group_id */) {
 
     ASSERT(communities.size() == _num_hypernodes);
 
