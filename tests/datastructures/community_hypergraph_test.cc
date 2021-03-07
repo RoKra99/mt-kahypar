@@ -69,24 +69,6 @@ public:
         }
     }
 
-    void verifyMultipins(const CommunityHypergraph& chg,
-        const std::vector<HyperedgeID> hyperedges,
-        const std::vector<std::set<std::pair<HypernodeID, HypernodeID>>>& references,
-        bool log = false) {
-        ASSERT(hyperedges.size() == references.size());
-        for (size_t i = 0; i < hyperedges.size(); ++i) {
-            const HyperedgeID he = hyperedges[i];
-            const std::set<std::pair<HypernodeID, HypernodeID>>& reference = references[i];
-            size_t count = 0;
-            for (const auto& mp : chg.multipins(he)) {
-                if (log) LOG << V(he) << V(mp.id) << V(mp.multiplicity);
-                ASSERT_TRUE(reference.find(std::make_pair(mp.id, mp.multiplicity)) != reference.end()) << V(he) << V(mp.id) << V(mp.multiplicity);
-                count++;
-            }
-            ASSERT_EQ(count, reference.size());
-        }
-    }
-
     void verifyCommunityCounts(CommunityHypergraph& chg, const HyperedgeID he, std::vector<std::set<HypernodeID>> exp_communities) {
         size_t count = 0;
         for (auto& e : chg.singleCuts(he)) {
@@ -155,11 +137,6 @@ TYPED_TEST(ACommunityHypergraph, HasCorrectCommunityCounts) {
     this->verifyCommunityCounts(chg, 3, { {2, 5, 6},{} });
 }
 
-TYPED_TEST(ACommunityHypergraph, HasCorrectMultipinIncidenceArray) {
-    CommunityHypergraph chg(this->hypergraph, this->context);
-    this->verifyMultipins(chg, {0,1,2,3}, {{{0,1},{2,1}}, {{0,1},{1,1},{3,1},{4,1}}, {{3,1},{4,1},{6,1}}, {{2,1},{5,1},{6,1}}});
-}
-
 TYPED_TEST(ACommunityHypergraph, ContractsCommunities1) {
     CommunityHypergraph chg(this->hypergraph, this->context);
     parallel::scalable_vector<HypernodeID> c_communities = { 1,4,1,5,5,4,5 };
@@ -177,10 +154,10 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities1) {
 
     // stats
     ASSERT_EQ(3, cchg.initialNumNodes());
-    ASSERT_EQ(2, cchg.initialNumEdges());
+    ASSERT_EQ(1, cchg.initialNumEdges());
     ASSERT_EQ(12, cchg.totalVolume());
     ASSERT_EQ(4, cchg.totalEdgeWeight());
-    ASSERT_EQ(7, hg.initialNumPins());
+    ASSERT_EQ(3, hg.initialNumPins());
 
     // edgeWeight by size
     ASSERT_EQ(1, cchg.edgeWeightBySize(2));
@@ -195,16 +172,13 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities1) {
     }
 
     // verify edge sizes
-    ASSERT_EQ(4, cchg.edgeSize(0));
-    ASSERT_EQ(3, cchg.edgeSize(1));
+    ASSERT_EQ(3, cchg.edgeSize(0));
 
     // verify edge weights
-    ASSERT_EQ(1, cchg.edgeWeight(0));
-    ASSERT_EQ(1, cchg.edgeWeight(1));
+    ASSERT_EQ(2, cchg.edgeWeight(0));
 
     // verify community counts
     this->verifyCommunityCounts(cchg, 0, { {0,1,2}, {} });
-    this->verifyCommunityCounts(cchg, 1, { {0,1,2}, {} });
 
     // verify node volumes
     ASSERT_EQ(4, cchg.nodeVolume(0));
@@ -212,11 +186,10 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities1) {
     ASSERT_EQ(6, cchg.nodeVolume(2));
 
     // verify hypergraph structure
-    this->verifyIncidentNets(hg, 0, { 0, 1 });
-    this->verifyIncidentNets(hg, 1, { 0, 1 });
-    this->verifyIncidentNets(hg, 2, { 0, 1 });
-    this->verifyPins(hg, { 0,1 }, { {0,1,2,2}, {0,1,2} });
-    this->verifyMultipins(cchg, {0,1}, {{{0,1},{1,1},{2,2}}, {{0,1},{1,1},{2,1}}}, true);
+    this->verifyIncidentNets(hg, 0, { 0 });
+    this->verifyIncidentNets(hg, 1, { 0 });
+    this->verifyIncidentNets(hg, 2, { 0 });
+    this->verifyPins(hg, { 0 }, { {0,1,2} });
 }
 
 TYPED_TEST(ACommunityHypergraph, ContractsCommunities2) {
@@ -239,7 +212,7 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities2) {
     ASSERT_EQ(3, cchg.initialNumEdges());
     ASSERT_EQ(12, cchg.totalVolume());
     ASSERT_EQ(4, cchg.totalEdgeWeight());
-    ASSERT_EQ(9, hg.initialNumPins());
+    ASSERT_EQ(6, hg.initialNumPins());
 
     // edgeWeight by size
     ASSERT_EQ(1, cchg.edgeWeightBySize(2));
@@ -256,8 +229,8 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities2) {
 
     // verify edge sizes
     ASSERT_EQ(2, cchg.edgeSize(0));
-    ASSERT_EQ(4, cchg.edgeSize(1));
-    ASSERT_EQ(3, cchg.edgeSize(2));
+    ASSERT_EQ(2, cchg.edgeSize(1));
+    ASSERT_EQ(2, cchg.edgeSize(2));
 
     // verify edge weights
     ASSERT_EQ(1, cchg.edgeWeight(0));
@@ -278,8 +251,7 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities2) {
     this->verifyIncidentNets(hg, 0, { 0, 1 });
     this->verifyIncidentNets(hg, 1, { 1, 2 });
     this->verifyIncidentNets(hg, 2, { 0, 2 });
-    this->verifyPins(hg, { 0,1,2 }, { {0,2}, {0,0,1,1}, {1,1,2} });
-    this->verifyMultipins(cchg, {0,1,2}, {{{0,1},{2,1}}, {{0,2},{1,2}}, {{1,2},{2,1}}}, true);
+    this->verifyPins(hg, { 0,1,2 }, { {0,2}, {0,1}, {1,2} });
 }
 
 TYPED_TEST(ACommunityHypergraph, ContractsCommunities3) {
@@ -302,7 +274,7 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities3) {
     ASSERT_EQ(2, cchg.initialNumEdges());
     ASSERT_EQ(12, cchg.totalVolume());
     ASSERT_EQ(4, cchg.totalEdgeWeight());
-    ASSERT_EQ(7, hg.initialNumPins());
+    ASSERT_EQ(5, hg.initialNumPins());
 
     // edgeWeight by size
     ASSERT_EQ(1, cchg.edgeWeightBySize(2));
@@ -317,7 +289,7 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities3) {
     }
 
     // verify edge sizes
-    ASSERT_EQ(4, cchg.edgeSize(0));
+    ASSERT_EQ(2, cchg.edgeSize(0));
     ASSERT_EQ(3, cchg.edgeSize(1));
 
     // verify edge weights
@@ -337,8 +309,7 @@ TYPED_TEST(ACommunityHypergraph, ContractsCommunities3) {
     this->verifyIncidentNets(hg, 0, { 0, 1 });
     this->verifyIncidentNets(hg, 1, { 0, 1 });
     this->verifyIncidentNets(hg, 2, { 1 });
-    this->verifyPins(hg, { 0,1 }, { {0,0,0,1}, {0,1,2} });
-    this->verifyMultipins(cchg, {0,1}, {{{0,3},{1,1}}, {{0,1},{1,1},{2,1}}}, true);
+    this->verifyPins(hg, { 0,1 }, { {0,1}, {0,1,2} });
 }
 
 TYPED_TEST(ACommunityHypergraph, ContractsCommunities4) {
