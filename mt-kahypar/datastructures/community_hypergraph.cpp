@@ -5,7 +5,6 @@
 
 namespace mt_kahypar::ds {
 
-//TODO:  "single pin edges" save them for dbg purposes
 CommunityHypergraph CommunityHypergraph::contract(StaticHypergraph& hypergraph, parallel::scalable_vector<HypernodeID>& communities) {
     //utils::Timer::instance().start_timer("community_hypergraph_contract", "CommunityHypergaph Contraction");
     hypergraph = _hg->contract(communities, 0);
@@ -38,7 +37,7 @@ CommunityHypergraph CommunityHypergraph::contract(StaticHypergraph& hypergraph, 
     chg._community_counts.resize(chg.initialNumEdges());
     tbb::parallel_for(0U, chg.initialNumEdges(), [&](const HyperedgeID he) {
         chg._community_counts[he] = chg.edgeSize(he) > _context.preprocessing.community_detection.hyperedge_size_caching_threshold
-            ? std::make_unique<CommunityCount<Map>>(chg.edgeSize(he), chg.pins(he), true) : std::unique_ptr<CommunityCount<Map>>(nullptr);
+            ? std::make_unique<CommunityCount<Map>>(chg.edgeSize(he), chg.pins(he)) : std::unique_ptr<CommunityCount<Map>>(nullptr);
         });
 
     chg._tmp_community_hypergraph_buffer = _tmp_community_hypergraph_buffer;
