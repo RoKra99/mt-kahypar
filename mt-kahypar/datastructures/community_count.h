@@ -13,6 +13,7 @@ public:
 
     using IncidenceIterator = typename Hypergraph::IncidenceIterator;
     using VectorIterator = typename std::vector<PartitionID>::const_iterator;
+    using MultipinIterator = typename Array<Multipin>::const_iterator;
     using MapIterator = typename HashMap::Iterator;
 
     CommunityCount() = default;
@@ -33,6 +34,16 @@ public:
                     prev = hn;
                 }
             }
+        }
+        end_of_single_cuts = _single_cut_communities.size();
+    }
+
+    explicit CommunityCount(const HypernodeID pincount, IteratorRange<MultipinIterator> multipins) : _communities(pincount / 2) {
+        _single_cut_communities.reserve(pincount);
+        // since there are no duplicate pins in the initial Hypergraph
+        // and every pin is in its own community
+        for (const auto& mp : multipins) {
+            _single_cut_communities.push_back(mp.id);
         }
         end_of_single_cuts = _single_cut_communities.size();
     }

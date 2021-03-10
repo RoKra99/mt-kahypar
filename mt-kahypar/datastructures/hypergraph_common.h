@@ -51,6 +51,11 @@ using ArcWeight = double;
 //Community Hypergraph
 using Volume = long double;
 
+struct Multipin {
+  HypernodeID id;
+  HypernodeID multiplicity;
+};
+
 struct Arc {
   NodeID head;
   ArcWeight weight;
