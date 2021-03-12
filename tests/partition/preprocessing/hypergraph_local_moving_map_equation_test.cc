@@ -79,6 +79,7 @@ TEST_F(AHyperGraphLocalMovingMapEquation, InitializesTheExitProbabilities) {
     verifyInitialProbabilities(*chg, hlmme._community_volumes, hlmme._community_exit_probability_mul_vol_total);
     parallel::scalable_vector<uint32_t> expected = { 4,3,3,5,5,2,4 };
     verifyInitialProbabilitiesExactly(hlmme._community_exit_probability_mul_vol_total, expected);
+    LOG << metrics::hyp_map_equation(*chg, communities);
 }
 
 TEST_F(AHyperGraphLocalMovingMapEquation, InitializesTheExitProbabilities0) {
@@ -91,6 +92,7 @@ TEST_F(AHyperGraphLocalMovingMapEquation, InitializesTheExitProbabilities0) {
     }
     hlmme.initializeCommunityVolumes(chyper, communities);
     verifyInitialProbabilities(chyper, hlmme._community_volumes, hlmme._community_exit_probability_mul_vol_total);
+    LOG << metrics::hyp_map_equation(chyper, communities);
 }
 
 TEST_F(AHyperGraphLocalMovingMapEquation, InitializesTheExitProbabilities1) {
@@ -103,6 +105,7 @@ TEST_F(AHyperGraphLocalMovingMapEquation, InitializesTheExitProbabilities1) {
     }
     hlmme.initializeCommunityVolumes(chyper, communities);
     verifyInitialProbabilities(chyper, hlmme._community_volumes, hlmme._community_exit_probability_mul_vol_total);
+    LOG << metrics::hyp_map_equation(chyper, communities);
 }
 
 TEST_F(AHyperGraphLocalMovingMapEquation, InitializesTheExitProbabilities2) {
@@ -115,6 +118,7 @@ TEST_F(AHyperGraphLocalMovingMapEquation, InitializesTheExitProbabilities2) {
     }
     hlmme.initializeCommunityVolumes(chyper, communities);
     verifyInitialProbabilities(chyper, hlmme._community_volumes, hlmme._community_exit_probability_mul_vol_total);
+    LOG << metrics::hyp_map_equation(chyper, communities);
 }
 
 TEST_F(AHyperGraphLocalMovingMapEquation, InitializesTheExitProbabilities3) {
@@ -127,6 +131,7 @@ TEST_F(AHyperGraphLocalMovingMapEquation, InitializesTheExitProbabilities3) {
     }
     hlmme.initializeCommunityVolumes(chyper, communities);
     verifyInitialProbabilities(chyper, hlmme._community_volumes, hlmme._community_exit_probability_mul_vol_total);
+    LOG << metrics::hyp_map_equation(chyper, communities);
 }
 
 TEST_F(AHyperGraphLocalMovingMapEquation, InitializesTheExitProbabilities4) {
@@ -139,6 +144,7 @@ TEST_F(AHyperGraphLocalMovingMapEquation, InitializesTheExitProbabilities4) {
     }
     hlmme.initializeCommunityVolumes(chyper, communities);
     verifyInitialProbabilities(chyper, hlmme._community_volumes, hlmme._community_exit_probability_mul_vol_total);
+    LOG << metrics::hyp_map_equation(chyper, communities);
 }
 }
 }

@@ -1,6 +1,8 @@
 #include "mt-kahypar/datastructures/community_hypergraph.h"
 #include "mt-kahypar/partition/context.h"
 
+#include "gtest/gtest_prod.h"
+
 namespace mt_kahypar::community_detection {
 
 class HypergraphLocalMovingMapEquation {
@@ -80,7 +82,12 @@ private:
     }
 
     KAHYPAR_ATTRIBUTE_ALWAYS_INLINE void makeMove(ds::CommunityHypergraph& chg, parallel::scalable_vector<HypernodeID>& communitties, const HypernodeID node_to_move, const PartitionID destination_community) {
-        //TODO: make a move
+        ASSERT(communitties[node_to_move] != destination_community);
+        const HypernodeID source_community = communitties[node_to_move];
+        const HyperedgeWeight vol_v = chg.nodeVolume(node_to_move);
+        communitties[node_to_move] = destination_community;
+        _community_volumes[source_community] -= vol_v;
+        _community_volumes[destination_community] += vol_v;
         //TODO: update data structures according to move
     }
 
@@ -126,12 +133,8 @@ private:
             for (const HyperedgeID he : chg.incidentEdges(hn)) {
                 _community_exit_probability_mul_vol_total[hn] += chg.edgeSize(he) * chg.edgeWeight(he);
             }
-        }
-        for (size_t i = 0; i < _community_exit_probability_mul_vol_total.size(); ++i) {
-            //LOG << "before: " << _community_exit_probability_mul_vol_total[i];
-            _community_exit_probability_mul_vol_total[i] -= chg.nodeVolume(i);
-            //LOG << "after: " << _community_exit_probability_mul_vol_total[i];
-            _sum_exit_probability_mul_vol_total += _community_exit_probability_mul_vol_total[i];
+            _community_exit_probability_mul_vol_total[hn] -= chg.nodeVolume(hn);
+            _sum_exit_probability_mul_vol_total += _community_exit_probability_mul_vol_total[hn];
         }
     }
 
@@ -162,4 +165,8 @@ private:
     FRIEND_TEST(AHyperGraphLocalMovingMapEquation, InitializesTheExitProbabilities3);
     FRIEND_TEST(AHyperGraphLocalMovingMapEquation, InitializesTheExitProbabilities4);
 };
+}
+
+namespace mt_kahypar::metrics {
+double hyp_map_equation(const ds::CommunityHypergraph& chg, const parallel::scalable_vector<HypernodeID>& communities);
 }
