@@ -4,7 +4,6 @@
 #include "mt-kahypar/datastructures/static_hypergraph.h"
 #include "mt-kahypar/datastructures/static_hypergraph_factory.h"
 #include "tests/datastructures/hypergraph_fixtures.h"
-#include "mt-kahypar/datastructures/static_hypergraph_factory.h"
 #include "mt-kahypar/utils/floating_point_comparisons.h"
 
 using ::testing::Test;

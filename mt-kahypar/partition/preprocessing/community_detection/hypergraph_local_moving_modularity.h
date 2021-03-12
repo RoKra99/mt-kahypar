@@ -27,7 +27,7 @@ public:
     static constexpr bool debug = false;
     static constexpr bool enable_heavy_assert = false;
 
-    HypergraphLocalMovingModularity(ds::CommunityHypergraph& hypergraph, const Context& context, const bool deactivate_random = false) :
+    HypergraphLocalMovingModularity(const ds::CommunityHypergraph& hypergraph, const Context& context, const bool deactivate_random = false) :
         //overall_checks(0UL),
         //pruned_by_old(0UL),
         _community_neighbour_samples(context.preprocessing.community_detection.community_neighbour_samples),

@@ -34,14 +34,21 @@ class CommunityHypergraph {
 public:
 
     using EdgeSizes = parallel::scalable_vector<size_t>;
+    // ! Iterator to iterate over the hyperedges
     using HyperedgeIterator = typename Hypergraph::HyperedgeIterator;
+    // ! Iterator to iterate over the hypernodes
+    using HypernodeIterator = typename Hypergraph::HypernodeIterator;
+    // ! Iterator to iterate over pins
     using IncidenceIterator = typename Hypergraph::IncidenceIterator;
+    // ! Iterator to iterate ober the incident nets of a hypernode
     using IncidentNetsIterator = typename Hypergraph::IncidentNetsIterator;
+    // ! Iterator to iterate over the Multipins of an edge
     using MultipinIterator = typename Array<Multipin>::const_iterator;
+    // ! Iterator to iterate over occuring edgesizes
     using EdgeSizeIterator = typename EdgeSizes::const_iterator;
-    //using Map = RobinHoodMap<PartitionID, size_t>;
     using Map = HashMap<PartitionID, size_t, xxhash<uint32_t>>;
     using VectorIterator = typename std::vector<PartitionID>::const_iterator;
+    // ! Iterator to iterate over the contents of a map
     using MapIterator = typename Map::Iterator;
 
     CommunityHypergraph(const Context& context, const bool use_multipins = false) :
@@ -107,6 +114,11 @@ public:
     // ! Returns an iterator over the set of active edges of the hypergraph
     IteratorRange<HyperedgeIterator> edges() const {
         return _hg->edges();
+    }
+
+    // ! Returns a range of the active nodes of the hypergraph
+    IteratorRange<HypernodeIterator> nodes() const {
+        return _hg->nodes();
     }
 
     // ! Returns a range to loop over the pins of hyperedge e.
