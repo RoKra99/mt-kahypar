@@ -42,6 +42,7 @@ public:
         // testing if the exit probability is always less than 1
         for (const auto& q : community_exit_probability_mul_vol_total) {
             if (log) LOG << V(q) << V(chyper.totalVolume());
+            if (log) LOG << static_cast<double>(q) / chyper.totalVolume();
             ASSERT_LT(q, chyper.totalVolume());
         }
 
@@ -84,20 +85,22 @@ TEST_F(AHyperGraphLocalMovingMapEquation, InitializesTheExitProbabilities) {
 
 TEST_F(AHyperGraphLocalMovingMapEquation, InitializesTheExitProbabilities0) {
     ds::StaticHypergraph hg = io::readHypergraphFile("../tests/instances/karate_club.graph.hgr", 0);
-    ds::CommunityHypergraph chyper(hg, context);
+    ds::CommunityHypergraph chyper(hg, context, true);
     HypergraphLocalMovingMapEquation hlmme(chyper, context);
     parallel::scalable_vector<HypernodeID> communities(chyper.initialNumNodes());
     for (size_t i = 0; i < chyper.initialNumNodes(); ++i) {
         communities[i] = i;
     }
     hlmme.initializeCommunityVolumes(chyper, communities);
-    verifyInitialProbabilities(chyper, hlmme._community_volumes, hlmme._community_exit_probability_mul_vol_total);
+    verifyInitialProbabilities(chyper, hlmme._community_volumes, hlmme._community_exit_probability_mul_vol_total, true);
+    parallel::scalable_vector<HypernodeID> c2 = { 1,1,1,1,2,2,2,1,0,1,2,1,1,1,0,0,2,1,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0 };
+    LOG << " done" << metrics::hyp_map_equation(chyper, c2);
     LOG << metrics::hyp_map_equation(chyper, communities);
 }
 
 TEST_F(AHyperGraphLocalMovingMapEquation, InitializesTheExitProbabilities1) {
     ds::StaticHypergraph hg = io::readHypergraphFile("../tests/instances/powersim.mtx.hgr", 0);
-    ds::CommunityHypergraph chyper(hg, context);
+    ds::CommunityHypergraph chyper(hg, context, true);
     HypergraphLocalMovingMapEquation hlmme(chyper, context);
     parallel::scalable_vector<HypernodeID> communities(chyper.initialNumNodes());
     for (size_t i = 0; i < chyper.initialNumNodes(); ++i) {
@@ -110,7 +113,7 @@ TEST_F(AHyperGraphLocalMovingMapEquation, InitializesTheExitProbabilities1) {
 
 TEST_F(AHyperGraphLocalMovingMapEquation, InitializesTheExitProbabilities2) {
     ds::StaticHypergraph hg = io::readHypergraphFile("../tests/instances/sat14_atco_enc1_opt2_10_16.cnf.primal.hgr", 0);
-    ds::CommunityHypergraph chyper(hg, context);
+    ds::CommunityHypergraph chyper(hg, context, true);
     HypergraphLocalMovingMapEquation hlmme(chyper, context);
     parallel::scalable_vector<HypernodeID> communities(chyper.initialNumNodes());
     for (size_t i = 0; i < chyper.initialNumNodes(); ++i) {
@@ -123,7 +126,7 @@ TEST_F(AHyperGraphLocalMovingMapEquation, InitializesTheExitProbabilities2) {
 
 TEST_F(AHyperGraphLocalMovingMapEquation, InitializesTheExitProbabilities3) {
     ds::StaticHypergraph hg = io::readHypergraphFile("../tests/instances/test_instance.hgr", 0);
-    ds::CommunityHypergraph chyper(hg, context);
+    ds::CommunityHypergraph chyper(hg, context, true);
     HypergraphLocalMovingMapEquation hlmme(chyper, context);
     parallel::scalable_vector<HypernodeID> communities(chyper.initialNumNodes());
     for (size_t i = 0; i < chyper.initialNumNodes(); ++i) {
@@ -136,7 +139,7 @@ TEST_F(AHyperGraphLocalMovingMapEquation, InitializesTheExitProbabilities3) {
 
 TEST_F(AHyperGraphLocalMovingMapEquation, InitializesTheExitProbabilities4) {
     ds::StaticHypergraph hg = io::readHypergraphFile("../tests/instances/twocenters.hgr", 0);
-    ds::CommunityHypergraph chyper(hg, context);
+    ds::CommunityHypergraph chyper(hg, context, true);
     HypergraphLocalMovingMapEquation hlmme(chyper, context);
     parallel::scalable_vector<HypernodeID> communities(chyper.initialNumNodes());
     for (size_t i = 0; i < chyper.initialNumNodes(); ++i) {
