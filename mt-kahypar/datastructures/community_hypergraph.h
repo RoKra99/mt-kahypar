@@ -21,14 +21,17 @@ class CommunityHypergraph {
     struct TmpCommunityHypergraphBuffer {
         explicit TmpCommunityHypergraphBuffer(const HypernodeID num_hypernodes, const HypernodeID num_pins) {
             tbb::parallel_invoke([&] {
-                tmp_node_volumes.resize("Preprocessing", "tmp_community_volumes", num_hypernodes);
+                tmp_node_volumes.resize("Preprocessing", "tmp_node_volumes", num_hypernodes);
                 }, [&] {
                     multipin_mapping.resize("Preprocessing", "multipin_mapping", num_pins);
+                }, [&] {
+                    tmp_exit_probs.resize("Preprocessing", "tmp_exit_probs", num_hypernodes);
                 });
         }
 
         Array<parallel::AtomicWrapper<HyperedgeWeight>> tmp_node_volumes;
         Array<HypernodeID> multipin_mapping;
+        Array<size_t> tmp_exit_probs;
     };
 
 public:

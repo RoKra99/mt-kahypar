@@ -1,3 +1,5 @@
+#pragma once
+
 #include "mt-kahypar/datastructures/community_hypergraph.h"
 #include "mt-kahypar/partition/context.h"
 #include "mt-kahypar/datastructures/sparse_map.h"
@@ -56,14 +58,38 @@ public:
                     communities[i] = i;
                     nodes[i] = i;
                     _community_volumes[i].store(chg.nodeVolume(i));
+                    _community_exit_probability_mul_vol_total[i].store(0);
                 }
+
+                tbb::enumerable_thread_specific<parallel::scalable_vector<size_t>> overlap_local(chg.initialNumNodes(), 0);
+                tbb::enumerable_thread_specific<parallel::scalable_vector<HypernodeID>> neighbouring_communities;
+
+                tbb::parallel_for(0U, chg.initialNumEdges(), [&](const HyperedgeID he) {
+                    const size_t edge_size = chg.edgeSize(he);
+                    const size_t edge_weight = chg.edgeWeight(he);
+
+                    for (const auto& mp : chg.multipins(he)) {
+                        const HypernodeID community = communities[mp.id];
+                        const size_t pincount = mp.multiplicity;
+                        if (overlap_local.local()[community] == 0) {
+                            neighbouring_communities.local().push_back(community);
+                        }
+                        overlap_local.local()[community] += pincount;
+                    }
+                    for (const HypernodeID community : neighbouring_communities.local()) {
+                        _community_exit_probability_mul_vol_total[community] += (edge_size - overlap_local.local()[community]) * edge_weight;
+                        overlap_local.local()[community] = 0;
+                    }
+                    neighbouring_communities.local().clear();
+                    });
 
                 bool changed_clustering = false;
                 size_t nr_nodes_moved = chg.initialNumNodes();
                 for (size_t round = 0;
                     nr_nodes_moved >= _context.preprocessing.community_detection.min_vertex_move_fraction * chg.initialNumNodes()
                     && round < _context.preprocessing.community_detection.max_pass_iterations; ++round) {
-
+                    
+                    nr_nodes_moved = 0;
                     if (!_deactivate_random) {
                         utils::Randomize::instance().parallelShuffleVector(nodes, 0UL, nodes.size());
                     }
@@ -128,7 +154,6 @@ private:
                     }
                 }
             } else { // hyperedge is not cached
-                LOG << "bla";
                 CacheEfficientRatingMap& community_neighbours_of_edge = _community_neighbours_of_edge.local();
                 ASSERT(community_neighbours_of_edge.size() == 0);
                 for (const HypernodeID& hn : chg.pins(he)) {
