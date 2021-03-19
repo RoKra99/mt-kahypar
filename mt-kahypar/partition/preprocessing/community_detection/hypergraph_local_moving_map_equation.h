@@ -64,7 +64,7 @@ public:
                 tbb::enumerable_thread_specific<parallel::scalable_vector<size_t>> overlap_local(chg.initialNumNodes(), 0);
                 tbb::enumerable_thread_specific<parallel::scalable_vector<HypernodeID>> neighbouring_communities;
 
-                // TODO: recalculate exit probabilities (last do contractions)
+                // TODO: recalculate exit probabilities (later do contractions)
                 // tbb::parallel_for(0U, chg.initialNumEdges(), [&](const HyperedgeID he) {
                 //     const size_t edge_size = chg.edgeSize(he);
                 //     const size_t edge_weight = chg.edgeWeight(he);
@@ -135,47 +135,6 @@ private:
         const PartitionID comm_v = communities[v];
         // sum of all edgeweights incident to v
         HyperedgeWeight sum_of_edgeweights = 0;
-        // for (const HyperedgeID& he : chg.incidentEdges(v)) {
-        //     const HyperedgeWeight edge_weight_mul_edge_size = chg.edgeWeight(he) * chg.edgeSize(he);
-        //     sum_of_edgeweights += edge_weight_mul_edge_size;
-        //     // cuts for this hyperedge are cached
-        //     if (chg.edgeSize(he) > _hyperedge_size_caching_threshold) {
-        //         for (const PartitionID community : chg.singleCuts(he)) {
-        //             ASSERT(static_cast<HypernodeID>(community) < chg.initialNumNodes() && community >= 0);
-        //             overlap[community] += edge_weight_mul_edge_size;
-        //         }
-
-        //         for (const auto& e : chg.multiCuts(he)) {
-        //             const PartitionID community = e.first;
-        //             const size_t count = e.second;
-        //             if (static_cast<HypernodeID>(community) < chg.initialNumNodes() && (community != comm_v || count == 1)) {
-        //                 ASSERT(count > 0);
-        //                 ASSERT(static_cast<HypernodeID>(community) < chg.initialNumNodes() && community >= 0);
-        //                 overlap[community] += edge_weight_mul_edge_size;
-        //             }
-        //         }
-        //     } else { // hyperedge is not cached
-        //         CacheEfficientRatingMap& community_neighbours_of_edge = _community_neighbours_of_edge.local();
-        //         ASSERT(community_neighbours_of_edge.size() == 0);
-        //         for (const HypernodeID& hn : chg.pins(he)) {
-        //             const PartitionID comm_hn = communities[hn];
-        //             if (hn != v) {
-        //                 community_neighbours_of_edge[comm_hn] += 1U;
-        //             }
-        //         }
-
-        //         if (!community_neighbours_of_edge.contains(comm_v)) {
-        //             overlap[comm_v] += edge_weight_mul_edge_size;
-        //         }
-
-        //         for (const auto& e : community_neighbours_of_edge) {
-        //             if (e.key != comm_v) {
-        //                 overlap[e.key] += edge_weight_mul_edge_size;
-        //             }
-        //         }
-        //         community_neighbours_of_edge.clear();
-        //     }
-        // }
 
 
         const HyperedgeWeight vol_v = chg.nodeVolume(v);
@@ -303,18 +262,25 @@ private:
         return 0;
     }
 
-    // ! initializes the exit probabilities for each communi
+    // ! initializes the exit probabilities for each community (expects each edge to only contain one pin of each community)
     void initializeExitProbabilities(const ds::CommunityHypergraph& chg) {
-        for (size_t i = 0; i < chg.initialNumNodes(); ++i) {
-            _community_exit_probability_mul_vol_total[i].store(0);
-        }
-        for (const HypernodeID hn : chg.nodes()) {
-            for (const HyperedgeID he : chg.incidentEdges(hn)) {
-                _community_exit_probability_mul_vol_total[hn] += chg.edgeSize(he) * chg.edgeWeight(he);
+        tbb::parallel_for(0U, chg.initialNumEdges(), [&](const HyperedgeID he) {
+            for (const auto& mp : chg.multipins(he)) {
+                _community_neighbours_of_edge.local()[mp.id] += 1;
             }
-            _community_exit_probability_mul_vol_total[hn] -= chg.nodeVolume(hn);
-            _sum_exit_probability_mul_vol_total += _community_exit_probability_mul_vol_total[hn];
-        }
+
+            for (const auto& e : _community_neighbours_of_edge.local()) {
+                const HypernodeID comm = e.key;
+                const HypernodeWeight edge_size = static_cast<HypernodeWeight>(chg.edgeSize(he));
+                _community_exit_probability_mul_vol_total[comm] += static_cast<double>(chg.edgeWeight(he) * (edge_size - 1)) / edge_size;
+            }
+            _community_neighbours_of_edge.local().clear();
+            });
+        tbb::enumerable_thread_specific<double> sum_exit_prob_local(0.0);
+        tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID hn) {
+            sum_exit_prob_local.local() += _community_exit_probability_mul_vol_total[hn];
+            });
+        _sum_exit_probability_mul_vol_total.store(sum_exit_prob_local.combine(std::plus<>()));
     }
 
     LargeTmpRatingMap construct_large_overlap_map(const size_t num_nodes) {
@@ -350,12 +316,12 @@ private:
     // ! deactivates random node order in local moving
     const bool _deactivate_random;
 
-    FRIEND_TEST(AHyperGraphLocalMovingMapEquation, InitializesTheExitProbabilities);
-    FRIEND_TEST(AHyperGraphLocalMovingMapEquation, InitializesTheExitProbabilities0);
-    FRIEND_TEST(AHyperGraphLocalMovingMapEquation, InitializesTheExitProbabilities1);
-    FRIEND_TEST(AHyperGraphLocalMovingMapEquation, InitializesTheExitProbabilities2);
-    FRIEND_TEST(AHyperGraphLocalMovingMapEquation, InitializesTheExitProbabilities3);
-    FRIEND_TEST(AHyperGraphLocalMovingMapEquation, InitializesTheExitProbabilities4);
-    FRIEND_TEST(AHyperGraphLocalMovingMapEquation, test2);
+    FRIEND_TEST(AHypergraphLocalMovingMapEquation, InitializesTheExitProbabilities);
+    FRIEND_TEST(AHypergraphLocalMovingMapEquation, InitializesTheExitProbabilities0);
+    FRIEND_TEST(AHypergraphLocalMovingMapEquation, InitializesTheExitProbabilities1);
+    FRIEND_TEST(AHypergraphLocalMovingMapEquation, InitializesTheExitProbabilities2);
+    FRIEND_TEST(AHypergraphLocalMovingMapEquation, InitializesTheExitProbabilities3);
+    FRIEND_TEST(AHypergraphLocalMovingMapEquation, InitializesTheExitProbabilities4);
+    FRIEND_TEST(AHypergraphLocalMovingMapEquation, test2);
 };
 }
