@@ -25,7 +25,7 @@ class HypergraphLocalMovingMapEquation {
 private:
 
     using AtomicHyperedgeWeight = parallel::AtomicWrapper<HyperedgeWeight>;
-    using AtomicPinCOunt = parallel::AtomicWrapper<size_t>;
+    using AtomicDouble = parallel::AtomicWrapper<double>;
     using LargeTmpRatingMap = ds::SparseMap<PartitionID, HyperedgeWeight>;
     using CacheEfficientRatingMap = ds::FixedSizeSparseMap<PartitionID, HyperedgeWeight>;
     using ThreadLocalCacheEfficientRatingMap = tbb::enumerable_thread_specific<CacheEfficientRatingMap>;
@@ -64,31 +64,32 @@ public:
                 tbb::enumerable_thread_specific<parallel::scalable_vector<size_t>> overlap_local(chg.initialNumNodes(), 0);
                 tbb::enumerable_thread_specific<parallel::scalable_vector<HypernodeID>> neighbouring_communities;
 
-                tbb::parallel_for(0U, chg.initialNumEdges(), [&](const HyperedgeID he) {
-                    const size_t edge_size = chg.edgeSize(he);
-                    const size_t edge_weight = chg.edgeWeight(he);
+                // TODO: recalculate exit probabilities (last do contractions)
+                // tbb::parallel_for(0U, chg.initialNumEdges(), [&](const HyperedgeID he) {
+                //     const size_t edge_size = chg.edgeSize(he);
+                //     const size_t edge_weight = chg.edgeWeight(he);
 
-                    for (const auto& mp : chg.multipins(he)) {
-                        const HypernodeID community = communities[mp.id];
-                        const size_t pincount = mp.multiplicity;
-                        if (overlap_local.local()[community] == 0) {
-                            neighbouring_communities.local().push_back(community);
-                        }
-                        overlap_local.local()[community] += pincount;
-                    }
-                    for (const HypernodeID community : neighbouring_communities.local()) {
-                        _community_exit_probability_mul_vol_total[community] += (edge_size - overlap_local.local()[community]) * edge_weight;
-                        overlap_local.local()[community] = 0;
-                    }
-                    neighbouring_communities.local().clear();
-                    });
+                //     for (const auto& mp : chg.multipins(he)) {
+                //         const HypernodeID community = communities[mp.id];
+                //         const size_t pincount = mp.multiplicity;
+                //         if (overlap_local.local()[community] == 0) {
+                //             neighbouring_communities.local().push_back(community);
+                //         }
+                //         overlap_local.local()[community] += pincount;
+                //     }
+                //     for (const HypernodeID community : neighbouring_communities.local()) {
+                //         _community_exit_probability_mul_vol_total[community] += (edge_size - overlap_local.local()[community]) * edge_weight;
+                //         overlap_local.local()[community] = 0;
+                //     }
+                //     neighbouring_communities.local().clear();
+                //     });
 
                 bool changed_clustering = false;
                 size_t nr_nodes_moved = chg.initialNumNodes();
                 for (size_t round = 0;
                     nr_nodes_moved >= _context.preprocessing.community_detection.min_vertex_move_fraction * chg.initialNumNodes()
                     && round < _context.preprocessing.community_detection.max_pass_iterations; ++round) {
-                    
+
                     nr_nodes_moved = 0;
                     if (!_deactivate_random) {
                         utils::Randomize::instance().parallelShuffleVector(nodes, 0UL, nodes.size());
@@ -134,47 +135,49 @@ private:
         const PartitionID comm_v = communities[v];
         // sum of all edgeweights incident to v
         HyperedgeWeight sum_of_edgeweights = 0;
-        for (const HyperedgeID& he : chg.incidentEdges(v)) {
-            const HyperedgeWeight edge_weight_mul_edge_size = chg.edgeWeight(he) * chg.edgeSize(he);
-            sum_of_edgeweights += edge_weight_mul_edge_size;
-            // cuts for this hyperedge are cached
-            if (chg.edgeSize(he) > _hyperedge_size_caching_threshold) {
-                for (const PartitionID community : chg.singleCuts(he)) {
-                    ASSERT(static_cast<HypernodeID>(community) < chg.initialNumNodes() && community >= 0);
-                    overlap[community] += edge_weight_mul_edge_size;
-                }
+        // for (const HyperedgeID& he : chg.incidentEdges(v)) {
+        //     const HyperedgeWeight edge_weight_mul_edge_size = chg.edgeWeight(he) * chg.edgeSize(he);
+        //     sum_of_edgeweights += edge_weight_mul_edge_size;
+        //     // cuts for this hyperedge are cached
+        //     if (chg.edgeSize(he) > _hyperedge_size_caching_threshold) {
+        //         for (const PartitionID community : chg.singleCuts(he)) {
+        //             ASSERT(static_cast<HypernodeID>(community) < chg.initialNumNodes() && community >= 0);
+        //             overlap[community] += edge_weight_mul_edge_size;
+        //         }
 
-                for (const auto& e : chg.multiCuts(he)) {
-                    const PartitionID community = e.first;
-                    const size_t count = e.second;
-                    if (static_cast<HypernodeID>(community) < chg.initialNumNodes() && (community != comm_v || count == 1)) {
-                        ASSERT(count > 0);
-                        ASSERT(static_cast<HypernodeID>(community) < chg.initialNumNodes() && community >= 0);
-                        overlap[community] += edge_weight_mul_edge_size;
-                    }
-                }
-            } else { // hyperedge is not cached
-                CacheEfficientRatingMap& community_neighbours_of_edge = _community_neighbours_of_edge.local();
-                ASSERT(community_neighbours_of_edge.size() == 0);
-                for (const HypernodeID& hn : chg.pins(he)) {
-                    const PartitionID comm_hn = communities[hn];
-                    if (hn != v) {
-                        community_neighbours_of_edge[comm_hn] += 1U;
-                    }
-                }
+        //         for (const auto& e : chg.multiCuts(he)) {
+        //             const PartitionID community = e.first;
+        //             const size_t count = e.second;
+        //             if (static_cast<HypernodeID>(community) < chg.initialNumNodes() && (community != comm_v || count == 1)) {
+        //                 ASSERT(count > 0);
+        //                 ASSERT(static_cast<HypernodeID>(community) < chg.initialNumNodes() && community >= 0);
+        //                 overlap[community] += edge_weight_mul_edge_size;
+        //             }
+        //         }
+        //     } else { // hyperedge is not cached
+        //         CacheEfficientRatingMap& community_neighbours_of_edge = _community_neighbours_of_edge.local();
+        //         ASSERT(community_neighbours_of_edge.size() == 0);
+        //         for (const HypernodeID& hn : chg.pins(he)) {
+        //             const PartitionID comm_hn = communities[hn];
+        //             if (hn != v) {
+        //                 community_neighbours_of_edge[comm_hn] += 1U;
+        //             }
+        //         }
 
-                if (!community_neighbours_of_edge.contains(comm_v)) {
-                    overlap[comm_v] += edge_weight_mul_edge_size;
-                }
+        //         if (!community_neighbours_of_edge.contains(comm_v)) {
+        //             overlap[comm_v] += edge_weight_mul_edge_size;
+        //         }
 
-                for (const auto& e : community_neighbours_of_edge) {
-                    if (e.key != comm_v) {
-                        overlap[e.key] += edge_weight_mul_edge_size;
-                    }
-                }
-                community_neighbours_of_edge.clear();
-            }
-        }
+        //         for (const auto& e : community_neighbours_of_edge) {
+        //             if (e.key != comm_v) {
+        //                 overlap[e.key] += edge_weight_mul_edge_size;
+        //             }
+        //         }
+        //         community_neighbours_of_edge.clear();
+        //     }
+        // }
+
+
         const HyperedgeWeight vol_v = chg.nodeVolume(v);
         const HyperedgeWeight delta_source = -overlap[comm_v] + vol_v;
 
@@ -332,10 +335,10 @@ private:
     parallel::scalable_vector<AtomicHyperedgeWeight> _community_volumes;
 
     // ! contains the exit probability of each community multiplied by vol(V) (qi_exit * vol(V))
-    parallel::scalable_vector<AtomicPinCOunt> _community_exit_probability_mul_vol_total;
+    parallel::scalable_vector<AtomicDouble> _community_exit_probability_mul_vol_total;
 
     // ! the sum of all exit probabilities multiplied by vol(V)
-    AtomicPinCOunt _sum_exit_probability_mul_vol_total;
+    AtomicDouble _sum_exit_probability_mul_vol_total;
 
     // contains the overlap for each neighbouring community
     ThreadLocalCacheEfficientRatingMap _small_overlap_map;
