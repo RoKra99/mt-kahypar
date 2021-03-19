@@ -88,7 +88,9 @@ TEST_F(AHypergraphLocalMovingMapEquation, InitializesTheExitProbabilities0) {
     verifyInitialProbabilities(chyper, hlmme._community_volumes, hlmme._community_exit_probability_mul_vol_total);
     parallel::scalable_vector<HypernodeID> c2 = { 1,1,1,1,2,2,2,1,0,1,2,1,1,1,0,0,2,1,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0 };
     const double result_infomap = metrics::hyp_map_equation(chyper, c2);
+    LOG << result_infomap;
     const double initial = metrics::hyp_map_equation(chyper, communities);
+    LOG << initial;
     ASSERT_LT(result_infomap, initial);
 }
 
@@ -106,7 +108,7 @@ TEST_F(AHypergraphLocalMovingMapEquation, InitializesTheExitProbabilities1) {
 
     std::vector<PartitionID> c2;
     std::vector<PartitionID> c3(chyper.initialNumNodes(), 0);
-    io::readPartitionFile("partition_powersim", c2);
+    io::readPartitionFile("../build/partition_powersim", c2);
     parallel::scalable_vector<HypernodeID> communities2(c2.size());
     parallel::scalable_vector<HypernodeID> communities3(c2.size());
     for (size_t i = 0; i < c2.size(); ++i) {
@@ -158,9 +160,9 @@ TEST_F(AHypergraphLocalMovingMapEquation, InitializesTheExitProbabilities4) {
     std::vector<PartitionID> c2;
     std::vector<PartitionID> c3;
     std::vector<PartitionID> c4;
-    io::readPartitionFile("partition_twocenters", c2);
-    io::readPartitionFile("partition_twocenters_mono", c3);
-    io::readPartitionFile("partition_twocenters_test", c4);
+    io::readPartitionFile("../build/partition_twocenters", c2);
+    io::readPartitionFile("../build/partition_twocenters_mono", c3);
+    io::readPartitionFile("../build/partition_twocenters_test", c4);
     parallel::scalable_vector<HypernodeID> communities2(c2.size());
     parallel::scalable_vector<HypernodeID> communities3(c3.size());
     parallel::scalable_vector<HypernodeID> communities4(c4.size());
@@ -174,38 +176,38 @@ TEST_F(AHypergraphLocalMovingMapEquation, InitializesTheExitProbabilities4) {
     LOG << "test" << metrics::hyp_map_equation(chyper, communities4);
 }
 
-// TEST_F(AHyperGraphLocalMovingMapEquation, test) {
-//     HypergraphLocalMovingMapEquation hlmme(*chg, context);
-//     parallel::scalable_vector<HypernodeID> communities(chg->initialNumNodes());
-//     for (HypernodeID i = 0; i < chg->initialNumNodes(); ++i) {
-//         communities[i] = i;
-//     }
-//     LOG << metrics::hyp_map_equation(*chg, communities);
-//     const bool moved = hlmme.localMoving(*chg, communities);
-//     LOG << metrics::hyp_map_equation(*chg, communities);
-//     ASSERT_TRUE(moved);
-// }
+TEST_F(AHypergraphLocalMovingMapEquation, test) {
+    HypergraphLocalMovingMapEquation hlmme(*chg, context);
+    parallel::scalable_vector<HypernodeID> communities(chg->initialNumNodes());
+    for (HypernodeID i = 0; i < chg->initialNumNodes(); ++i) {
+        communities[i] = i;
+    }
+    LOG << metrics::hyp_map_equation(*chg, communities);
+    const bool moved = hlmme.localMoving(*chg, communities);
+    LOG << metrics::hyp_map_equation(*chg, communities);
+    ASSERT_TRUE(moved);
+}
 
-// TEST_F(AHyperGraphLocalMovingMapEquation, test2) {
-//     ds::StaticHypergraph hg = io::readHypergraphFile("../tests/instances/powersim.mtx.hgr", 0);
-//     ds::CommunityHypergraph chyper(hg, context, true);
-//     HypergraphLocalMovingMapEquation hlmme(chyper, context);
-//     parallel::scalable_vector<HypernodeID> communities(chyper.initialNumNodes());
-//     for (size_t i = 0; i < chyper.initialNumNodes(); ++i) {
-//         communities[i] = i;
-//     }
-//     LOG << "Communities before" << chyper.initialNumNodes();
-//     LOG << metrics::hyp_map_equation(chyper, communities);
-//     const bool moved = hlmme.localMoving(chyper, communities);
-//     LOG << metrics::hyp_map_equation(chyper, communities);
-//     size_t comm_count = 0;
-//     for (const auto e : hlmme._community_volumes) {
-//         if (e > 0) {
-//             ++comm_count;
-//         }
-//     }
-//     LOG << "Communities after" << comm_count;
-//     ASSERT_TRUE(moved);
-// }
+TEST_F(AHypergraphLocalMovingMapEquation, test2) {
+    ds::StaticHypergraph hg = io::readHypergraphFile("../tests/instances/karate_club.graph.hgr", 0);
+    ds::CommunityHypergraph chyper(hg, context, true);
+    HypergraphLocalMovingMapEquation hlmme(chyper, context);
+    parallel::scalable_vector<HypernodeID> communities(chyper.initialNumNodes());
+    for (size_t i = 0; i < chyper.initialNumNodes(); ++i) {
+        communities[i] = i;
+    }
+    LOG << "Communities before" << chyper.initialNumNodes();
+    LOG << metrics::hyp_map_equation(chyper, communities);
+    const bool moved = hlmme.localMoving(chyper, communities);
+    LOG << metrics::hyp_map_equation(chyper, communities);
+    size_t comm_count = 0;
+    for (const auto e : hlmme._community_volumes) {
+        if (e > 0) {
+            ++comm_count;
+        }
+    }
+    LOG << "Communities after" << comm_count;
+    ASSERT_TRUE(moved);
+}
 }
 }
