@@ -4,6 +4,7 @@
 #include "mt-kahypar/datastructures/static_hypergraph_factory.h"
 #include "tests/datastructures/hypergraph_fixtures.h"
 #include <mt-kahypar/io/hypergraph_io.h>
+#include "mt-kahypar/partition/preprocessing/community_detection/hypergraph_louvain.h"
 
 using ::testing::Test;
 
@@ -208,6 +209,12 @@ TEST_F(AHypergraphLocalMovingMapEquation, test2) {
     }
     LOG << "Communities after" << comm_count;
     ASSERT_TRUE(moved);
+}
+
+TEST_F(AHypergraphLocalMovingMapEquation, test3) {
+    ds::StaticHypergraph hg = io::readHypergraphFile("../tests/instances/karate_club.graph.hgr", 0);
+    ds::CommunityHypergraph chyper(hg, context, true);
+    community_detection::hypergraph_louvain(chyper, context);
 }
 }
 }

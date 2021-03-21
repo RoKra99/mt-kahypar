@@ -24,11 +24,11 @@ double hyp_map_equation(
     tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID hn) {
         community_volumes[communities[hn]] += chg.nodeVolume(hn);
         // this is not neccessary for optimization
-        sum_plogp_prob_in_node_local.local() += plogp_rel(chg.nodeVolume(hn));
-        });
+        //sum_plogp_prob_in_node_local.local() += plogp_rel(chg.nodeVolume(hn));
+    });
 
     // this is not neccessary for optimization
-    const double sum_plogp_prob_in_node = sum_plogp_prob_in_node_local.combine(std::plus<>());
+    //const double sum_plogp_prob_in_node = sum_plogp_prob_in_node_local.combine(std::plus<>());
 
     tbb::enumerable_thread_specific<parallel::scalable_vector<HypernodeWeight>> overlap_local(community_count, 0);
     tbb::enumerable_thread_specific<parallel::scalable_vector<HypernodeID>> neighbouring_communities;
@@ -50,11 +50,11 @@ double hyp_map_equation(
             overlap_local.local()[comm] = 0;
         }
         neighbouring_communities.local().clear();
-        });
+    });
 
     tbb::parallel_for(0UL, community_count, [&](const HypernodeID com) {
         sum_exit_prob_local.local() += exit_prob_vol_total[com];
-        });
+    });
     const double sum_exit_prob = sum_exit_prob_local.combine(std::plus<>());
 
     tbb::enumerable_thread_specific<double> sum_plogp_exit_prob_local(0.0);
@@ -63,16 +63,16 @@ double hyp_map_equation(
     tbb::parallel_for(0UL, community_count, [&](const HypernodeID i) {
         sum_plogp_exit_prob_local.local() += plogp_rel(exit_prob_vol_total[i]);
         sum_plogp_exit_prob_plus_com_vol_local.local() += plogp_rel(exit_prob_vol_total[i] + community_volumes[i]);
-        });
+    });
 
     const double plogp_sum_exit_prob = plogp_rel(sum_exit_prob);
     const double sum_plogp_exit_prob = sum_plogp_exit_prob_local.combine(std::plus<>());
     const double sum_plogp_exit_prob_plus_com_vol = sum_plogp_exit_prob_plus_com_vol_local.combine(std::plus<>());;
-    // LOG << plogp_sum_exit_prob;
-    // LOG << sum_plogp_exit_prob;
-    // LOG << sum_plogp_exit_prob_plus_com_vol;
-    // LOG << sum_plogp_prob_in_node;
-
-    return plogp_sum_exit_prob - 2 * sum_plogp_exit_prob + sum_plogp_exit_prob_plus_com_vol - sum_plogp_prob_in_node;
+    //LOG << plogp_sum_exit_prob;
+    //LOG << sum_plogp_exit_prob;
+    //LOG << sum_plogp_exit_prob_plus_com_vol;
+    // //LOG << sum_plogp_prob_in_node;
+    //LOG << community_count;
+    return plogp_sum_exit_prob - 2 * sum_plogp_exit_prob + sum_plogp_exit_prob_plus_com_vol /*- sum_plogp_prob_in_node*/;
 }
 }
