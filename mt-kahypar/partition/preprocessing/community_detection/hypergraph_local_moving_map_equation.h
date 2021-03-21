@@ -32,7 +32,7 @@ private:
     using ThreadLocalLargeTmpRatingMap = tbb::enumerable_thread_specific<LargeTmpRatingMap>;
     //TODO: Temporary
     using LargeTmpDoubleMap = ds::SparseMap<HypernodeID, double>;
-    using CacheEfficentDoubleMap = ds::FixedSizeSparseMap<HypernodeID, HyperedgeWeight>;
+    using CacheEfficentDoubleMap = ds::FixedSizeSparseMap<HypernodeID, double>;
     using ThreadLocalCacheEfficientDoubleMap = tbb::enumerable_thread_specific<CacheEfficentDoubleMap>;
     using ThreadLocalLargeTmpDoubleMap = tbb::enumerable_thread_specific<LargeTmpDoubleMap>;
 
@@ -153,6 +153,8 @@ private:
         // sum of all edgeweights incident to v
         for (const HyperedgeID& he : chg.incidentEdges(v)) {
             ASSERT(overlap.size() == 0);
+            const HypernodeID edge_size = chg.edgeSize(he);
+            const HypernodeWeight edge_weight = chg.edgeWeight(he);
             for (const auto& mp : chg.multipins(he)) {
                 const HypernodeID community = communities[mp.id];
                 // first time coming across this community
@@ -164,13 +166,13 @@ private:
 
             for (const auto& e : overlap) {
                 if (e.key != comm_v) {
-                    deltas[e.key] += static_cast<double>(chg.edgeWeight(he) * pin_count_v * -2 * e.value) / chg.edgeSize(he);
+                    deltas[e.key] += static_cast<double>(edge_weight * pin_count_v * -2 * e.value) / edge_size;
                 } else {
-                    deltas[e.key] += static_cast<double>(chg.edgeWeight(he) * pin_count_v * (2 * e.value - pin_count_v)) / chg.edgeSize(he);
+                    deltas[e.key] += static_cast<double>(edge_weight * pin_count_v * (2 * e.value - pin_count_v)) / edge_size;
                 }
             }
             overlap.clear();
-            community_independent_part -= static_cast<double>(chg.edgeWeight(he) * pin_count_v * pin_count_v) / chg.edgeSize(he);
+            community_independent_part -= static_cast<double>(edge_weight * pin_count_v * pin_count_v) / edge_size;
         }
 
         // the formula only works for communities with volume != 0 therefore we have to handle this edge case explicitly
@@ -203,7 +205,7 @@ private:
         move.delta_source = delta_source;
 
         for (const auto& e : deltas) {
-            if (e.key == comm_v) continue;
+            if (e.key == comm_v) { continue; }
 
             const HypernodeID destination_community = e.key;
             const double delta_destination = community_independent_part + e.value + vol_v;
@@ -251,10 +253,8 @@ private:
         //     chg.removeCommunityFromHyperedge(he, source_community);
         //     chg.addCommunityToHyperedge(he, move.destination_community);
         // }
-
         _community_exit_probability_mul_vol_total[source_community] += move.delta_source;
         _community_exit_probability_mul_vol_total[move.destination_community] += move.delta_destination;
-
         ASSERT(_community_exit_probability_mul_vol_total[source_community] >= 0.0);
         ASSERT(_community_exit_probability_mul_vol_total[move.destination_community] >= 0.0);
         _sum_exit_probability_mul_vol_total += move.delta_destination + move.delta_source;

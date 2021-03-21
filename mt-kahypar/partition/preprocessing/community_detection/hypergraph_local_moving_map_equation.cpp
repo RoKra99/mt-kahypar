@@ -47,6 +47,7 @@ double hyp_map_equation(
             const HypernodeWeight edge_size = static_cast<HypernodeWeight>(chg.edgeSize(he));
             //TODO: Not sure if / (edge_size - 1) is better (since that results in an equal model to the original map equation)
             exit_prob_vol_total[comm] += static_cast<double>(pincount_in_edge * chg.edgeWeight(he) * (edge_size - pincount_in_edge)) / edge_size;
+            ASSERT(exit_prob_vol_total[comm] >= 0.0);
             overlap_local.local()[comm] = 0;
         }
         neighbouring_communities.local().clear();
@@ -56,6 +57,7 @@ double hyp_map_equation(
         sum_exit_prob_local.local() += exit_prob_vol_total[com];
     });
     const double sum_exit_prob = sum_exit_prob_local.combine(std::plus<>());
+    ASSERT(sum_exit_prob <= chg.totalVolume());
 
     tbb::enumerable_thread_specific<double> sum_plogp_exit_prob_local(0.0);
     tbb::enumerable_thread_specific<double> sum_plogp_exit_prob_plus_com_vol_local(0.0);
