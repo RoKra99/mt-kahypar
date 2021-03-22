@@ -55,10 +55,7 @@ public:
         _large_deltas_mul_vol_total([&] {
         return construct_large_delta_map(chg.initialNumNodes());
     }),
-        _deactivate_random(deactivate_random) {
-        //initializeExitProbabilities(chg);
-        std::cout << std::numeric_limits<double>::digits10 << std::endl;
-    }
+        _deactivate_random(deactivate_random) {}
 
 
     bool localMoving(ds::CommunityHypergraph& chg, parallel::scalable_vector<HypernodeID>& communities) {
@@ -346,28 +343,6 @@ private:
         }
         return 0;
     }
-
-    // ! initializes the exit probabilities for each community (expects each edge to only contain one pin of each community)
-    // void initializeExitProbabilities(const ds::CommunityHypergraph& chg) {
-    //     tbb::parallel_for(0U, chg.initialNumEdges(), [&](const HyperedgeID he) {
-    //         for (const auto& mp : chg.multipins(he)) {
-    //             ASSERT(mp.multiplicity == 1);
-    //             _community_neighbours_of_edge.local()[mp.id] += 1;
-    //         }
-
-    //         for (const auto& e : _community_neighbours_of_edge.local()) {
-    //             const HypernodeID comm = e.key;
-    //             const HypernodeWeight edge_size = static_cast<HypernodeWeight>(chg.edgeSize(he));
-    //             _community_exit_probability_mul_vol_total[comm] += static_cast<Probability>(chg.edgeWeight(he) * (edge_size - 1)) / edge_size /*(edge_size - 1)*/;
-    //         }
-    //         _community_neighbours_of_edge.local().clear();
-    //     });
-    //     tbb::enumerable_thread_specific<Probability> sum_exit_prob_local(0.0);
-    //     tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID hn) {
-    //         sum_exit_prob_local.local() += _community_exit_probability_mul_vol_total[hn];
-    //     });
-    //     _sum_exit_probability_mul_vol_total = sum_exit_prob_local.combine(std::plus<>());
-    // }
 
     LargeTmpRatingMap construct_large_overlap_map(const size_t num_nodes) {
         return LargeTmpRatingMap(3UL * std::min(num_nodes, _vertex_degree_sampling_threshold));

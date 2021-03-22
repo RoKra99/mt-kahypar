@@ -5,7 +5,7 @@ namespace mt_kahypar::community_detection {
 static size_t local_moving_round = 0;
 template<typename HypergraphLocalMoving>
 parallel::scalable_vector<HypernodeID> hypergraph_local_moving_contract_recurse(ds::CommunityHypergraph& chg, HypergraphLocalMoving& hlmm) {
-    static constexpr bool debug = true;
+    static constexpr bool debug = false;
     parallel::scalable_vector<HypernodeID> communities(chg.initialNumNodes());
     utils::Timer::instance().start_timer("local_moving " + std::to_string(local_moving_round), "Local Moving" + std::to_string(local_moving_round));
     //utils::Timer::instance().start_timer("hyp_local_moving", "Hypergraph Local Moving");
