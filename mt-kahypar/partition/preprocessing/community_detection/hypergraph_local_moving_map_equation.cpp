@@ -3,16 +3,16 @@
 namespace mt_kahypar::metrics {
 // currently only correct for graphs with one community per node
 // TODO: implement for evry graph
-double hyp_map_equation(
+Probability hyp_map_equation(
     const ds::CommunityHypergraph& chg,
     const parallel::scalable_vector<HypernodeID>& communities) {
     ASSERT(chg.initialNumNodes() == communities.size());
-    const double reciprocal_vol_total = 1.0 / chg.totalVolume();
+    const Probability reciprocal_vol_total = 1.0 / chg.totalVolume();
     const size_t community_count = *std::max_element(communities.begin(), communities.end()) + 1;
     parallel::scalable_vector<parallel::AtomicWrapper<HyperedgeWeight>> community_volumes(community_count);
-    parallel::scalable_vector<parallel::AtomicWrapper<double>> exit_prob_vol_total(community_count);
-    tbb::enumerable_thread_specific<double> sum_exit_prob_local(0.0);
-    const auto plogp_rel = [reciprocal_vol_total](double p) -> double {
+    parallel::scalable_vector<parallel::AtomicWrapper<Probability>> exit_prob_vol_total(community_count);
+    tbb::enumerable_thread_specific<Probability> sum_exit_prob_local(0.0);
+    const auto plogp_rel = [reciprocal_vol_total](Probability p) -> Probability {
         if (p > 0.0) {
             p *= reciprocal_vol_total;
             return p * log2(p);
@@ -20,7 +20,7 @@ double hyp_map_equation(
         return 0.0;
     };
 
-    tbb::enumerable_thread_specific<double> sum_plogp_prob_in_node_local(0.0);
+    tbb::enumerable_thread_specific<Probability> sum_plogp_prob_in_node_local(0.0);
     tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID hn) {
         community_volumes[communities[hn]] += chg.nodeVolume(hn);
         // this is not neccessary for optimization
@@ -28,7 +28,7 @@ double hyp_map_equation(
     });
 
     // this is not neccessary for optimization
-    //const double sum_plogp_prob_in_node = sum_plogp_prob_in_node_local.combine(std::plus<>());
+    //const Probability sum_plogp_prob_in_node = sum_plogp_prob_in_node_local.combine(std::plus<>());
 
     tbb::enumerable_thread_specific<parallel::scalable_vector<HypernodeWeight>> overlap_local(community_count, 0);
     tbb::enumerable_thread_specific<parallel::scalable_vector<HypernodeID>> neighbouring_communities;
@@ -46,7 +46,7 @@ double hyp_map_equation(
             const HypernodeWeight pincount_in_edge = overlap_local.local()[comm];
             const HypernodeWeight edge_size = static_cast<HypernodeWeight>(chg.edgeSize(he));
             //TODO: Not sure if / (edge_size - 1) is better (since that results in an equal model to the original map equation)
-            exit_prob_vol_total[comm] += static_cast<double>(pincount_in_edge * chg.edgeWeight(he) * (edge_size - pincount_in_edge)) / edge_size;
+            exit_prob_vol_total[comm] += static_cast<double>(pincount_in_edge * chg.edgeWeight(he) * (edge_size - pincount_in_edge)) / edge_size/*(edge_size - 1)*/;
             ASSERT(exit_prob_vol_total[comm] >= 0.0);
             overlap_local.local()[comm] = 0;
         }
@@ -56,20 +56,20 @@ double hyp_map_equation(
     tbb::parallel_for(0UL, community_count, [&](const HypernodeID com) {
         sum_exit_prob_local.local() += exit_prob_vol_total[com];
     });
-    const double sum_exit_prob = sum_exit_prob_local.combine(std::plus<>());
+    const Probability sum_exit_prob = sum_exit_prob_local.combine(std::plus<>());
     ASSERT(sum_exit_prob <= chg.totalVolume());
 
-    tbb::enumerable_thread_specific<double> sum_plogp_exit_prob_local(0.0);
-    tbb::enumerable_thread_specific<double> sum_plogp_exit_prob_plus_com_vol_local(0.0);
+    tbb::enumerable_thread_specific<Probability> sum_plogp_exit_prob_local(0.0);
+    tbb::enumerable_thread_specific<Probability> sum_plogp_exit_prob_plus_com_vol_local(0.0);
 
     tbb::parallel_for(0UL, community_count, [&](const HypernodeID i) {
         sum_plogp_exit_prob_local.local() += plogp_rel(exit_prob_vol_total[i]);
         sum_plogp_exit_prob_plus_com_vol_local.local() += plogp_rel(exit_prob_vol_total[i] + community_volumes[i]);
     });
 
-    const double plogp_sum_exit_prob = plogp_rel(sum_exit_prob);
-    const double sum_plogp_exit_prob = sum_plogp_exit_prob_local.combine(std::plus<>());
-    const double sum_plogp_exit_prob_plus_com_vol = sum_plogp_exit_prob_plus_com_vol_local.combine(std::plus<>());;
+    const Probability plogp_sum_exit_prob = plogp_rel(sum_exit_prob);
+    const Probability sum_plogp_exit_prob = sum_plogp_exit_prob_local.combine(std::plus<>());
+    const Probability sum_plogp_exit_prob_plus_com_vol = sum_plogp_exit_prob_plus_com_vol_local.combine(std::plus<>());;
     //LOG << plogp_sum_exit_prob;
     //LOG << sum_plogp_exit_prob;
     //LOG << sum_plogp_exit_prob_plus_com_vol;

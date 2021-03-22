@@ -214,7 +214,8 @@ TEST_F(AHypergraphLocalMovingMapEquation, test2) {
 TEST_F(AHypergraphLocalMovingMapEquation, test3) {
     ds::StaticHypergraph hg = io::readHypergraphFile("../tests/instances/karate_club.graph.hgr", 0);
     ds::CommunityHypergraph chyper(hg, context, true);
-    community_detection::hypergraph_louvain(chyper, context);
+    parallel::scalable_vector<HypernodeID> communities = community_detection::hypergraph_louvain(chyper, context);
+    LOG << *std::max_element(communities.begin(), communities.end());
 }
 }
 }
