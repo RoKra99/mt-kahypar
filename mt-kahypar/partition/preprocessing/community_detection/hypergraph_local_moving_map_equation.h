@@ -15,6 +15,7 @@ namespace mt_kahypar::community_detection {
 
 class HypergraphLocalMovingMapEquation {
 
+    // ! represents a single map equation improving move and the corresponding changes in probabilities
     struct Move {
         HypernodeID destination_community;
         Probability delta_source;
@@ -58,6 +59,7 @@ public:
         _deactivate_random(deactivate_random) {}
 
 
+    // ! executes the local moving for map equation
     bool localMoving(ds::CommunityHypergraph& chg, parallel::scalable_vector<HypernodeID>& communities) {
         parallel::scalable_vector<HypernodeID> nodes(chg.initialNumNodes());
 
@@ -85,7 +87,7 @@ public:
                 const HypernodeWeight pincount_in_edge = overlap_local.local()[comm];
                 const HypernodeWeight edge_size = static_cast<HypernodeWeight>(chg.edgeSize(he));
                 //TODO: Not sure if / (edge_size - 1) is better (since that results in an equal model to the original map equation)
-                _community_exit_probability_mul_vol_total[comm] += static_cast<Probability>(pincount_in_edge * chg.edgeWeight(he) * (edge_size - pincount_in_edge)) / /*edge_size*/(edge_size - 1);
+                _community_exit_probability_mul_vol_total[comm] += static_cast<Probability>(pincount_in_edge * chg.edgeWeight(he) * (edge_size - pincount_in_edge)) / edge_size;//(edge_size - 1);
                 overlap_local.local()[comm] = 0;
             }
             neighbouring_communities.local().clear();
@@ -148,6 +150,7 @@ public:
 
 private:
 
+    // ! recomputes all exit probabilities
     void recomputeExitProbability(const ds::CommunityHypergraph& chg, const parallel::scalable_vector<HypernodeID>& communities) {
         tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID hn) {
             _community_exit_probability_mul_vol_total[hn].store(0.0L);
@@ -167,7 +170,7 @@ private:
                 const HypernodeWeight pincount_in_edge = overlap_local.local()[comm];
                 const HypernodeWeight edge_size = static_cast<HypernodeWeight>(chg.edgeSize(he));
                 //TODO: Not sure if / (edge_size - 1) is better (since that results in an equal model to the original map equation)
-                _community_exit_probability_mul_vol_total[comm] += static_cast<Probability>(pincount_in_edge * chg.edgeWeight(he) * (edge_size - pincount_in_edge)) / /*edge_size*/(edge_size - 1);
+                _community_exit_probability_mul_vol_total[comm] += static_cast<Probability>(pincount_in_edge * chg.edgeWeight(he) * (edge_size - pincount_in_edge)) / edge_size;//(edge_size - 1);
                 overlap_local.local()[comm] = 0;
             }
             neighbouring_communities.local().clear();
@@ -178,6 +181,46 @@ private:
         }
     }
 
+    // ! recalculates and sets the exit probabilities of the source and destination community and then recomputes the sum
+    void recomputeExitProbability(const ds::CommunityHypergraph& chg, const parallel::scalable_vector<HypernodeID>& communities, const HypernodeID source, const HypernodeID destination) {
+        parallel::scalable_vector<Probability> exit_probs(chg.initialNumNodes(), 0.0);
+        // tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID hn) {
+        //     exit_probs[hn].store(0.0L);
+        // });
+        tbb::enumerable_thread_specific<parallel::scalable_vector<HypernodeWeight>> overlap_local(chg.initialNumNodes(), 0);
+        tbb::enumerable_thread_specific<parallel::scalable_vector<HypernodeID>> neighbouring_communities;
+        for (HyperedgeID he = 0; he < chg.initialNumEdges(); ++he) {
+            for (const auto& mp : chg.multipins(he)) {
+                const size_t community_mp = communities[mp.id];
+                if (overlap_local.local()[community_mp] == 0) {
+                    neighbouring_communities.local().push_back(community_mp);
+                }
+                overlap_local.local()[community_mp] += mp.multiplicity;
+            }
+
+            for (const HypernodeID comm : neighbouring_communities.local()) {
+                if (comm == source || comm == destination) {
+                    const HypernodeWeight pincount_in_edge = overlap_local.local()[comm];
+                    const HypernodeWeight edge_size = static_cast<HypernodeWeight>(chg.edgeSize(he));
+                    //TODO: Not sure if / (edge_size - 1) is better (since that results in an equal model to the original map equation)
+                    exit_probs[comm] += static_cast<Probability>(pincount_in_edge * chg.edgeWeight(he) * (edge_size - pincount_in_edge)) / edge_size; //(edge_size - 1);
+                }
+                overlap_local.local()[comm] = 0;
+            }
+            neighbouring_communities.local().clear();
+        }
+
+        _community_exit_probability_mul_vol_total[source].store(exit_probs[source]);
+        _community_exit_probability_mul_vol_total[destination].store(exit_probs[destination]);
+
+        tbb::enumerable_thread_specific<Probability> sum_exit_prob_local(0.0);
+        tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID com) {
+            sum_exit_prob_local.local() += _community_exit_probability_mul_vol_total[com];
+        });
+        _sum_exit_probability_mul_vol_total.store(sum_exit_prob_local.combine(std::plus<>()));
+    }
+
+    // ! calculate the move wich improves the map equation the most and resturn this move
     template<typename Map, typename Map2>
     Move calculateBestMove(ds::CommunityHypergraph& chg, parallel::scalable_vector<HypernodeID>& communities, const HypernodeID v, Map& overlap, Map2& deltas) {
         ASSERT(overlap.size() == 0);
@@ -186,10 +229,10 @@ private:
         const HypernodeID comm_v = communities[v];
         const HyperedgeWeight vol_v = chg.nodeVolume(v);
         HypernodeWeight pin_count_v = 0;
-        Probability sum_of_reciprocals = 0.0;
+        //Probability sum_of_reciprocals = 0.0;
         for (const HyperedgeID& he : chg.incidentEdges(v)) {
             ASSERT(overlap.size() == 0);
-            const Probability reciprocal_edge_size = 1.0L / /*chg.edgeSize(he)*/(chg.edgeSize(he) - 1);
+            const Probability reciprocal_edge_size = 1.0L / chg.edgeSize(he); // (chg.edgeSize(he) - 1);
             const HypernodeWeight edge_weight = chg.edgeWeight(he);
             for (const auto& mp : chg.multipins(he)) {
                 const HypernodeID community = communities[mp.id];
@@ -208,17 +251,17 @@ private:
             }
             overlap.clear();
             community_independent_part -= static_cast<Probability>(edge_weight * pin_count_v * pin_count_v) * reciprocal_edge_size;
-            sum_of_reciprocals += edge_weight * pin_count_v * reciprocal_edge_size;
+            //sum_of_reciprocals += edge_weight * pin_count_v * reciprocal_edge_size;
         }
 
         // the formula only works for communities with volume != 0 therefore we have to handle this edge case explicitly
-        Probability delta_source = deltas[comm_v] - vol_v - sum_of_reciprocals;
-        if (vol_v == _community_volumes[comm_v]) {
+        Probability delta_source = deltas[comm_v] - vol_v; //- sum_of_reciprocals;
+        //if (vol_v == _community_volumes[comm_v]) {
             //Probability should = -_community_exit_probability_mul_vol_total[comm_v];
             //ASSERT(mt_kahypar::math::are_almost_equal_ld(should, delta_source, 1e-10L));
             //const int i = 1 + 1;
-            delta_source = -_community_exit_probability_mul_vol_total[comm_v];
-        }
+        //    delta_source = -_community_exit_probability_mul_vol_total[comm_v];
+        //}
 
         const auto plogp_rel = [this](Probability p) -> Probability {
             if (p > 0.0L) {
@@ -247,7 +290,7 @@ private:
             if (e.key == comm_v) { continue; }
 
             const HypernodeID destination_community = e.key;
-            const Probability delta_destination = community_independent_part + e.value + vol_v + sum_of_reciprocals;
+            const Probability delta_destination = community_independent_part + e.value + vol_v; //+ sum_of_reciprocals;
             // summands if we don't move the node at all and depend on destination
             const Probability remain_plogp_exit_prob_destination = plogp_rel(_community_exit_probability_mul_vol_total[destination_community]);
             const Probability remain_plogp_exit_plus_vol_destination = plogp_rel(_community_exit_probability_mul_vol_total[destination_community] + _community_volumes[destination_community]);
@@ -273,6 +316,7 @@ private:
         return move;
     }
 
+    // ! executes a the given move and also updates the data structures accordingly
     KAHYPAR_ATTRIBUTE_ALWAYS_INLINE void makeMove(ds::CommunityHypergraph& chg, parallel::scalable_vector<HypernodeID>& communities, const HypernodeID node_to_move, const Move& move) {
         ASSERT(communities[node_to_move] != move.destination_community);
         ASSERT(move.delta > 0);
@@ -292,22 +336,22 @@ private:
         //     chg.removeCommunityFromHyperedge(he, source_community);
         //     chg.addCommunityToHyperedge(he, move.destination_community);
         // }
+
+        //recomputeExitProbability(chg, communities, source_community, move.destination_community);
         _community_exit_probability_mul_vol_total[source_community] += move.delta_source;
         _community_exit_probability_mul_vol_total[move.destination_community] += move.delta_destination;
-
         //ASSERT(_community_exit_probability_mul_vol_total[source_community] >= 0.0L, V(_community_exit_probability_mul_vol_total[source_community]));
         //ASSERT(_community_exit_probability_mul_vol_total[move.destination_community] >= 0.0L, V(_community_exit_probability_mul_vol_total[move.destination_community]));
         _sum_exit_probability_mul_vol_total += move.delta_destination + move.delta_source;
-        //recomputeExitProbability(chg, communities);
         ASSERT(_sum_exit_probability_mul_vol_total <= chg.totalVolume());
         ASSERT(_sum_exit_probability_mul_vol_total >= 0.0L);
 #ifdef KAHYPAR_ENABLE_HEAVY_PREPROCESSING_ASSERTIONS
-        LOG << "delta" << move.delta;
+        LOG << std::fixed << "delta" << std::setprecision(15) << move.delta;
         const Probability after = metrics::hyp_map_equation(chg, communities);
 
-        LOG << V(before - after);
+        LOG << std::fixed << std::setprecision(15) << V(before - after);
         ASSERT(mt_kahypar::math::are_almost_equal_ld(move.delta, before - after, 1e-10L));
-        ASSERT(before - after > 0.0L);
+        //ASSERT(before - after > 0.0L);
 #endif
     }
 
