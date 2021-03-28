@@ -54,6 +54,7 @@ public:
                 ASSERT(community_edge_contribution.size() == 0);
                 const PartitionID comm_v = communities[v];
                 // sum of all edgeweights incident to v
+                auto t = tbb::tick_count::now();
                 HyperedgeWeight sum_of_edgeweights = 0;
                 for (const HyperedgeID& he : chg.incidentEdges(v)) {
                     const HyperedgeWeight edge_weight = chg.edgeWeight(he);
@@ -124,6 +125,9 @@ public:
                 PartitionID best_community = comm_v;
                 Volume best_delta = 0.0L;
                 const HyperedgeWeight sum_of_edgeweights_minus_edgecontribution_c = sum_of_edgeweights - edge_contribution_c;
+                
+                time_edge_contribution += (tbb::tick_count::now() - t).seconds();
+                t = tbb::tick_count::now();
 
                 // expected edgecontribution starts here
                 for (auto it = community_edge_contribution.begin(); it != end; ++it) {
@@ -189,6 +193,8 @@ public:
                     }
                 }
                 community_edge_contribution.clear();
+
+                time_exp_edge_contribution += (tbb::tick_count::now() - t).seconds();
                 return best_community;
             }
 
@@ -264,6 +270,8 @@ public:
 
             //parallel::AtomicWrapper<size_t> overall_checks;
             //parallel::AtomicWrapper<size_t> pruned_by_old;
+            parallel::AtomicWrapper<double> time_edge_contribution;
+            parallel::AtomicWrapper<double> time_exp_edge_contribution;
 
 private:
 
