@@ -86,16 +86,10 @@ public:
             for (const HypernodeID comm : neighbouring_communities.local()) {
                 const HypernodeWeight pincount_in_edge = overlap_local.local()[comm];
                 const HypernodeWeight edge_size = static_cast<HypernodeWeight>(chg.edgeSize(he));
-                //TODO: Not sure if / (edge_size - 1) is better (since that results in an equal model to the original map equation)
                 _community_exit_probability_mul_vol_total[comm] += static_cast<Probability>(pincount_in_edge * chg.edgeWeight(he) * (edge_size - pincount_in_edge)) / edge_size;//(edge_size - 1);
                 overlap_local.local()[comm] = 0;
             }
             neighbouring_communities.local().clear();
-            //}
-            // _sum_exit_probability_mul_vol_total = 0.0L;
-            // for (const auto& e : _community_exit_probability_mul_vol_total) {
-            //     _sum_exit_probability_mul_vol_total += e;
-            // }
         });
         _sum_exit_probability_mul_vol_total.store(0.0L);
         tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID hn) {
@@ -113,7 +107,6 @@ public:
                 utils::Randomize::instance().parallelShuffleVector(nodes, 0UL, nodes.size());
             }
 
-            //for (size_t i = 0; i < nodes.size(); ++i) {
             tbb::parallel_for(0UL, nodes.size(), [&](const size_t i) {
                 Move move;
                 const HypernodeID node_to_move = nodes[i];
@@ -252,14 +245,7 @@ private:
             //sum_of_reciprocals += edge_weight * pin_count_v * reciprocal_edge_size;
         }
 
-        // the formula only works for communities with volume != 0 therefore we have to handle this edge case explicitly
         Probability delta_source = deltas[comm_v] - vol_v; //- sum_of_reciprocals;
-        //if (vol_v == _community_volumes[comm_v]) {
-            //Probability should = -_community_exit_probability_mul_vol_total[comm_v];
-            //ASSERT(mt_kahypar::math::are_almost_equal_ld(should, delta_source, 1e-10L));
-            //const int i = 1 + 1;
-        //    delta_source = -_community_exit_probability_mul_vol_total[comm_v];
-        //}
 
         const auto plogp_rel = [this](Probability p) -> Probability {
             if (p > 0.0L) {
@@ -271,7 +257,6 @@ private:
 
         const Probability remain_plogp_sum_exit_prob = plogp_rel(_sum_exit_probability_mul_vol_total);
         // summands of map equation if we don't move the node at all and only depend on the source node/community
-        // TODO: store this?
         const Probability remain_plogp_exit_prob_source = plogp_rel(_community_exit_probability_mul_vol_total[comm_v]);
         const Probability remain_plogp_exit_prob_plus_vol_source = plogp_rel(_community_exit_probability_mul_vol_total[comm_v] + _community_volumes[comm_v]);
 
@@ -335,12 +320,12 @@ private:
         //     chg.addCommunityToHyperedge(he, move.destination_community);
         // }
 
-        recomputeExitProbability(chg, communities, source_community, move.destination_community);
-        //_community_exit_probability_mul_vol_total[source_community] += move.delta_source;
-        //_community_exit_probability_mul_vol_total[move.destination_community] += move.delta_destination;
+        //recomputeExitProbability(chg, communities, source_community, move.destination_community);
+        _community_exit_probability_mul_vol_total[source_community] += move.delta_source;
+        _community_exit_probability_mul_vol_total[move.destination_community] += move.delta_destination;
         //ASSERT(_community_exit_probability_mul_vol_total[source_community] >= 0.0L, V(_community_exit_probability_mul_vol_total[source_community]));
         //ASSERT(_community_exit_probability_mul_vol_total[move.destination_community] >= 0.0L, V(_community_exit_probability_mul_vol_total[move.destination_community]));
-        //_sum_exit_probability_mul_vol_total += move.delta_destination + move.delta_source;
+        _sum_exit_probability_mul_vol_total += move.delta_destination + move.delta_source;
         ASSERT(_sum_exit_probability_mul_vol_total <= chg.totalVolume());
         ASSERT(_sum_exit_probability_mul_vol_total >= 0.0L);
 #ifdef KAHYPAR_ENABLE_HEAVY_PREPROCESSING_ASSERTIONS
