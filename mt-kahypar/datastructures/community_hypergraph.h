@@ -22,25 +22,31 @@ class CommunityHypergraph {
         explicit TmpCommunityHypergraphBuffer(const HypernodeID num_hypernodes, const HypernodeID num_pins) {
             tbb::parallel_invoke([&] {
                 tmp_node_volumes.resize("Preprocessing", "tmp_community_volumes", num_hypernodes);
-                }, [&] {
-                    multipin_mapping.resize("Preprocessing", "multipin_mapping", num_pins);
-                });
+            }, [&] {
+                multipin_mapping.resize("Preprocessing", "multipin_mapping", num_pins);
+            });
         }
 
         Array<parallel::AtomicWrapper<HyperedgeWeight>> tmp_node_volumes;
         Array<HypernodeID> multipin_mapping;
     };
 
+    struct EdgeSizeObject {
+        const size_t d;
+        const size_t remaining_d;
+        const Volume weight;
+    };
+
 public:
 
-    using EdgeSizes = parallel::scalable_vector<size_t>;
+    using EdgeSizes = parallel::scalable_vector<EdgeSizeObject>;
     using HyperedgeIterator = typename Hypergraph::HyperedgeIterator;
     using IncidenceIterator = typename Hypergraph::IncidenceIterator;
     using IncidentNetsIterator = typename Hypergraph::IncidentNetsIterator;
     using MultipinIterator = typename Array<Multipin>::const_iterator;
     using EdgeSizeIterator = typename EdgeSizes::const_iterator;
-    //using Map = RobinHoodMap<PartitionID, size_t>;
     using Map = HashMap<PartitionID, size_t, xxhash<uint32_t>>;
+    //using Map = FixedSizeSparseMap<PartitionID, size_t>;
     using VectorIterator = typename std::vector<PartitionID>::const_iterator;
     using MapIterator = typename Map::Iterator;
 
@@ -69,11 +75,11 @@ public:
         _tmp_community_hypergraph_buffer(nullptr) {
         tbb::parallel_invoke([&] {
             _node_volumes.resize("Preprocessing", "node_volumes", hypergraph.initialNumNodes(), true, true);
-            }, [&] {
-                _d_edge_weights.resize("Preprocessing", "d_edge_weights", hypergraph.maxEdgeSize() + 1, true, true);
-            }, [&] {
-                _community_count_locks.resize("Preprocessing", "community_count_locks", hypergraph.initialNumEdges());
-            });
+        }, [&] {
+            _d_edge_weights.resize("Preprocessing", "d_edge_weights", hypergraph.maxEdgeSize() + 1, true, true);
+        }, [&] {
+            _community_count_locks.resize("Preprocessing", "community_count_locks", hypergraph.initialNumEdges());
+        });
         if (use_multipins) {
             initializeMultipinDataStructures();
         }
@@ -247,7 +253,7 @@ private:
                 _node_volumes[hn] += weight;
                 local_total_volume.local() += weight;
             }
-            });
+        });
         _vol_v = local_total_volume.combine(std::plus<HyperedgeWeight>());
         ASSERT(_vol_v > 0);
     }
@@ -259,12 +265,18 @@ private:
             const HyperedgeWeight weight = _hg->edgeWeight(he);
             _d_edge_weights[edgeSize(he)] += weight;
             local_total_edge_weight.local() += weight;
-            });
+        });
         _total_edge_weight = local_total_edge_weight.combine(std::plus<HyperedgeWeight>());
 
         for (size_t i = 0; i < _d_edge_weights.size(); ++i) {
             if (_d_edge_weights[i] > 0) {
-                _valid_edge_sizes.emplace_back(i);
+                // if (_valid_edge_sizes.size() > 1) {
+                //     _valid_edge_sizes.push_back({ i , i - _valid_edge_sizes[_valid_edge_sizes.size() - 1].first });
+                // } else {
+                //     _valid_edge_sizes.push_back({ i , i - 1 });
+                // }
+                const size_t remaining_d = _valid_edge_sizes.size() > 1 ? i - _valid_edge_sizes[_valid_edge_sizes.size() - 1].d : i - 1;
+                _valid_edge_sizes.push_back({ i, remaining_d, static_cast<Volume>(_d_edge_weights[i]) });
             }
         }
     }
@@ -275,12 +287,12 @@ private:
             _hg->doParallelForAllEdges([&](const HyperedgeID he) {
                 _community_counts[he] = edgeSize(he) > _context.preprocessing.community_detection.hyperedge_size_caching_threshold
                     ? std::make_unique<CommunityCount<Map>>(edgeSize(he), multipins(he)) : std::unique_ptr<CommunityCount<Map>>(nullptr);
-                });
+            });
         } else {
             _hg->doParallelForAllEdges([&](const HyperedgeID he) {
                 _community_counts[he] = edgeSize(he) > _context.preprocessing.community_detection.hyperedge_size_caching_threshold
                     ? std::make_unique<CommunityCount<Map>>(edgeSize(he), pins(he)) : std::unique_ptr<CommunityCount<Map>>(nullptr);
-                });
+            });
         }
     }
 
@@ -296,18 +308,18 @@ private:
     void initializeMultipinDataStructures() {
         tbb::parallel_invoke([&] {
             _multipin_incidence_array.resize("Preprocessing", "multipin_incidence_array", _hg->initialNumPins());
-            }, [&] {
-                _multipin_indexes.resize("Preprocessing", "multipin_indexes", _hg->initialNumEdges() + 1);
-            });
+        }, [&] {
+            _multipin_indexes.resize("Preprocessing", "multipin_indexes", _hg->initialNumEdges() + 1);
+        });
 
         tbb::parallel_for(0U, _hg->initialNumPins(), [&](const HypernodeID hn) {
             _multipin_incidence_array[hn].id = _hg->_incidence_array[hn];
             _multipin_incidence_array[hn].multiplicity = 1U;
-            });
+        });
 
         tbb::parallel_for(0U, _hg->initialNumEdges(), [&](const HyperedgeID he) {
             _multipin_indexes[he] = _hg->hyperedge(he).firstEntry();
-            });
+        });
         _multipin_indexes[_hg->initialNumEdges()] = _hg->initialNumPins();
     }
 
@@ -333,7 +345,7 @@ private:
     Array<parallel::AtomicWrapper<HyperedgeWeight>> _d_edge_weights;
 
     // ! contains the indexes to all edgeSizes which occur in the graph
-    parallel::scalable_vector<size_t> _valid_edge_sizes;
+    EdgeSizes _valid_edge_sizes;
 
     // ! sum of all edgeweights
     HyperedgeWeight _total_edge_weight;

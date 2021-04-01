@@ -116,7 +116,7 @@ public:
 
                 const Volume source_fraction_minus = 1.0L - static_cast<Volume>(vol_c_minus_vol_v) * _reciprocal_vol_total;
                 const Volume source_fraction = 1.0L - static_cast<Volume>(vol_c) * _reciprocal_vol_total;
-                size_t biggest_d_yet = 1;
+                //size_t biggest_d_yet = 1;
                 Volume power_d_fraction_minus = source_fraction_minus;
                 Volume power_d_fraction = source_fraction;
                 bool calculated_c = false;
@@ -152,12 +152,12 @@ public:
                     // precalculate the powers for the source community only once
                     // and only if not every possible move is pruned beforehand
                     if (!calculated_c) {
-                        for (const size_t d : chg.edgeSizes()) {
-                            const size_t remaining_d = d - biggest_d_yet;
-                            power_d_fraction_minus *= math::fast_power(source_fraction_minus, remaining_d);
-                            power_d_fraction *= math::fast_power(source_fraction, remaining_d);
-                            powers_of_source_community[d] = power_d_fraction_minus - power_d_fraction;
-                            biggest_d_yet = d;
+                        for (const auto& d_pair : chg.edgeSizes()) {
+                            //const size_t remaining_d = d - biggest_d_yet; //TODO: this con be precalculated
+                            power_d_fraction_minus *= math::fast_power(source_fraction_minus, d_pair.remaining_d);
+                            power_d_fraction *= math::fast_power(source_fraction, d_pair.remaining_d);
+                            powers_of_source_community[d_pair.d] = power_d_fraction_minus - power_d_fraction;
+                            //biggest_d_yet = d;
                         }
                         calculated_c = true;
                     }
@@ -165,16 +165,16 @@ public:
                     Volume delta = destination_edge_contribution;
                     // if this is equal the expected_edge_contribution will be 0
                     if (vol_c_minus_vol_v != vol_destination_minus) {
-                        biggest_d_yet = 1;
+                        //biggest_d_yet = 1;
                         power_d_fraction_minus = destination_fraction_minus;
                         power_d_fraction = destination_fraction;
                         //actual calculation of the expected edge contribution for the given community
-                        for (const size_t d : chg.edgeSizes()) {
-                            const size_t remaining_d = d - biggest_d_yet;
-                            power_d_fraction_minus *= math::fast_power(destination_fraction_minus, remaining_d);
-                            power_d_fraction *= math::fast_power(destination_fraction, remaining_d);
-                            delta += static_cast<Volume>(chg.edgeWeightBySize(d)) * (powers_of_source_community[d] + power_d_fraction - power_d_fraction_minus);
-                            biggest_d_yet = d;
+                        for (const auto& d_pair : chg.edgeSizes()) {
+                            //const size_t remaining_d = d - biggest_d_yet; //TODO: this can be precalculated
+                            power_d_fraction_minus *= math::fast_power(destination_fraction_minus, d_pair.remaining_d);
+                            power_d_fraction *= math::fast_power(destination_fraction, d_pair.remaining_d);
+                            delta += d_pair.weight * (powers_of_source_community[d_pair.d] + power_d_fraction - power_d_fraction_minus);
+                            //biggest_d_yet = d;
                             if (delta > best_delta) {
                                 break;
                             }
