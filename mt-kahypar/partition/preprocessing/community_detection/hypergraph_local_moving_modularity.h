@@ -41,7 +41,7 @@ public:
         return construct_large_edge_contribution_map(hypergraph.initialNumNodes());
             }),
         _community_neighbours_of_edge(0),
-                _powers_of_source_community(hypergraph.maxEdgeSize() + 1, 0.L),
+                _powers_of_source_community(hypergraph.numberOfUniqueEdgeSizes(), 0.L),
                 _community_volumes(hypergraph.initialNumNodes()),
                 _deactivate_random(deactivate_random) {}
 
@@ -156,7 +156,7 @@ public:
                             //const size_t remaining_d = d - biggest_d_yet; //TODO: this con be precalculated
                             power_d_fraction_minus *= math::fast_power(source_fraction_minus, d_pair.remaining_d);
                             power_d_fraction *= math::fast_power(source_fraction, d_pair.remaining_d);
-                            powers_of_source_community[d_pair.d] = power_d_fraction_minus - power_d_fraction;
+                            powers_of_source_community[d_pair.index] = power_d_fraction_minus - power_d_fraction;
                             //biggest_d_yet = d;
                         }
                         calculated_c = true;
@@ -173,7 +173,7 @@ public:
                             //const size_t remaining_d = d - biggest_d_yet; //TODO: this can be precalculated
                             power_d_fraction_minus *= math::fast_power(destination_fraction_minus, d_pair.remaining_d);
                             power_d_fraction *= math::fast_power(destination_fraction, d_pair.remaining_d);
-                            delta += d_pair.weight * (powers_of_source_community[d_pair.d] + power_d_fraction - power_d_fraction_minus);
+                            delta += d_pair.weight * (powers_of_source_community[d_pair.index] + power_d_fraction - power_d_fraction_minus);
                             //biggest_d_yet = d;
                             if (delta > best_delta) {
                                 break;
@@ -323,6 +323,7 @@ private:
 
     // ! contains (vol_V - vol(C)+vol(v))^d - (vol(V)-vol(C))^d for all valid edgesizes d
     // ! Note the values in here are not cleared after each call to calculateBestMove
+    // TODO: condense the values similar to _valid_edge_weights instead of having a vector of the size of max_edge_size
     tbb::enumerable_thread_specific<parallel::scalable_vector<Volume>> _powers_of_source_community;
 
     // ! volumes of each community

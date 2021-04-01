@@ -32,7 +32,7 @@ class CommunityHypergraph {
     };
 
     struct EdgeSizeObject {
-        const size_t d;
+        const size_t index;
         const size_t remaining_d;
         const Volume weight;
     };
@@ -267,16 +267,14 @@ private:
             local_total_edge_weight.local() += weight;
         });
         _total_edge_weight = local_total_edge_weight.combine(std::plus<HyperedgeWeight>());
-
+        size_t index = 0;
+        size_t biggest_d_yet = 1;
         for (size_t i = 0; i < _d_edge_weights.size(); ++i) {
             if (_d_edge_weights[i] > 0) {
-                // if (_valid_edge_sizes.size() > 1) {
-                //     _valid_edge_sizes.push_back({ i , i - _valid_edge_sizes[_valid_edge_sizes.size() - 1].first });
-                // } else {
-                //     _valid_edge_sizes.push_back({ i , i - 1 });
-                // }
-                const size_t remaining_d = _valid_edge_sizes.size() > 1 ? i - _valid_edge_sizes[_valid_edge_sizes.size() - 1].d : i - 1;
-                _valid_edge_sizes.push_back({ i, remaining_d, static_cast<Volume>(_d_edge_weights[i]) });
+                const size_t remaining_d = i - biggest_d_yet;
+                biggest_d_yet = i;
+                _valid_edge_sizes.push_back({ index, remaining_d, static_cast<Volume>(_d_edge_weights[i]) });
+                ++index;
             }
         }
     }

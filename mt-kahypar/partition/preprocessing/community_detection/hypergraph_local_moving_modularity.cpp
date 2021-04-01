@@ -27,7 +27,7 @@ Volume hyp_modularity(const ds::CommunityHypergraph& hypergraph, const parallel:
     Volume exp_edge_contribution = 0.0;
     for (const auto& d_pair : hypergraph.edgeSizes()) {
         Volume d_chance = 0.0L;
-        const size_t d = d_pair.d;
+        const size_t d = d_pair.index;
         for (const HyperedgeWeight& vol_c : hlmm.communityVolumes(hypergraph)) {
             d_chance += 1.0L - static_cast<Volume>(math::fast_power(vol_V - vol_c, d)) / math::fast_power(vol_V, d);
         }
