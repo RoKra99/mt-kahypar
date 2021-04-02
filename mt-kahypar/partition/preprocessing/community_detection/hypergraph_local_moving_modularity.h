@@ -294,14 +294,14 @@ private:
             // of the cache efficient sparse map would be small enough such that linear probing
             // is fast.
             if (ub_neighbors_v > cache_efficient_rating_map_size / 3UL) {
-                return std::min(vertex_degree_bounded_rating_map_size, static_cast<size_t>(chg.initialNumNodes()));
+                return chg.initialNumNodes();//std::min(vertex_degree_bounded_rating_map_size, static_cast<size_t>(chg.initialNumNodes()));
             }
         }
         return 0;
     }
 
     LargeTmpRatingMap construct_large_edge_contribution_map(const size_t num_nodes) {
-        return LargeTmpRatingMap(3UL * std::min(num_nodes, _vertex_degree_sampling_threshold));
+        return LargeTmpRatingMap(num_nodes); //(3UL * std::min(num_nodes, _vertex_degree_sampling_threshold));
     }
 
     const size_t _community_neighbour_samples;
