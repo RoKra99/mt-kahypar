@@ -144,6 +144,7 @@ public:
 
     // ! IteratorRange over all communities with single cuts of the hyperedge
     IteratorRange<VectorIterator> singleCuts(const HyperedgeID he) {
+        ASSERT(_community_counts[he]);
         _community_count_locks[he].lock();
         IteratorRange<VectorIterator> it = _community_counts[he]->singleCuts();
         _community_count_locks[he].unlock();
@@ -153,6 +154,7 @@ public:
     // ! IteratorRange over all communities with multiple cuts
     // TODO: cbegin() and cend()
     IteratorRange<MapIterator> multiCuts(const HyperedgeID he) {
+        ASSERT(_community_counts[he]);
         _community_count_locks[he].lock();
         IteratorRange<MapIterator> it = _community_counts[he]->multiCuts();
         _community_count_locks[he].unlock();
@@ -236,7 +238,7 @@ public:
 private:
 
     void freeInternalData() {
-        parallel::parallel_free(_node_volumes, _d_edge_weights);
+        //parallel::parallel_free(_node_volumes, _d_edge_weights, _multipin_incidence_array, _multipin_indexes, _community_count_locks);
         if (_tmp_community_hypergraph_buffer) {
             delete(_tmp_community_hypergraph_buffer);
         }

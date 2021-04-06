@@ -68,7 +68,7 @@ public:
                         for (const auto& e : chg.multiCuts(he)) {
                             const PartitionID community = e.first;
                             const size_t count = e.second;
-                            if (static_cast<HypernodeID>(community) < chg.initialNumNodes() && (community != comm_v || count == 1)) {
+                            if (static_cast<HypernodeID>(community) < chg.initialNumNodes() && (community != comm_v || count == 1) && count > 0) {
                                 ASSERT(count > 0);
                                 ASSERT(static_cast<HypernodeID>(community) < chg.initialNumNodes() && community >= 0);
                                 community_edge_contribution[community] -= edge_weight;
