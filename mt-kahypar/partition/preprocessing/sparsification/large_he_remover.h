@@ -77,7 +77,7 @@ class LargeHyperedgeRemover {
   }
 
   HypernodeID largeHyperedgeThreshold() const {
-    return std::max(_context.partition.large_hyperedge_size_threshold, LARGE_HE_THRESHOLD);
+    return _context.partition.large_hyperedge_size_threshold;//std::max(_context.partition.large_hyperedge_size_threshold, LARGE_HE_THRESHOLD);
   }
 
   void reset() {

@@ -172,10 +172,10 @@ namespace mt_kahypar {
 
     // ################## PREPROCESSING ##################
     utils::Timer::instance().start_timer("preprocessing", "Preprocessing");
-    preprocess(hypergraph, context);
-
     DegreeZeroHypernodeRemover degree_zero_hn_remover(context);
     LargeHyperedgeRemover large_he_remover(context);
+    large_he_remover.removeLargeHyperedges(hypergraph);
+    preprocess(hypergraph, context);
     sanitize(hypergraph, context, degree_zero_hn_remover, large_he_remover);
     utils::Timer::instance().stop_timer("preprocessing");
 
