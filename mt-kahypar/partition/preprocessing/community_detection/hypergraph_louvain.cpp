@@ -15,17 +15,16 @@ parallel::scalable_vector<HypernodeID> hypergraph_local_moving_contract_recurse(
     if (clustering_changed) {
         ds::StaticHypergraph coarse_hg;
         if (debug) {
-            Volume after = metrics::hyp_modularity(chg, communities, hlmm);
+            Volume after = metrics::hyp_modularity(chg, communities);
             LOG << "after" << after;
         }
         ds::CommunityHypergraph coarse_chg = chg.contract(coarse_hg, communities);
         if (debug) {
-            hlmm.initializeCommunityVolumes(chg, communities);
             parallel::scalable_vector<HypernodeID> comm(coarse_chg.initialNumNodes());
             for (HypernodeID i = 0; i < coarse_chg.initialNumNodes(); ++i) {
                 comm[i] = i;
             }
-            Volume contraction = metrics::hyp_modularity(coarse_chg, comm, hlmm);
+            Volume contraction = metrics::hyp_modularity(coarse_chg, comm);
             LOG << "contraction" << contraction;
         }
         parallel::scalable_vector<HypernodeID> coarse_communities = hypergraph_local_moving_contract_recurse(coarse_chg, hlmm);
