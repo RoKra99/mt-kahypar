@@ -358,5 +358,5 @@ private:
 }
 
 namespace mt_kahypar::metrics {
-Volume hyp_modularity(const ds::CommunityHypergraph& hypergraph, const parallel::scalable_vector<HypernodeID>& communities, const community_detection::HypergraphLocalMovingModularity& hlmm);
+Volume hyp_modularity(const ds::CommunityHypergraph& hypergraph, const parallel::scalable_vector<HypernodeID>& communities);
 }
