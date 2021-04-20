@@ -127,7 +127,7 @@ public:
         const HyperedgeWeight sum_of_edgeweights_minus_edgecontribution_c = sum_of_edgeweights - edge_contribution_c;
 
         parallel::scalable_vector<PartitionID> tied_best_communities = { comm_v };
-
+        //++tries;
         // expected edgecontribution starts here
         for (auto it = community_edge_contribution.begin(); it != end; ++it) {
             //++overall_checks;
@@ -148,26 +148,27 @@ public:
                 continue;
             }
 
-            const Volume destination_fraction = 1.0L - static_cast<Volume>(vol_destination) * _reciprocal_vol_total;
-            const Volume destination_fraction_minus = 1.0L - static_cast<Volume>(vol_destination_minus) * _reciprocal_vol_total;
-            parallel::scalable_vector<Volume>& powers_of_source_community = _powers_of_source_community.local();
-
-            // precalculate the powers for the source community only once
-            // and only if not every possible move is pruned beforehand
-            if (!calculated_c) {
-                for (const auto& d_pair : chg.edgeSizes()) {
-                    //const size_t remaining_d = d - biggest_d_yet; //TODO: this con be precalculated
-                    power_d_fraction_minus *= math::fast_power(source_fraction_minus, d_pair.remaining_d);
-                    power_d_fraction *= math::fast_power(source_fraction, d_pair.remaining_d);
-                    powers_of_source_community[d_pair.index] = power_d_fraction_minus - power_d_fraction;
-                    //biggest_d_yet = d;
-                }
-                calculated_c = true;
-            }
 
             Volume delta = destination_edge_contribution;
             // if this is equal the expected_edge_contribution will be 0
             if (vol_c_minus_vol_v != vol_destination_minus) {
+
+                const Volume destination_fraction = 1.0L - static_cast<Volume>(vol_destination) * _reciprocal_vol_total;
+                const Volume destination_fraction_minus = 1.0L - static_cast<Volume>(vol_destination_minus) * _reciprocal_vol_total;
+                parallel::scalable_vector<Volume>& powers_of_source_community = _powers_of_source_community.local();
+
+                // precalculate the powers for the source community only once
+                // and only if not every possible move is pruned beforehand
+                if (!calculated_c) {
+                    for (const auto& d_pair : chg.edgeSizes()) {
+                        //const size_t remaining_d = d - biggest_d_yet; //TODO: this con be precalculated
+                        power_d_fraction_minus *= math::fast_power(source_fraction_minus, d_pair.remaining_d);
+                        power_d_fraction *= math::fast_power(source_fraction, d_pair.remaining_d);
+                        powers_of_source_community[d_pair.index] = power_d_fraction_minus - power_d_fraction;
+                        //biggest_d_yet = d;
+                    }
+                    calculated_c = true;
+                }
                 //biggest_d_yet = 1;
                 power_d_fraction_minus = destination_fraction_minus;
                 power_d_fraction = destination_fraction;
@@ -196,6 +197,7 @@ public:
             }
         }
         //success += tied_best_communities.size() > 1 ? 1 : 0;
+        success += !calculated_c ? 1 : 0;
         PartitionID best_community = tied_best_communities[utils::Randomize::instance().getRandomInt(0, static_cast<int>(tied_best_communities.size()) - 1, sched_getcpu())];
         community_edge_contribution.clear();
         //exp_edge_con_time += (tbb::tick_count::now() - t).seconds();
