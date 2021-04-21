@@ -99,7 +99,7 @@ public:
         }
         const HyperedgeWeight edge_contribution_c = -community_edge_contribution[comm_v];
         //edge_con_time += (tbb::tick_count::now() - t).seconds();
-        // ------------------------- Sampling --------------------------------------
+        // ------------------------- Selection --------------------------------------
         // const auto end = community_edge_contribution.end();
         const auto end = _community_neighbour_sampling_threshold < community_edge_contribution.size()
             ? community_edge_contribution.begin() + _community_neighbour_samples : community_edge_contribution.end();
@@ -150,6 +150,7 @@ public:
 
 
             Volume delta = destination_edge_contribution;
+            
             // if this is equal the expected_edge_contribution will be 0
             if (vol_c_minus_vol_v != vol_destination_minus) {
 
@@ -158,7 +159,7 @@ public:
                 parallel::scalable_vector<Volume>& powers_of_source_community = _powers_of_source_community.local();
 
                 // precalculate the powers for the source community only once
-                // and only if not every possible move is pruned beforehand
+                // and only if we actually have to calculate the expected edge contribution
                 if (!calculated_c) {
                     for (const auto& d_pair : chg.edgeSizes()) {
                         //const size_t remaining_d = d - biggest_d_yet; //TODO: this con be precalculated
@@ -172,6 +173,7 @@ public:
                 //biggest_d_yet = 1;
                 power_d_fraction_minus = destination_fraction_minus;
                 power_d_fraction = destination_fraction;
+
                 //actual calculation of the expected edge contribution for the given community
                 for (const auto& d_pair : chg.edgeSizes()) {
                     //const size_t remaining_d = d - biggest_d_yet; //TODO: this can be precalculated
@@ -197,7 +199,7 @@ public:
             }
         }
         //success += tied_best_communities.size() > 1 ? 1 : 0;
-        success += !calculated_c ? 1 : 0;
+        //success += !calculated_c ? 1 : 0;
         PartitionID best_community = tied_best_communities[utils::Randomize::instance().getRandomInt(0, static_cast<int>(tied_best_communities.size()) - 1, sched_getcpu())];
         community_edge_contribution.clear();
         //exp_edge_con_time += (tbb::tick_count::now() - t).seconds();
