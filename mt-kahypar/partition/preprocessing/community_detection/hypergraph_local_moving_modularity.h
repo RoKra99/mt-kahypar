@@ -122,11 +122,11 @@ public:
         Volume power_d_fraction = source_fraction;
         bool calculated_c = false;
 
-        //PartitionID best_community = comm_v;
+        PartitionID best_community = comm_v;
         Volume best_delta = 0.0L;
         const HyperedgeWeight sum_of_edgeweights_minus_edgecontribution_c = sum_of_edgeweights - edge_contribution_c;
 
-        parallel::scalable_vector<PartitionID> tied_best_communities = { comm_v };
+        //parallel::scalable_vector<PartitionID> tied_best_communities = { comm_v };
         //++tries;
         // expected edgecontribution starts here
         for (auto it = community_edge_contribution.begin(); it != end; ++it) {
@@ -189,18 +189,19 @@ public:
                 //     || (vol_c_minus_vol_v < vol_destination_minus && exp_edge_contribution > 0.0L)
                 //     || (vol_c_minus_vol_v == vol_destination_minus));
             }
-            if (delta < best_delta) {
+            if (delta < best_delta || (delta == best_delta && community < best_community)) {
                 best_delta = delta;
-                tied_best_communities.clear();
-                tied_best_communities.push_back(community);
-                //best_community = community;
-            } else if (delta == best_delta) {
-                tied_best_communities.push_back(community);
-            }
+                //tied_best_communities.clear();
+                //tied_best_communities.push_back(community);
+                best_community = community;
+            } 
+            // else if (delta == best_delta) {
+            //     //tied_best_communities.push_back(community);
+            // }
         }
         //success += tied_best_communities.size() > 1 ? 1 : 0;
         //success += !calculated_c ? 1 : 0;
-        PartitionID best_community = tied_best_communities[utils::Randomize::instance().getRandomInt(0, static_cast<int>(tied_best_communities.size()) - 1, sched_getcpu())];
+        //PartitionID best_community = tied_best_communities[utils::Randomize::instance().getRandomInt(0, static_cast<int>(tied_best_communities.size()) - 1, sched_getcpu())];
         community_edge_contribution.clear();
         //exp_edge_con_time += (tbb::tick_count::now() - t).seconds();
         return best_community;
