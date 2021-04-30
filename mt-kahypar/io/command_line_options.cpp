@@ -166,10 +166,11 @@ namespace mt_kahypar {
              po::value<std::string>()->value_name("<string>")->notifier(
                      [&](const std::string& rule) {
                              context.preprocessing.community_detection.tie_breaking_rule = tieBreakingRuleFromString(rule);
-                     })->default_value("random"),
+                     })->default_value("hybrid"),
              "Tie Breaking Rules:\n"
              "- random\n"
-             "- smaller_id");
+             "- smaller_id\n"
+             "- hybrid");
     return options;
   }
 

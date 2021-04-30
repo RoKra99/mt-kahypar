@@ -70,6 +70,14 @@ namespace mt_kahypar {
         context.preprocessing.community_detection.edge_weight_function = LouvainEdgeWeight::uniform;
       }
     }
+
+    if (context.preprocessing.community_detection.tie_breaking_rule == TieBreakingRule::hybrid) {
+      if (density > 1) {
+        context.preprocessing.community_detection.tie_breaking_rule = TieBreakingRule::random;
+      } else {
+        context.preprocessing.community_detection.tie_breaking_rule = TieBreakingRule::smaller_id;
+      }
+    }
   }
 
   void sanitize(Hypergraph& hypergraph, Context& context,

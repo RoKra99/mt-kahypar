@@ -166,7 +166,7 @@ public:
                 // and only if we actually have to calculate the expected edge contribution
                 if (!calculated_c) {
                     for (const auto& d_pair : chg.edgeSizes()) {
-                        //const size_t remaining_d = d - biggest_d_yet; //TODO: this con be precalculated
+                        //const size_t remaining_d = d - biggest_d_yet;
                         power_d_fraction_minus *= math::fast_power(source_fraction_minus, d_pair.remaining_d);
                         power_d_fraction *= math::fast_power(source_fraction, d_pair.remaining_d);
                         powers_of_source_community[d_pair.index] = power_d_fraction_minus - power_d_fraction;
@@ -180,7 +180,7 @@ public:
 
                 //actual calculation of the expected edge contribution for the given community
                 for (const auto& d_pair : chg.edgeSizes()) {
-                    //const size_t remaining_d = d - biggest_d_yet; //TODO: this can be precalculated
+                    //const size_t remaining_d = d - biggest_d_yet; 
                     power_d_fraction_minus *= math::fast_power(destination_fraction_minus, d_pair.remaining_d);
                     power_d_fraction *= math::fast_power(destination_fraction, d_pair.remaining_d);
                     delta += d_pair.weight * (powers_of_source_community[d_pair.index] + power_d_fraction - power_d_fraction_minus);
@@ -358,7 +358,6 @@ private:
 
     // ! contains (vol_V - vol(C)+vol(v))^d - (vol(V)-vol(C))^d for all valid edgesizes d
     // ! Note the values in here are not cleared after each call to calculateBestMove
-    // TODO: condense the values similar to _valid_edge_weights instead of having a vector of the size of max_edge_size
     tbb::enumerable_thread_specific<parallel::scalable_vector<Volume>> _powers_of_source_community;
 
     tbb::enumerable_thread_specific<parallel::scalable_vector<PartitionID>> _tied_best_communities;

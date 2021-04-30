@@ -80,13 +80,11 @@ public:
     }
 
     // ! IteratorRange over all communities with multiple cuts
-    // TODO: cbegin() and cend()
     IteratorRange<MapIterator> multiCuts() const {
         return IteratorRange<MapIterator>(_communities.begin(), _communities.end());
     }
 
 private:
-    // TODO: This is O(n), improve?
     // ! Removes the community from the single cut datastructure
     bool removeFromSingleCut(const PartitionID id) {
         for (size_t i = 0; i < end_of_single_cuts; ++i) {

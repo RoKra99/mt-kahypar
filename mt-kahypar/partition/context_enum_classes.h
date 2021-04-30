@@ -48,7 +48,8 @@ enum class LouvainEdgeWeight : uint8_t {
 
 enum class TieBreakingRule : uint8_t {
   random,
-  smaller_id
+  smaller_id,
+  hybrid
 };
 
 enum class SimiliarNetCombinerStrategy : uint8_t {

@@ -152,7 +152,6 @@ public:
     }
 
     // ! IteratorRange over all communities with multiple cuts
-    // TODO: cbegin() and cend()
     IteratorRange<MapIterator> multiCuts(const HyperedgeID he) {
         ASSERT(_community_counts[he]);
         _community_count_locks[he].lock();
