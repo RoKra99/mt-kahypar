@@ -57,6 +57,7 @@ namespace mt_kahypar {
     str << "    Hyperedge Size Caching Threshold: " << params.hyperedge_size_caching_threshold << std::endl;
     str << "    Community Neighbour Sampling Threshold: " << params.community_neighbour_sampling_threshold << std::endl;
     str << "    Community Neighbour Samples: " << params.community_neighbour_samples << std::endl;
+    str << "    Tie Breaking Rule:                " << params.tie_breaking_rule << std::endl;
     return str;
   }
 

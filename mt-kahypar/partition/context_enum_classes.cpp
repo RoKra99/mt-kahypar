@@ -57,6 +57,15 @@ namespace mt_kahypar {
     return os << static_cast<uint8_t>(type);
   }
 
+  std::ostream & operator<< (std::ostream& os, const TieBreakingRule& rule) {
+    switch (rule) {
+      case TieBreakingRule::random: return os << "random";
+      case TieBreakingRule::smaller_id: return os << "smaller_id";
+        // omit default case to trigger compiler warning for missing cases
+    }
+    return os << static_cast<uint8_t>(rule);
+  }
+
   std::ostream & operator<< (std::ostream& os, const SimiliarNetCombinerStrategy& strategy) {
     switch (strategy) {
       case SimiliarNetCombinerStrategy::union_nets: return os << "union";
@@ -170,6 +179,14 @@ namespace mt_kahypar {
     }
     ERROR("No valid louvain edge weight.");
     return LouvainEdgeWeight::UNDEFINED;
+  }
+
+  TieBreakingRule tieBreakingRuleFromString(const std::string& rule) {
+    if (rule == "random") {
+      return TieBreakingRule::random;
+    } else if (rule == "smaller_id") {
+      return TieBreakingRule::smaller_id;
+    }
   }
 
   SimiliarNetCombinerStrategy similiarNetCombinerStrategyFromString(const std::string& type) {

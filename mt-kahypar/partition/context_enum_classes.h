@@ -46,6 +46,11 @@ enum class LouvainEdgeWeight : uint8_t {
   UNDEFINED
 };
 
+enum class TieBreakingRule : uint8_t {
+  random,
+  smaller_id
+};
+
 enum class SimiliarNetCombinerStrategy : uint8_t {
   union_nets,
   max_size,
@@ -118,6 +123,8 @@ std::ostream & operator<< (std::ostream& os, const Paradigm& paradigm);
 
 std::ostream & operator<< (std::ostream& os, const LouvainEdgeWeight& type);
 
+std::ostream & operator<< (std::ostream& os, const TieBreakingRule& rule);
+
 std::ostream & operator<< (std::ostream& os, const SimiliarNetCombinerStrategy& strategy);
 
 std::ostream & operator<< (std::ostream& os, const CoarseningAlgorithm& algo);
@@ -137,6 +144,8 @@ std::ostream & operator<< (std::ostream& os, const LabelPropagationAlgorithm& al
 std::ostream & operator<< (std::ostream& os, const FMAlgorithm& algo);
 
 LouvainEdgeWeight louvainEdgeWeightFromString(const std::string& type);
+
+TieBreakingRule tieBreakingRuleFromString(const std::string& rule);
 
 SimiliarNetCombinerStrategy similiarNetCombinerStrategyFromString(const std::string& type);
 

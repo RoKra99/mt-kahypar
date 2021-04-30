@@ -30,6 +30,7 @@ public:
     HypergraphLocalMovingModularity(ds::CommunityHypergraph& hypergraph, const Context& context, const bool deactivate_random = false) :
         //overall_checks(0UL),
         //pruned_by_old(0UL),
+        _tie_breaking_rule(context.preprocessing.community_detection.tie_breaking_rule),
         _community_neighbour_samples(context.preprocessing.community_detection.community_neighbour_samples),
         _community_neighbour_sampling_threshold(context.preprocessing.community_detection.community_neighbour_sampling_threshold),
         _hyperedge_size_caching_threshold(context.preprocessing.community_detection.hyperedge_size_caching_threshold),
@@ -125,8 +126,11 @@ public:
         PartitionID best_community = comm_v;
         Volume best_delta = 0.0L;
         const HyperedgeWeight sum_of_edgeweights_minus_edgecontribution_c = sum_of_edgeweights - edge_contribution_c;
-
-        //parallel::scalable_vector<PartitionID> tied_best_communities = { comm_v };
+        parallel::scalable_vector<PartitionID>& tied_best_communities = _tied_best_communities.local();
+        if (_tie_breaking_rule == TieBreakingRule::random) {    
+            tied_best_communities.clear();
+            tied_best_communities.push_back(comm_v);
+        }
         //++tries;
         // expected edgecontribution starts here
         for (auto it = community_edge_contribution.begin(); it != end; ++it) {
@@ -150,7 +154,7 @@ public:
 
 
             Volume delta = destination_edge_contribution;
-            
+
             // if this is equal the expected_edge_contribution will be 0
             if (vol_c_minus_vol_v != vol_destination_minus) {
 
@@ -189,19 +193,26 @@ public:
                 //     || (vol_c_minus_vol_v < vol_destination_minus && exp_edge_contribution > 0.0L)
                 //     || (vol_c_minus_vol_v == vol_destination_minus));
             }
-            if (delta < best_delta || (delta == best_delta && community < best_community)) {
-                best_delta = delta;
-                //tied_best_communities.clear();
-                //tied_best_communities.push_back(community);
-                best_community = community;
-            } 
-            // else if (delta == best_delta) {
-            //     //tied_best_communities.push_back(community);
-            // }
+            if (_tie_breaking_rule == TieBreakingRule::random) {
+                if (delta < best_delta) {
+                    best_delta = delta;
+                    tied_best_communities.clear();
+                    tied_best_communities.push_back(community);
+                } else if (delta == best_delta) {
+                    tied_best_communities.push_back(community);
+                }
+            } else if (_tie_breaking_rule == TieBreakingRule::smaller_id) {
+                if (delta < best_delta || (delta == best_delta && community < best_community)) {
+                    best_delta = delta;
+                    best_community = community;
+                }
+            }
         }
         //success += tied_best_communities.size() > 1 ? 1 : 0;
         //success += !calculated_c ? 1 : 0;
-        //PartitionID best_community = tied_best_communities[utils::Randomize::instance().getRandomInt(0, static_cast<int>(tied_best_communities.size()) - 1, sched_getcpu())];
+        if (_tie_breaking_rule == TieBreakingRule::random) {
+            best_community = tied_best_communities[utils::Randomize::instance().getRandomInt(0, static_cast<int>(tied_best_communities.size()) - 1, sched_getcpu())];
+        }
         community_edge_contribution.clear();
         //exp_edge_con_time += (tbb::tick_count::now() - t).seconds();
         return best_community;
@@ -327,6 +338,7 @@ private:
         return LargeTmpRatingMap(num_nodes); //(3UL * std::min(num_nodes, _vertex_degree_sampling_threshold));
     }
 
+    const TieBreakingRule _tie_breaking_rule;
     const size_t _community_neighbour_samples;
     const size_t _community_neighbour_sampling_threshold;
     const size_t _hyperedge_size_caching_threshold;
@@ -348,6 +360,8 @@ private:
     // ! Note the values in here are not cleared after each call to calculateBestMove
     // TODO: condense the values similar to _valid_edge_weights instead of having a vector of the size of max_edge_size
     tbb::enumerable_thread_specific<parallel::scalable_vector<Volume>> _powers_of_source_community;
+
+    tbb::enumerable_thread_specific<parallel::scalable_vector<PartitionID>> _tied_best_communities;
 
     // ! volumes of each community
     parallel::scalable_vector<AtomicHyperedgeWeight> _community_volumes;

@@ -161,7 +161,15 @@ namespace mt_kahypar {
              ("p-community-neighbour-samples",
              po::value<size_t>(&context.preprocessing.community_detection.community_neighbour_samples)->value_name(
                      "<size_t>")->default_value(std::numeric_limits<size_t>::max()),
-             "If set, then only this many neighbouring communities are considered in local moving");
+             "If set, then only this many neighbouring communities are considered in local moving")
+             ("p-tie-breaking-rule",
+             po::value<std::string>()->value_name("<string>")->notifier(
+                     [&](const std::string& rule) {
+                             context.preprocessing.community_detection.tie_breaking_rule = tieBreakingRuleFromString(rule);
+                     })->default_value("random"),
+             "Tie Breaking Rules:\n"
+             "- random\n"
+             "- smaller_id");
     return options;
   }
 
