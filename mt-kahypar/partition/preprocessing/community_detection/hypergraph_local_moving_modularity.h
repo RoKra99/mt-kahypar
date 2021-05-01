@@ -185,9 +185,6 @@ public:
                     power_d_fraction *= math::fast_power(destination_fraction, d_pair.remaining_d);
                     delta += d_pair.weight * (powers_of_source_community[d_pair.index] + power_d_fraction - power_d_fraction_minus);
                     //biggest_d_yet = d;
-                    if (delta > best_delta) {
-                        break;
-                    }
                 }
                 // ASSERT((vol_c_minus_vol_v > vol_destination_minus && exp_edge_contribution < 0.0L)
                 //     || (vol_c_minus_vol_v < vol_destination_minus && exp_edge_contribution > 0.0L)
