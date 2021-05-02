@@ -146,8 +146,7 @@ public:
             const HyperedgeWeight destination_edge_contribution = e.value + sum_of_edgeweights_minus_edgecontribution_c;
 
             // delta will not be < 0
-            if (destination_edge_contribution >= 0 || (best_delta < destination_edge_contribution
-                && vol_c_minus_vol_v <= vol_destination_minus)) {
+            if (best_delta < destination_edge_contribution && vol_c_minus_vol_v <= vol_destination_minus) {
                 //++pruned_by_old;
                 continue;
             }
@@ -165,12 +164,12 @@ public:
                 // precalculate the powers for the source community only once
                 // and only if we actually have to calculate the expected edge contribution
                 if (!calculated_c) {
-                    for (const auto& d_pair : chg.edgeSizes()) {
-                        const size_t remaining_d = d_pair - biggest_d_yet;
+                    for (const size_t d : chg.edgeSizes()) {
+                        const size_t remaining_d = d - biggest_d_yet;
                         power_d_fraction_minus *= math::fast_power(source_fraction_minus, remaining_d);
                         power_d_fraction *= math::fast_power(source_fraction, remaining_d);
-                        powers_of_source_community[d_pair] = power_d_fraction_minus - power_d_fraction;
-                        biggest_d_yet = d_pair;
+                        powers_of_source_community[d] = power_d_fraction_minus - power_d_fraction;
+                        biggest_d_yet = d;
                     }
                     calculated_c = true;
                 }
@@ -179,17 +178,18 @@ public:
                 power_d_fraction = destination_fraction;
 
                 //actual calculation of the expected edge contribution for the given community
-                for (const auto& d_pair : chg.edgeSizes()) {
-                    const size_t remaining_d = d_pair - biggest_d_yet; 
+                for (const size_t d : chg.edgeSizes()) {
+                    const size_t remaining_d = d - biggest_d_yet; 
                     power_d_fraction_minus *= math::fast_power(destination_fraction_minus, remaining_d);
                     power_d_fraction *= math::fast_power(destination_fraction, remaining_d);
-                    delta += chg.edgeWeightBySize(d_pair) * (powers_of_source_community[d_pair] + power_d_fraction - power_d_fraction_minus);
-                    biggest_d_yet = d_pair;
+                    delta += chg.edgeWeightBySize(d) * (powers_of_source_community[d] + power_d_fraction - power_d_fraction_minus);
+                    biggest_d_yet = d;
                 }
                 // ASSERT((vol_c_minus_vol_v > vol_destination_minus && exp_edge_contribution < 0.0L)
                 //     || (vol_c_minus_vol_v < vol_destination_minus && exp_edge_contribution > 0.0L)
                 //     || (vol_c_minus_vol_v == vol_destination_minus));
             }
+            
             if (_tie_breaking_rule == TieBreakingRule::random) {
                 if (delta < best_delta) {
                     best_delta = delta;

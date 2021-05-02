@@ -78,7 +78,7 @@ struct CommunityDetectionParameters {
   size_t hyperedge_size_caching_threshold = std::numeric_limits<size_t>::max();
   size_t community_neighbour_sampling_threshold = std::numeric_limits<size_t>::max();
   size_t community_neighbour_samples = std::numeric_limits<size_t>::max();
-  TieBreakingRule tie_breaking_rule = TieBreakingRule::random;
+  TieBreakingRule tie_breaking_rule = TieBreakingRule::UNDEFINED;
 };
 
 std::ostream & operator<< (std::ostream& str, const CommunityDetectionParameters& params);

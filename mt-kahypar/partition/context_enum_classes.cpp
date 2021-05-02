@@ -62,6 +62,7 @@ namespace mt_kahypar {
       case TieBreakingRule::random: return os << "random";
       case TieBreakingRule::smaller_id: return os << "smaller_id";
       case TieBreakingRule::hybrid: return os << "hybrid";
+      case TieBreakingRule::UNDEFINED: return os << "UNDEFINED";
         // omit default case to trigger compiler warning for missing cases
     }
     return os << static_cast<uint8_t>(rule);
@@ -187,7 +188,11 @@ namespace mt_kahypar {
       return TieBreakingRule::random;
     } else if (rule == "smaller_id") {
       return TieBreakingRule::smaller_id;
+    } else if (rule == "hybrid") {
+      return TieBreakingRule::hybrid;
     }
+    ERROR("No valid tie breaking rule.");
+    return TieBreakingRule::UNDEFINED;
   }
 
   SimiliarNetCombinerStrategy similiarNetCombinerStrategyFromString(const std::string& type) {

@@ -268,14 +268,8 @@ private:
             local_total_edge_weight.local() += weight;
         });
         _total_edge_weight = local_total_edge_weight.combine(std::plus<HyperedgeWeight>());
-        // size_t index = 0;
-        // size_t biggest_d_yet = 1;
         for (size_t i = 0; i < _d_edge_weights.size(); ++i) {
             if (_d_edge_weights[i] > 0) {
-                // const size_t remaining_d = i - biggest_d_yet;
-                // biggest_d_yet = i;
-                // _valid_edge_sizes.push_back({ index, remaining_d, static_cast<Volume>(_d_edge_weights[i]) });
-                // ++index;
                 _valid_edge_sizes.push_back(i);
             }
         }
