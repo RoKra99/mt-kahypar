@@ -30,6 +30,7 @@ public:
     HypergraphLocalMovingModularity(ds::CommunityHypergraph& hypergraph, const Context& context, const bool deactivate_random = false) :
         //overall_checks(0UL),
         //pruned_by_old(0UL),
+        _tie_breaking_rule(context.preprocessing.community_detection.tie_breaking_rule),
         _community_neighbour_samples(context.preprocessing.community_detection.community_neighbour_samples),
         _community_neighbour_sampling_threshold(context.preprocessing.community_detection.community_neighbour_sampling_threshold),
         _hyperedge_size_caching_threshold(context.preprocessing.community_detection.hyperedge_size_caching_threshold),
@@ -39,239 +40,261 @@ public:
         _small_edge_contribution_map(0),
         _large_edge_contribution_map([&] {
         return construct_large_edge_contribution_map(hypergraph.initialNumNodes());
-            }),
+    }),
         _community_neighbours_of_edge(0),
-                _powers_of_source_community(hypergraph.numberOfUniqueEdgeSizes(), 0.L),
-                _community_volumes(hypergraph.initialNumNodes()),
-                _deactivate_random(deactivate_random) {}
+        _powers_of_source_community(hypergraph.maxEdgeSize() + 1, 0.L),
+        _community_volumes(hypergraph.initialNumNodes()),
+        _deactivate_random(deactivate_random) {}
 
 
-            ~HypergraphLocalMovingModularity() = default;
+    ~HypergraphLocalMovingModularity() = default;
 
-            // ! calculates the best modularity move for the given node
-            template<typename Map>
-            PartitionID calculateBestMove(ds::CommunityHypergraph& chg, parallel::scalable_vector<HypernodeID>& communities, const HypernodeID v, Map& community_edge_contribution) {
-                ASSERT(community_edge_contribution.size() == 0);
-                const PartitionID comm_v = communities[v];
-                // sum of all edgeweights incident to v
-                auto t = tbb::tick_count::now();
-                HyperedgeWeight sum_of_edgeweights = 0;
-                for (const HyperedgeID& he : chg.incidentEdges(v)) {
-                    const HyperedgeWeight edge_weight = chg.edgeWeight(he);
-                    sum_of_edgeweights += edge_weight;
-                    // cuts for this hyperedge are cached
-                    if (chg.edgeSize(he) > _hyperedge_size_caching_threshold) {
-                        for (const PartitionID community : chg.singleCuts(he)) {
-                            ASSERT(static_cast<HypernodeID>(community) < chg.initialNumNodes() && community >= 0);
-                            community_edge_contribution[community] -= edge_weight;
-                        }
+    // ! calculates the best modularity move for the given node
+    template<typename Map>
+    PartitionID calculateBestMove(ds::CommunityHypergraph& chg, parallel::scalable_vector<HypernodeID>& communities, const HypernodeID v, Map& community_edge_contribution) {
+        //auto t = tbb::tick_count::now();
+        ASSERT(community_edge_contribution.size() == 0);
+        const PartitionID comm_v = communities[v];
+        // sum of all edgeweights incident to v
+        HyperedgeWeight sum_of_edgeweights = 0;
+        for (const HyperedgeID& he : chg.incidentEdges(v)) {
+            const HyperedgeWeight edge_weight = chg.edgeWeight(he);
+            sum_of_edgeweights += edge_weight;
+            // cuts for this hyperedge are cached
+            if (chg.edgeSize(he) > _hyperedge_size_caching_threshold) {
+                for (const PartitionID community : chg.singleCuts(he)) {
+                    ASSERT(static_cast<HypernodeID>(community) < chg.initialNumNodes() && community >= 0);
+                    community_edge_contribution[community] -= edge_weight;
+                }
 
-                        for (const auto& e : chg.multiCuts(he)) {
-                            const PartitionID community = e.first;
-                            const size_t count = e.second;
-                            if (static_cast<HypernodeID>(community) < chg.initialNumNodes() && (community != comm_v || count == 1) && count > 0) {
-                                ASSERT(count > 0);
-                                ASSERT(static_cast<HypernodeID>(community) < chg.initialNumNodes() && community >= 0);
-                                community_edge_contribution[community] -= edge_weight;
-                            }
-                        }
-                    } else { // hyperedge is not cached
-                        CacheEfficientRatingMap& community_neighbours_of_edge = _community_neighbours_of_edge.local();
-                        ASSERT(community_neighbours_of_edge.size() == 0);
-                        for (const HypernodeID& hn : chg.pins(he)) {
-                            const PartitionID comm_hn = communities[hn];
-                            if (hn != v) {
-                                community_neighbours_of_edge[comm_hn] += 1U;
-                            }
-                        }
-
-                        if (!community_neighbours_of_edge.contains(comm_v)) {
-                            community_edge_contribution[comm_v] -= edge_weight;
-                        }
-
-                        for (const auto& e : community_neighbours_of_edge) {
-                            if (e.key != comm_v) {
-                                community_edge_contribution[e.key] -= edge_weight;
-                            }
-                        }
-                        community_neighbours_of_edge.clear();
+                for (const auto& e : chg.multiCuts(he)) {
+                    const PartitionID community = e.first;
+                    const size_t count = e.second;
+                    if (static_cast<HypernodeID>(community) < chg.initialNumNodes() && (community != comm_v || count == 1) && count > 0) {
+                        ASSERT(count > 0);
+                        ASSERT(static_cast<HypernodeID>(community) < chg.initialNumNodes() && community >= 0);
+                        community_edge_contribution[community] -= edge_weight;
                     }
                 }
-                const HyperedgeWeight edge_contribution_c = -community_edge_contribution[comm_v];
-
-                // ------------------------- Sampling --------------------------------------
-                // const auto end = community_edge_contribution.end();
-                const auto end = _community_neighbour_sampling_threshold < community_edge_contribution.size()
-                    ? community_edge_contribution.begin() + _community_neighbour_samples : community_edge_contribution.end();
-                if (end != community_edge_contribution.end()) {
-                    // sorting on the dense part of the map => the sparse part isn't correct anymore
-                    std::nth_element(community_edge_contribution.begin(), end, community_edge_contribution.end(), [&](const auto a, const auto b) {
-                        return a.value < b.value;
-                        });
-                }
-                // -------------------------------------------------------------------------
-
-                const HyperedgeWeight vol_v = chg.nodeVolume(v);
-                const HyperedgeWeight vol_c = _community_volumes[comm_v];
-                const HyperedgeWeight vol_c_minus_vol_v = vol_c - vol_v;
-
-                const Volume source_fraction_minus = 1.0L - static_cast<Volume>(vol_c_minus_vol_v) * _reciprocal_vol_total;
-                const Volume source_fraction = 1.0L - static_cast<Volume>(vol_c) * _reciprocal_vol_total;
-                //size_t biggest_d_yet = 1;
-                Volume power_d_fraction_minus = source_fraction_minus;
-                Volume power_d_fraction = source_fraction;
-                bool calculated_c = false;
-
-                PartitionID best_community = comm_v;
-                Volume best_delta = 0.0L;
-                const HyperedgeWeight sum_of_edgeweights_minus_edgecontribution_c = sum_of_edgeweights - edge_contribution_c;
-                
-                time_edge_contribution += (tbb::tick_count::now() - t).seconds();
-                t = tbb::tick_count::now();
-
-                // expected edgecontribution starts here
-                for (auto it = community_edge_contribution.begin(); it != end; ++it) {
-                    //++overall_checks;
-                    const auto& e = *it;
-                    const PartitionID community = e.key;
-
-                    if (community == comm_v) {
-                        continue;
-                    }
-                    const HyperedgeWeight vol_destination_minus = _community_volumes[community];
-                    const HyperedgeWeight vol_destination = vol_destination_minus + vol_v;
-                    const HyperedgeWeight destination_edge_contribution = e.value + sum_of_edgeweights_minus_edgecontribution_c;
-
-                    // delta will not be < 0
-                    if (destination_edge_contribution >= 0 || (best_delta < destination_edge_contribution
-                        && vol_c_minus_vol_v <= vol_destination_minus)) {
-                        //++pruned_by_old;
-                        continue;
-                    }
-
-                    const Volume destination_fraction = 1.0L - static_cast<Volume>(vol_destination) * _reciprocal_vol_total;
-                    const Volume destination_fraction_minus = 1.0L - static_cast<Volume>(vol_destination_minus) * _reciprocal_vol_total;
-                    parallel::scalable_vector<Volume>& powers_of_source_community = _powers_of_source_community.local();
-
-                    // precalculate the powers for the source community only once
-                    // and only if not every possible move is pruned beforehand
-                    if (!calculated_c) {
-                        for (const auto& d_pair : chg.edgeSizes()) {
-                            //const size_t remaining_d = d - biggest_d_yet; //TODO: this con be precalculated
-                            power_d_fraction_minus *= math::fast_power(source_fraction_minus, d_pair.remaining_d);
-                            power_d_fraction *= math::fast_power(source_fraction, d_pair.remaining_d);
-                            powers_of_source_community[d_pair.index] = power_d_fraction_minus - power_d_fraction;
-                            //biggest_d_yet = d;
-                        }
-                        calculated_c = true;
-                    }
-
-                    Volume delta = destination_edge_contribution;
-                    // if this is equal the expected_edge_contribution will be 0
-                    if (vol_c_minus_vol_v != vol_destination_minus) {
-                        //biggest_d_yet = 1;
-                        power_d_fraction_minus = destination_fraction_minus;
-                        power_d_fraction = destination_fraction;
-                        //actual calculation of the expected edge contribution for the given community
-                        for (const auto& d_pair : chg.edgeSizes()) {
-                            //const size_t remaining_d = d - biggest_d_yet; //TODO: this can be precalculated
-                            power_d_fraction_minus *= math::fast_power(destination_fraction_minus, d_pair.remaining_d);
-                            power_d_fraction *= math::fast_power(destination_fraction, d_pair.remaining_d);
-                            delta += d_pair.weight * (powers_of_source_community[d_pair.index] + power_d_fraction - power_d_fraction_minus);
-                            //biggest_d_yet = d;
-                            if (delta > best_delta) {
-                                break;
-                            }
-                        }
-                        // ASSERT((vol_c_minus_vol_v > vol_destination_minus && exp_edge_contribution < 0.0L)
-                        //     || (vol_c_minus_vol_v < vol_destination_minus && exp_edge_contribution > 0.0L)
-                        //     || (vol_c_minus_vol_v == vol_destination_minus));
-                    }
-                    if (delta < best_delta) {
-                        best_delta = delta;
-                        best_community = community;
+            } else { // hyperedge is not cached
+                CacheEfficientRatingMap& community_neighbours_of_edge = _community_neighbours_of_edge.local();
+                ASSERT(community_neighbours_of_edge.size() == 0);
+                for (const HypernodeID& hn : chg.pins(he)) {
+                    const PartitionID comm_hn = communities[hn];
+                    if (hn != v) {
+                        community_neighbours_of_edge[comm_hn] += 1U;
                     }
                 }
-                community_edge_contribution.clear();
 
-                time_exp_edge_contribution += (tbb::tick_count::now() - t).seconds();
-                return best_community;
+                if (!community_neighbours_of_edge.contains(comm_v)) {
+                    community_edge_contribution[comm_v] -= edge_weight;
+                }
+
+                for (const auto& e : community_neighbours_of_edge) {
+                    if (e.key != comm_v) {
+                        community_edge_contribution[e.key] -= edge_weight;
+                    }
+                }
+                community_neighbours_of_edge.clear();
+            }
+        }
+        const HyperedgeWeight edge_contribution_c = -community_edge_contribution[comm_v];
+        //edge_con_time += (tbb::tick_count::now() - t).seconds();
+        // ------------------------- Selection --------------------------------------
+        // const auto end = community_edge_contribution.end();
+        const auto end = _community_neighbour_sampling_threshold < community_edge_contribution.size()
+            ? community_edge_contribution.begin() + _community_neighbour_samples : community_edge_contribution.end();
+        if (end != community_edge_contribution.end()) {
+            // sorting on the dense part of the map => the sparse part isn't correct anymore
+            std::nth_element(community_edge_contribution.begin(), end, community_edge_contribution.end(), [&](const auto a, const auto b) {
+                return a.value < b.value;
+            });
+        }
+        // -------------------------------------------------------------------------
+        //t = tbb::tick_count::now();
+        const HyperedgeWeight vol_v = chg.nodeVolume(v);
+        const HyperedgeWeight vol_c = _community_volumes[comm_v];
+        const HyperedgeWeight vol_c_minus_vol_v = vol_c - vol_v;
+
+        const Volume source_fraction_minus = 1.0L - static_cast<Volume>(vol_c_minus_vol_v) * _reciprocal_vol_total;
+        const Volume source_fraction = 1.0L - static_cast<Volume>(vol_c) * _reciprocal_vol_total;
+        size_t biggest_d_yet = 1;
+        Volume power_d_fraction_minus = source_fraction_minus;
+        Volume power_d_fraction = source_fraction;
+        bool calculated_c = false;
+
+        PartitionID best_community = comm_v;
+        Volume best_delta = 0.0L;
+        const HyperedgeWeight sum_of_edgeweights_minus_edgecontribution_c = sum_of_edgeweights - edge_contribution_c;
+        parallel::scalable_vector<PartitionID>& tied_best_communities = _tied_best_communities.local();
+        if (_tie_breaking_rule == TieBreakingRule::random) {    
+            tied_best_communities.clear();
+            tied_best_communities.push_back(comm_v);
+        }
+        //++tries;
+        // expected edgecontribution starts here
+        for (auto it = community_edge_contribution.begin(); it != end; ++it) {
+            //++overall_checks;
+            const auto& e = *it;
+            const PartitionID community = e.key;
+
+            if (community == comm_v) {
+                continue;
+            }
+            const HyperedgeWeight vol_destination_minus = _community_volumes[community];
+            const HyperedgeWeight vol_destination = vol_destination_minus + vol_v;
+            const HyperedgeWeight destination_edge_contribution = e.value + sum_of_edgeweights_minus_edgecontribution_c;
+
+            // delta will not be < 0
+            if (best_delta <= destination_edge_contribution && vol_c_minus_vol_v <= vol_destination_minus) {
+                //++pruned_by_old;
+                continue;
             }
 
-            // ! executes the given move
-            KAHYPAR_ATTRIBUTE_ALWAYS_INLINE void makeMove(ds::CommunityHypergraph& chg, parallel::scalable_vector<HypernodeID>& communities, const HypernodeID node_to_move, const PartitionID destination_community) {
+
+            Volume delta = destination_edge_contribution;
+
+            // if this is equal the expected_edge_contribution will be 0
+            if (vol_c_minus_vol_v != vol_destination_minus) {
+
+                const Volume destination_fraction = 1.0L - static_cast<Volume>(vol_destination) * _reciprocal_vol_total;
+                const Volume destination_fraction_minus = 1.0L - static_cast<Volume>(vol_destination_minus) * _reciprocal_vol_total;
+                parallel::scalable_vector<Volume>& powers_of_source_community = _powers_of_source_community.local();
+
+                // precalculate the powers for the source community only once
+                // and only if we actually have to calculate the expected edge contribution
+                if (!calculated_c) {
+                    for (const size_t d : chg.edgeSizes()) {
+                        const size_t remaining_d = d - biggest_d_yet;
+                        power_d_fraction_minus *= math::fast_power(source_fraction_minus, remaining_d);
+                        power_d_fraction *= math::fast_power(source_fraction, remaining_d);
+                        powers_of_source_community[d] = power_d_fraction_minus - power_d_fraction;
+                        biggest_d_yet = d;
+                    }
+                    calculated_c = true;
+                }
+                biggest_d_yet = 1;
+                power_d_fraction_minus = destination_fraction_minus;
+                power_d_fraction = destination_fraction;
+
+                //actual calculation of the expected edge contribution for the given community
+                for (const size_t d : chg.edgeSizes()) {
+                    const size_t remaining_d = d - biggest_d_yet; 
+                    power_d_fraction_minus *= math::fast_power(destination_fraction_minus, remaining_d);
+                    power_d_fraction *= math::fast_power(destination_fraction, remaining_d);
+                    delta += chg.edgeWeightBySize(d) * (powers_of_source_community[d] + power_d_fraction - power_d_fraction_minus);
+                    biggest_d_yet = d;
+                }
+                // ASSERT((vol_c_minus_vol_v > vol_destination_minus && exp_edge_contribution < 0.0L)
+                //     || (vol_c_minus_vol_v < vol_destination_minus && exp_edge_contribution > 0.0L)
+                //     || (vol_c_minus_vol_v == vol_destination_minus));
+            }
+            
+            if (_tie_breaking_rule == TieBreakingRule::random) {
+                if (delta < best_delta) {
+                    best_delta = delta;
+                    tied_best_communities.clear();
+                    tied_best_communities.push_back(community);
+                } else if (delta == best_delta) {
+                    tied_best_communities.push_back(community);
+                }
+            } else if (_tie_breaking_rule == TieBreakingRule::smaller_id) {
+                if (delta < best_delta || (delta == best_delta && community < best_community)) {
+                    best_delta = delta;
+                    best_community = community;
+                }
+            }
+        }
+        //success += tied_best_communities.size() > 1 ? 1 : 0;
+        //success += !calculated_c ? 1 : 0;
+        if (_tie_breaking_rule == TieBreakingRule::random) {
+            best_community = tied_best_communities[utils::Randomize::instance().getRandomInt(0, static_cast<int>(tied_best_communities.size()) - 1, sched_getcpu())];
+        }
+        community_edge_contribution.clear();
+        //exp_edge_con_time += (tbb::tick_count::now() - t).seconds();
+        return best_community;
+    }
+
+    // ! executes the given move
+    KAHYPAR_ATTRIBUTE_ALWAYS_INLINE void makeMove(ds::CommunityHypergraph& chg, parallel::scalable_vector<HypernodeID>& communities, const HypernodeID node_to_move, const PartitionID destination_community) {
+        //auto t = tbb::tick_count::now();
+        const PartitionID source_community = communities[node_to_move];
+        ASSERT(source_community != destination_community);
+        _community_volumes[destination_community] += chg.nodeVolume(node_to_move);
+        _community_volumes[source_community] -= chg.nodeVolume(node_to_move);
+        communities[node_to_move] = destination_community;
+        for (const HyperedgeID& he : chg.incidentEdges(node_to_move)) {
+            // remove has to be before add to ensure the amount of distinct communities per edge < edgeSize
+            chg.removeCommunityFromHyperedge(he, source_community);
+            chg.addCommunityToHyperedge(he, destination_community);
+        }
+        //move_time += (tbb::tick_count::now() - t).seconds();
+    }
+
+    bool localMoving(ds::CommunityHypergraph& chg, parallel::scalable_vector<HypernodeID>& communities) {
+        parallel::scalable_vector<HypernodeID> nodes(chg.initialNumNodes());
+
+        tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID i) {
+            communities[i] = i;
+            nodes[i] = i;
+            _community_volumes[i].store(chg.nodeVolume(i));
+        });
+        bool changed_clustering = false;
+        size_t nr_nodes_moved = chg.initialNumNodes();
+        for (size_t round = 0;
+            nr_nodes_moved >= _context.preprocessing.community_detection.min_vertex_move_fraction * chg.initialNumNodes()
+            && round < _context.preprocessing.community_detection.max_pass_iterations; ++round) {
+
+            if (!_deactivate_random) {
+                utils::Randomize::instance().parallelShuffleVector(nodes, 0UL, nodes.size());
+            }
+
+            tbb::enumerable_thread_specific<size_t> local_nr_nodes_moved(0);
+            tbb::parallel_for(0UL, nodes.size(), [&](const size_t i) {
+                PartitionID destination_community;
+                const HypernodeID node_to_move = nodes[i];
                 const PartitionID source_community = communities[node_to_move];
-                ASSERT(source_community != destination_community);
-                _community_volumes[destination_community] += chg.nodeVolume(node_to_move);
-                _community_volumes[source_community] -= chg.nodeVolume(node_to_move);
-                communities[node_to_move] = destination_community;
-                for (const HyperedgeID& he : chg.incidentEdges(node_to_move)) {
-                    // remove has to be before add to ensure the amount of distinct communities per edge < edgeSize
-                    chg.removeCommunityFromHyperedge(he, source_community);
-                    chg.addCommunityToHyperedge(he, destination_community);
+                const size_t map_size = ratingsFitIntoSmallMap(chg, node_to_move);
+                if (!map_size) {
+                    destination_community = calculateBestMove(chg, communities, node_to_move, _small_edge_contribution_map.local());
+                } else {
+                    LargeTmpRatingMap& large_map = _large_edge_contribution_map.local();
+                    large_map.setMaxSize(map_size);
+                    destination_community = calculateBestMove(chg, communities, node_to_move, large_map);
                 }
-            }
-
-            bool localMoving(ds::CommunityHypergraph& chg, parallel::scalable_vector<HypernodeID>& communities) {
-                parallel::scalable_vector<HypernodeID> nodes(chg.initialNumNodes());
-
-                tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID i) {
-                    communities[i] = i;
-                    nodes[i] = i;
-                    _community_volumes[i].store(chg.nodeVolume(i));
-                    });
-                bool changed_clustering = false;
-                size_t nr_nodes_moved = chg.initialNumNodes();
-                for (size_t round = 0;
-                    nr_nodes_moved >= _context.preprocessing.community_detection.min_vertex_move_fraction * chg.initialNumNodes()
-                    && round < _context.preprocessing.community_detection.max_pass_iterations; ++round) {
-
-                    if (!_deactivate_random) {
-                        utils::Randomize::instance().parallelShuffleVector(nodes, 0UL, nodes.size());
-                    }
-
-                    tbb::enumerable_thread_specific<size_t> local_nr_nodes_moved(0);
-                    tbb::parallel_for(0UL, nodes.size(), [&](const size_t i) {
-                        PartitionID destination_community;
-                        const HypernodeID node_to_move = nodes[i];
-                        const PartitionID source_community = communities[node_to_move];
-                        const size_t map_size = ratingsFitIntoSmallMap(chg, node_to_move);
-                        if (!map_size) {
-                            destination_community = calculateBestMove(chg, communities, node_to_move, _small_edge_contribution_map.local());
-                        } else {
-                            LargeTmpRatingMap& large_map = _large_edge_contribution_map.local();
-                            large_map.setMaxSize(map_size);
-                            destination_community = calculateBestMove(chg, communities, node_to_move, large_map);
-                        }
-                        if (destination_community != source_community) {
-                            makeMove(chg, communities, node_to_move, destination_community);
-                            ++local_nr_nodes_moved.local();
-                        }
-                        });
-                    nr_nodes_moved = local_nr_nodes_moved.combine(std::plus<>());
-                    changed_clustering |= nr_nodes_moved > 0;
+                if (destination_community != source_community) {
+                    makeMove(chg, communities, node_to_move, destination_community);
+                    ++local_nr_nodes_moved.local();
                 }
-                return changed_clustering;
-            }
+            });
+            nr_nodes_moved = local_nr_nodes_moved.combine(std::plus<>());
+            changed_clustering |= nr_nodes_moved > 0;
+        }
+        return changed_clustering;
+    }
 
-            void initializeCommunityVolumes(const ds::CommunityHypergraph& chg, const parallel::scalable_vector<HypernodeID>& communities) {
-                tbb::parallel_for(0UL, _community_volumes.size(), [&](const size_t i) {
-                    _community_volumes[i].store(0);
-                    });
-                tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID i) {
-                    _community_volumes[communities[i]] += chg.nodeVolume(i);
-                    });
-            }
+    void initializeCommunityVolumes(const ds::CommunityHypergraph& chg, const parallel::scalable_vector<HypernodeID>& communities) {
+        tbb::parallel_for(0UL, _community_volumes.size(), [&](const size_t i) {
+            _community_volumes[i].store(0);
+        });
+        tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID i) {
+            _community_volumes[communities[i]] += chg.nodeVolume(i);
+        });
+    }
 
-            //! Iterator for the Community volumes
-            IteratorRange<CommunityVolumeIterator> communityVolumes(const ds::CommunityHypergraph& chg) const {
-                return IteratorRange<CommunityVolumeIterator>(_community_volumes.cbegin(), _community_volumes.cbegin() + chg.initialNumNodes());
-            }
+    //! Iterator for the Community volumes
+    IteratorRange<CommunityVolumeIterator> communityVolumes(const ds::CommunityHypergraph& chg) const {
+        return IteratorRange<CommunityVolumeIterator>(_community_volumes.cbegin(), _community_volumes.cbegin() + chg.initialNumNodes());
+    }
 
-            //parallel::AtomicWrapper<size_t> overall_checks;
-            //parallel::AtomicWrapper<size_t> pruned_by_old;
-            parallel::AtomicWrapper<double> time_edge_contribution;
-            parallel::AtomicWrapper<double> time_exp_edge_contribution;
+    // parallel::AtomicWrapper<size_t> overall_checks;
+    // parallel::AtomicWrapper<size_t> pruned_by_old;
+    // parallel::AtomicWrapper<size_t> tries;
+    // parallel::AtomicWrapper<size_t> success;
+    // parallel::AtomicWrapper<double> edge_con_time;
+    // parallel::AtomicWrapper<double> exp_edge_con_time;
+    // parallel::AtomicWrapper<double> move_time;
+
 
 private:
 
@@ -312,6 +335,7 @@ private:
         return LargeTmpRatingMap(num_nodes); //(3UL * std::min(num_nodes, _vertex_degree_sampling_threshold));
     }
 
+    const TieBreakingRule _tie_breaking_rule;
     const size_t _community_neighbour_samples;
     const size_t _community_neighbour_sampling_threshold;
     const size_t _hyperedge_size_caching_threshold;
@@ -331,8 +355,9 @@ private:
 
     // ! contains (vol_V - vol(C)+vol(v))^d - (vol(V)-vol(C))^d for all valid edgesizes d
     // ! Note the values in here are not cleared after each call to calculateBestMove
-    // TODO: condense the values similar to _valid_edge_weights instead of having a vector of the size of max_edge_size
     tbb::enumerable_thread_specific<parallel::scalable_vector<Volume>> _powers_of_source_community;
+
+    tbb::enumerable_thread_specific<parallel::scalable_vector<PartitionID>> _tied_best_communities;
 
     // ! volumes of each community
     parallel::scalable_vector<AtomicHyperedgeWeight> _community_volumes;
@@ -366,5 +391,5 @@ private:
 }
 
 namespace mt_kahypar::metrics {
-Volume hyp_modularity(const ds::CommunityHypergraph& hypergraph, const parallel::scalable_vector<HypernodeID>& communities, const community_detection::HypergraphLocalMovingModularity& hlmm);
+Volume hyp_modularity(const ds::CommunityHypergraph& hypergraph, const parallel::scalable_vector<HypernodeID>& communities);
 }

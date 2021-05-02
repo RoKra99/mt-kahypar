@@ -57,6 +57,17 @@ class LargeHyperedgeRemover {
     return num_removed_large_hyperedges;
   }
 
+  // ! Before we start a v-cycle, we reset the hypergraph data structure.
+  // ! This causes that all removed hyperedges in the dynamic hypergraph are
+  // ! reinserted to the incident nets of each vertex. By simply calling this
+  // ! function, we remove all large hyperedges again.
+  void removeLargeHyperedgesInNLevelVCycle(Hypergraph& hypergraph) {
+    for ( const HyperedgeID& he : _removed_hes ) {
+      hypergraph.enableHyperedge(he);
+      hypergraph.removeLargeEdge(he);
+    }
+  }
+
   // ! Restores all previously removed large hyperedges
   void restoreLargeHyperedges(PartitionedHypergraph& hypergraph) {
     HyperedgeWeight delta = 0;
@@ -77,7 +88,7 @@ class LargeHyperedgeRemover {
   }
 
   HypernodeID largeHyperedgeThreshold() const {
-    return std::max(_context.partition.large_hyperedge_size_threshold, LARGE_HE_THRESHOLD);
+    return _context.partition.large_hyperedge_size_threshold;//std::max(_context.partition.large_hyperedge_size_threshold, LARGE_HE_THRESHOLD);
   }
 
   void reset() {

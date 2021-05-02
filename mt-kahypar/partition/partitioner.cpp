@@ -37,9 +37,9 @@ namespace mt_kahypar {
   void setupContext(Hypergraph& hypergraph, Context& context) {
     context.partition.large_hyperedge_size_threshold = std::max(hypergraph.initialNumNodes() *
                                                                 context.partition.large_hyperedge_size_threshold_factor, 100.0);
+    context.sanityCheck();
     context.setupPartWeights(hypergraph.totalWeight());
     context.setupContractionLimit(hypergraph.totalWeight());
-    context.sanityCheck();
 
     // Setup enabled IP algorithms
     if ( context.initial_partitioning.enabled_ip_algos.size() > 0 &&
@@ -68,6 +68,14 @@ namespace mt_kahypar {
         context.preprocessing.community_detection.edge_weight_function = LouvainEdgeWeight::degree;
       } else {
         context.preprocessing.community_detection.edge_weight_function = LouvainEdgeWeight::uniform;
+      }
+    }
+
+    if (context.preprocessing.community_detection.tie_breaking_rule == TieBreakingRule::hybrid) {
+      if (density > 1) {
+        context.preprocessing.community_detection.tie_breaking_rule = TieBreakingRule::random;
+      } else {
+        context.preprocessing.community_detection.tie_breaking_rule = TieBreakingRule::smaller_id;
       }
     }
   }
@@ -137,7 +145,8 @@ namespace mt_kahypar {
 
   PartitionedHypergraph partitionVCycle(Hypergraph& hypergraph,
                                         PartitionedHypergraph&& partitioned_hypergraph,
-                                        Context& context) {
+                                        Context& context,
+                                        LargeHyperedgeRemover& large_he_remover) {
     ASSERT(context.partition.num_vcycles > 0);
 
     for ( size_t i = 0; i < context.partition.num_vcycles; ++i ) {
@@ -145,6 +154,12 @@ namespace mt_kahypar {
       hypergraph.reset();
       parallel::MemoryPool::instance().reset();
       parallel::MemoryPool::instance().release_mem_group("Preprocessing");
+
+      if ( context.partition.paradigm == Paradigm::nlevel ) {
+        // Workaround: reset() function of hypergraph reinserts all removed
+        // hyperedges to incident net lists of each vertex again.
+        large_he_remover.removeLargeHyperedgesInNLevelVCycle(hypergraph);
+      }
 
       // Store partition and assign it as community ids in order to
       // restrict contractions in v-cycle to partition ids
@@ -172,10 +187,10 @@ namespace mt_kahypar {
 
     // ################## PREPROCESSING ##################
     utils::Timer::instance().start_timer("preprocessing", "Preprocessing");
-    preprocess(hypergraph, context);
-
     DegreeZeroHypernodeRemover degree_zero_hn_remover(context);
     LargeHyperedgeRemover large_he_remover(context);
+    large_he_remover.removeLargeHyperedges(hypergraph);
+    preprocess(hypergraph, context);
     sanitize(hypergraph, context, degree_zero_hn_remover, large_he_remover);
     utils::Timer::instance().stop_timer("preprocessing");
 
@@ -185,7 +200,9 @@ namespace mt_kahypar {
 
     // ################## V-Cycle s##################
     if ( context.partition.num_vcycles > 0 ) {
-      partitioned_hypergraph = partitionVCycle(hypergraph, std::move(partitioned_hypergraph), context);
+      partitioned_hypergraph = partitionVCycle(
+        hypergraph, std::move(partitioned_hypergraph),
+        context, large_he_remover);
     }
 
     // ################## POSTPROCESSING ##################
