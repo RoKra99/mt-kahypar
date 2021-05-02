@@ -42,7 +42,7 @@ public:
         return construct_large_edge_contribution_map(hypergraph.initialNumNodes());
     }),
         _community_neighbours_of_edge(0),
-        _powers_of_source_community(hypergraph.numberOfUniqueEdgeSizes(), 0.L),
+        _powers_of_source_community(hypergraph.maxEdgeSize() + 1, 0.L),
         _community_volumes(hypergraph.initialNumNodes()),
         _deactivate_random(deactivate_random) {}
 
@@ -118,7 +118,7 @@ public:
 
         const Volume source_fraction_minus = 1.0L - static_cast<Volume>(vol_c_minus_vol_v) * _reciprocal_vol_total;
         const Volume source_fraction = 1.0L - static_cast<Volume>(vol_c) * _reciprocal_vol_total;
-        //size_t biggest_d_yet = 1;
+        size_t biggest_d_yet = 1;
         Volume power_d_fraction_minus = source_fraction_minus;
         Volume power_d_fraction = source_fraction;
         bool calculated_c = false;
@@ -166,25 +166,25 @@ public:
                 // and only if we actually have to calculate the expected edge contribution
                 if (!calculated_c) {
                     for (const auto& d_pair : chg.edgeSizes()) {
-                        //const size_t remaining_d = d - biggest_d_yet;
-                        power_d_fraction_minus *= math::fast_power(source_fraction_minus, d_pair.remaining_d);
-                        power_d_fraction *= math::fast_power(source_fraction, d_pair.remaining_d);
-                        powers_of_source_community[d_pair.index] = power_d_fraction_minus - power_d_fraction;
-                        //biggest_d_yet = d;
+                        const size_t remaining_d = d_pair - biggest_d_yet;
+                        power_d_fraction_minus *= math::fast_power(source_fraction_minus, remaining_d);
+                        power_d_fraction *= math::fast_power(source_fraction, remaining_d);
+                        powers_of_source_community[d_pair] = power_d_fraction_minus - power_d_fraction;
+                        biggest_d_yet = d_pair;
                     }
                     calculated_c = true;
                 }
-                //biggest_d_yet = 1;
+                biggest_d_yet = 1;
                 power_d_fraction_minus = destination_fraction_minus;
                 power_d_fraction = destination_fraction;
 
                 //actual calculation of the expected edge contribution for the given community
                 for (const auto& d_pair : chg.edgeSizes()) {
-                    //const size_t remaining_d = d - biggest_d_yet; 
-                    power_d_fraction_minus *= math::fast_power(destination_fraction_minus, d_pair.remaining_d);
-                    power_d_fraction *= math::fast_power(destination_fraction, d_pair.remaining_d);
-                    delta += d_pair.weight * (powers_of_source_community[d_pair.index] + power_d_fraction - power_d_fraction_minus);
-                    //biggest_d_yet = d;
+                    const size_t remaining_d = d_pair - biggest_d_yet; 
+                    power_d_fraction_minus *= math::fast_power(destination_fraction_minus, remaining_d);
+                    power_d_fraction *= math::fast_power(destination_fraction, remaining_d);
+                    delta += chg.edgeWeightBySize(d_pair) * (powers_of_source_community[d_pair] + power_d_fraction - power_d_fraction_minus);
+                    biggest_d_yet = d_pair;
                 }
                 // ASSERT((vol_c_minus_vol_v > vol_destination_minus && exp_edge_contribution < 0.0L)
                 //     || (vol_c_minus_vol_v < vol_destination_minus && exp_edge_contribution > 0.0L)
@@ -287,10 +287,10 @@ public:
         return IteratorRange<CommunityVolumeIterator>(_community_volumes.cbegin(), _community_volumes.cbegin() + chg.initialNumNodes());
     }
 
-    //parallel::AtomicWrapper<size_t> overall_checks;
-    //parallel::AtomicWrapper<size_t> pruned_by_old;
-    //parallel::AtomicWrapper<size_t> tries;
-    //parallel::AtomicWrapper<size_t> success;
+    // parallel::AtomicWrapper<size_t> overall_checks;
+    // parallel::AtomicWrapper<size_t> pruned_by_old;
+    // parallel::AtomicWrapper<size_t> tries;
+    // parallel::AtomicWrapper<size_t> success;
     // parallel::AtomicWrapper<double> edge_con_time;
     // parallel::AtomicWrapper<double> exp_edge_con_time;
     // parallel::AtomicWrapper<double> move_time;
