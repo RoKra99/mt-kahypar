@@ -116,6 +116,8 @@ public:
         const HyperedgeWeight vol_c = _community_volumes[comm_v];
         const HyperedgeWeight vol_c_minus_vol_v = vol_c - vol_v;
 
+        const Volume source_fraction_minus = 1.0L - static_cast<Volume>(vol_c_minus_vol_v) * _reciprocal_vol_total;
+        const Volume source_fraction = 1.0L - static_cast<Volume>(vol_c) * _reciprocal_vol_total;
         size_t biggest_d_yet = 1;
         Volume power_d_fraction_minus = source_fraction_minus;
         Volume power_d_fraction = source_fraction;
@@ -125,7 +127,7 @@ public:
         Volume best_delta = 0.0L;
         const HyperedgeWeight sum_of_edgeweights_minus_edgecontribution_c = sum_of_edgeweights - edge_contribution_c;
         parallel::scalable_vector<PartitionID>& tied_best_communities = _tied_best_communities.local();
-        if (_tie_breaking_rule == TieBreakingRule::random) {
+        if (_tie_breaking_rule == TieBreakingRule::random) {    
             tied_best_communities.clear();
             tied_best_communities.push_back(comm_v);
         }
@@ -162,8 +164,6 @@ public:
                 // precalculate the powers for the source community only once
                 // and only if we actually have to calculate the expected edge contribution
                 if (!calculated_c) {
-                    const Volume source_fraction_minus = 1.0L - static_cast<Volume>(vol_c_minus_vol_v) * _reciprocal_vol_total;
-                    const Volume source_fraction = 1.0L - static_cast<Volume>(vol_c) * _reciprocal_vol_total;
                     for (const size_t d : chg.edgeSizes()) {
                         const size_t remaining_d = d - biggest_d_yet;
                         power_d_fraction_minus *= math::fast_power(source_fraction_minus, remaining_d);
@@ -179,7 +179,7 @@ public:
 
                 //actual calculation of the expected edge contribution for the given community
                 for (const size_t d : chg.edgeSizes()) {
-                    const size_t remaining_d = d - biggest_d_yet;
+                    const size_t remaining_d = d - biggest_d_yet; 
                     power_d_fraction_minus *= math::fast_power(destination_fraction_minus, remaining_d);
                     power_d_fraction *= math::fast_power(destination_fraction, remaining_d);
                     delta += chg.edgeWeightBySize(d) * (powers_of_source_community[d] + power_d_fraction - power_d_fraction_minus);
@@ -189,7 +189,7 @@ public:
                 //     || (vol_c_minus_vol_v < vol_destination_minus && exp_edge_contribution > 0.0L)
                 //     || (vol_c_minus_vol_v == vol_destination_minus));
             }
-
+            
             if (_tie_breaking_rule == TieBreakingRule::random) {
                 if (delta < best_delta) {
                     best_delta = delta;
