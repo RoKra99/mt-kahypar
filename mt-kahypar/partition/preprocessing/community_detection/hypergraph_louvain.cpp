@@ -49,6 +49,7 @@ parallel::scalable_vector<HypernodeID> hypergraph_louvain(ds::CommunityHypergrap
     //LOG << V(hlmm.success);
     //LOG << V(hlmm.tries);
     //LOG << *std::max_element(communities.begin(), communities.end());
+    std::cout << hlmm.edge_con_time << "," << hlmm.exp_edge_con_time << ",";
     return communities;
 }
 }
