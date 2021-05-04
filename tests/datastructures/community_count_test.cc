@@ -77,8 +77,10 @@ TEST_F(ACommunityCount, AddsANewCommunity) {
     Context context;
     context.preprocessing.community_detection.hyperedge_size_caching_threshold = 0;
     CommunityHypergraph chg(hypergraph, context);
+    // we first a hvae to remove a community since we can't add more communities than the edgesize
+    chg.removeCommunityFromHyperedge(0,2);
     chg.addCommunityToHyperedge(0, 1);
-    const std::vector<size_t>  expected_iterator = { 0,2,1 };
+    const std::vector<size_t>  expected_iterator = { 0,1 };
     int pos = 0;
     for (const auto& e : chg.singleCuts(0)) {
         ASSERT_EQ(expected_iterator[pos++], e);
