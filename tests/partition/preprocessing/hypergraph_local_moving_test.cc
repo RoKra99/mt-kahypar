@@ -24,6 +24,7 @@ public:
         context.preprocessing.community_detection.min_vertex_move_fraction = 0.0001;
         context.shared_memory.num_threads = 1;
         context.preprocessing.community_detection.hyperedge_size_caching_threshold = 0;
+        context.preprocessing.community_detection.tie_breaking_rule = TieBreakingRule::random;
 
         chg = std::make_unique<ds::CommunityHypergraph>(hypergraph, context);
     }
