@@ -91,7 +91,7 @@ public:
             }
             neighbouring_communities.local().clear();
         });
-        _sum_exit_probability_mul_vol_total.store(0.0L);
+        _sum_exit_probability_mul_vol_total.store(0.0);
         tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID hn) {
             _sum_exit_probability_mul_vol_total += _community_exit_probability_mul_vol_total[hn];
         });
@@ -110,7 +110,6 @@ public:
             tbb::parallel_for(0UL, nodes.size(), [&](const size_t i) {
                 Move move;
                 const HypernodeID node_to_move = nodes[i];
-                const HypernodeID source_community = communities[node_to_move];
                 const size_t map_size = ratingsFitIntoSmallMap(chg, node_to_move);
                 if (!map_size) {
                     move = calculateBestMove(chg, communities, node_to_move, _small_overlap_map.local(), _small_deltas_mul_vol_total.local());
@@ -121,7 +120,7 @@ public:
                     large_deltas.setMaxSize(map_size);
                     move = calculateBestMove(chg, communities, node_to_move, large_map, large_deltas);
                 }
-                if (move.destination_community != source_community) {
+                if (move.delta > 0.0L) {
                     makeMove(chg, communities, node_to_move, move);
                     ++nr_nodes_moved;
                 }
@@ -146,7 +145,7 @@ private:
     // ! recomputes all exit probabilities
     void recomputeExitProbability(const ds::CommunityHypergraph& chg, const parallel::scalable_vector<HypernodeID>& communities) {
         tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID hn) {
-            _community_exit_probability_mul_vol_total[hn].store(0.0L);
+            _community_exit_probability_mul_vol_total[hn].store(0.0);
         });
         tbb::enumerable_thread_specific<parallel::scalable_vector<HypernodeWeight>> overlap_local(chg.initialNumNodes(), 0);
         tbb::enumerable_thread_specific<parallel::scalable_vector<HypernodeID>> neighbouring_communities;
@@ -168,7 +167,7 @@ private:
             }
             neighbouring_communities.local().clear();
         }
-        _sum_exit_probability_mul_vol_total.store(0.0L);
+        _sum_exit_probability_mul_vol_total.store(0.0);
         for (const auto& e : _community_exit_probability_mul_vol_total) {
             _sum_exit_probability_mul_vol_total += e;
         }
@@ -179,10 +178,10 @@ private:
         // 0 if not used yet
         // 1 if used by source
         parallel::scalable_vector<bool> used_edges(chg.initialNumEdges());
-        Probability exit_prob_source = 0.0;
-        Probability exit_prob_destination = 0.0;
+        Probability exit_prob_source = 0.0L;
+        Probability exit_prob_destination = 0.0L;
 
-        for (const auto& hn : communities) {
+        for (HypernodeID hn = 0; hn < communities.size(); ++hn) {
             if (communities[hn] == source || communities[hn] == destination) {
                 for (const HyperedgeID he : chg.incidentEdges(hn)) {
                     if (!used_edges[he]) {
@@ -198,7 +197,7 @@ private:
                         }
                         const HypernodeWeight edge_weight = chg.edgeWeight(he);
                         const HypernodeID edge_size = chg.edgeSize(he);
-                        const double reciprocal_edge_size = 1.0 / edge_size;
+                        const Probability reciprocal_edge_size = 1.0 / edge_size;
                         exit_prob_destination += static_cast<Probability>(overlap_destination * edge_weight * (edge_size - overlap_destination)) * reciprocal_edge_size;
                         exit_prob_source += static_cast<Probability>(overlap_source * edge_weight * (edge_size - overlap_source)) * reciprocal_edge_size;
                     }
@@ -208,10 +207,10 @@ private:
         _community_exit_probability_mul_vol_total[source].store(exit_prob_source);
         _community_exit_probability_mul_vol_total[destination].store(exit_prob_destination);
 
-        _sum_exit_probability_mul_vol_total.store(std::accumulate(_community_exit_probability_mul_vol_total.begin(), _community_exit_probability_mul_vol_total.end(), 0.0));
+        _sum_exit_probability_mul_vol_total.store(std::accumulate(_community_exit_probability_mul_vol_total.begin(), _community_exit_probability_mul_vol_total.end(), 0.0L));
     }
 
-    // ! calculate the move wich improves the map equation the most and resturn this move
+    // ! calculate the move wich improves the map equation the most and return this move
     template<typename Map, typename Map2>
     Move calculateBestMove(ds::CommunityHypergraph& chg, parallel::scalable_vector<HypernodeID>& communities, const HypernodeID v, Map& overlap, Map2& deltas) {
         ASSERT(overlap.size() == 0);
@@ -237,7 +236,7 @@ private:
                 if (e.key != comm_v) {
                     deltas[e.key] += static_cast<Probability>(edge_weight * pin_count_v * -2 * e.value) * reciprocal_edge_size;
                 } else {
-                    deltas[e.key] += static_cast<Probability>(edge_weight * pin_count_v * (2 * e.value - pin_count_v)) * reciprocal_edge_size;
+                    deltas[comm_v] += static_cast<Probability>(edge_weight * pin_count_v * (2 * e.value - pin_count_v)) * reciprocal_edge_size;
                 }
             }
             overlap.clear();
@@ -254,7 +253,6 @@ private:
             }
             return 0.0L;
         };
-
         const Probability remain_plogp_sum_exit_prob = plogp_rel(_sum_exit_probability_mul_vol_total);
         // summands of map equation if we don't move the node at all and only depend on the source node/community
         const Probability remain_plogp_exit_prob_source = plogp_rel(_community_exit_probability_mul_vol_total[comm_v]);
@@ -291,7 +289,7 @@ private:
                 - 2 * (remain_plogp_exit_prob_source + remain_plogp_exit_prob_destination - move_plogp_exit_prob_source - move_plogp_exit_prob_destination)
                 + (remain_plogp_exit_prob_plus_vol_source + remain_plogp_exit_plus_vol_destination - move_plogp_exit_prob_plus_vol_source - move_plogp_exit_prob_plus_vol_destination);
 
-            // remain - delta, to minimize map equation choose large deltas > 0
+            // remain - move, to minimize map equation choose large deltas > 0
             if (delta > move.delta) {
                 move.delta = delta;
                 //move.destination_community = destination_community;
@@ -318,7 +316,6 @@ private:
 #ifdef KAHYPAR_ENABLE_HEAVY_PREPROCESSING_ASSERTIONS
         const Probability before = metrics::hyp_map_equation(chg, communities);
         LOG << "before" << before;
-
 #endif
 
         const HypernodeID source_community = communities[node_to_move];
@@ -340,7 +337,8 @@ private:
         const Probability after = metrics::hyp_map_equation(chg, communities);
 
         LOG << std::fixed << std::setprecision(15) << V(before - after);
-        ASSERT(mt_kahypar::math::are_almost_equal_ld(move.delta, before - after, 1e-10L));
+        // In the sequential case this holds true
+        ASSERT(mt_kahypar::math::are_almost_equal_ld(move.delta, before - after, 1e-8L));
         //ASSERT(before - after > 0.0L);
 #endif
     }
@@ -372,7 +370,7 @@ private:
             // of the cache efficient sparse map would be small enough such that linear probing
             // is fast.
             if (ub_neighbors_v > cache_efficient_rating_map_size / 3UL) {
-                return std::min(vertex_degree_bounded_rating_map_size, static_cast<size_t>(chg.initialNumNodes()));
+                return chg.initialNumNodes();
             }
         }
         return 0;
@@ -427,6 +425,12 @@ private:
     FRIEND_TEST(AHypergraphLocalMovingMapEquation, InitializesTheExitProbabilities2);
     FRIEND_TEST(AHypergraphLocalMovingMapEquation, InitializesTheExitProbabilities3);
     FRIEND_TEST(AHypergraphLocalMovingMapEquation, InitializesTheExitProbabilities4);
-    FRIEND_TEST(AHypergraphLocalMovingMapEquation, test2);
+    FRIEND_TEST(AHypergraphLocalMovingMapEquation, ComputesTheBestNeighboringCommunity0);
+    FRIEND_TEST(AHypergraphLocalMovingMapEquation, ComputesTheBestNeighboringCommunity1);
+    FRIEND_TEST(AHypergraphLocalMovingMapEquation, ComputesTheBestNeighboringCommunity2);
+    FRIEND_TEST(AHypergraphLocalMovingMapEquation, ComputesTheBestNeighboringCommunity3);
+    FRIEND_TEST(AHypergraphLocalMovingMapEquation, ComputesTheBestNeighboringCommunity4);
+    FRIEND_TEST(AHypergraphLocalMovingMapEquation, ComputesTheBestNeighboringCommunity5);
+    FRIEND_TEST(AHypergraphLocalMovingMapEquation, ComputesTheBestNeighboringCommunity6);
 };
 }
