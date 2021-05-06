@@ -66,10 +66,9 @@ Probability hyp_map_equation(
         sum_plogp_exit_prob_local.local() += plogp_rel(exit_prob_vol_total[i]);
         sum_plogp_exit_prob_plus_com_vol_local.local() += plogp_rel(exit_prob_vol_total[i] + community_volumes[i]);
     });
-
     const Probability plogp_sum_exit_prob = plogp_rel(sum_exit_prob);
     const Probability sum_plogp_exit_prob = sum_plogp_exit_prob_local.combine(std::plus<>());
-    const Probability sum_plogp_exit_prob_plus_com_vol = sum_plogp_exit_prob_plus_com_vol_local.combine(std::plus<>());;
+    const Probability sum_plogp_exit_prob_plus_com_vol = sum_plogp_exit_prob_plus_com_vol_local.combine(std::plus<>());
     //LOG << plogp_sum_exit_prob;
     //LOG << sum_plogp_exit_prob;
     //LOG << sum_plogp_exit_prob_plus_com_vol;
