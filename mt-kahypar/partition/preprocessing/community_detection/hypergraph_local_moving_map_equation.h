@@ -86,7 +86,7 @@ public:
             for (const HypernodeID comm : neighbouring_communities.local()) {
                 const HypernodeWeight pincount_in_edge = overlap_local.local()[comm];
                 const HypernodeWeight edge_size = static_cast<HypernodeWeight>(chg.edgeSize(he));
-                _community_exit_probability_mul_vol_total[comm] += static_cast<Probability>(pincount_in_edge * chg.edgeWeight(he) * (edge_size - pincount_in_edge)) / edge_size;//(edge_size - 1);
+                _community_exit_probability_mul_vol_total[comm] += static_cast<Probability>(pincount_in_edge * chg.edgeWeight(he) * (edge_size - pincount_in_edge)) / edge_size;
                 overlap_local.local()[comm] = 0;
             }
             neighbouring_communities.local().clear();
@@ -163,7 +163,7 @@ private:
                 const HypernodeWeight pincount_in_edge = overlap_local.local()[comm];
                 const HypernodeWeight edge_size = static_cast<HypernodeWeight>(chg.edgeSize(he));
                 //TODO: Not sure if / (edge_size - 1) is better (since that results in an equal model to the original map equation)
-                _community_exit_probability_mul_vol_total[comm] += static_cast<Probability>(pincount_in_edge * chg.edgeWeight(he) * (edge_size - pincount_in_edge)) / edge_size;//(edge_size - 1);
+                _community_exit_probability_mul_vol_total[comm] += static_cast<Probability>(pincount_in_edge * chg.edgeWeight(he) * (edge_size - pincount_in_edge)) / edge_size;
                 overlap_local.local()[comm] = 0;
             }
             neighbouring_communities.local().clear();
@@ -192,7 +192,7 @@ private:
                         for (const auto& mp : chg.multipins(he)) {
                             if (communities[mp.id] == source) {
                                 overlap_source += mp.multiplicity;
-                            } else if (communities[mp.id] == source) {
+                            } else if (communities[mp.id] == destination) {
                                 overlap_destination += mp.multiplicity;
                             }
                         }
@@ -223,7 +223,7 @@ private:
         //Probability sum_of_reciprocals = 0.0;
         for (const HyperedgeID& he : chg.incidentEdges(v)) {
             ASSERT(overlap.size() == 0);
-            const Probability reciprocal_edge_size = 1.0L / chg.edgeSize(he); // (chg.edgeSize(he) - 1);
+            const Probability reciprocal_edge_size = 1.0L / chg.edgeSize(he);
             const HypernodeWeight edge_weight = chg.edgeWeight(he);
             for (const auto& mp : chg.multipins(he)) {
                 const HypernodeID community = communities[mp.id];
@@ -269,6 +269,9 @@ private:
         move.delta = 0.0L;
         move.delta_source = delta_source;
 
+        parallel::scalable_vector<std::pair<HypernodeID, Probability>>& tied_best_communities = _tied_best_communities.local();
+        tied_best_communities.push_back(std::make_pair(comm_v, delta_source));
+
         for (const auto& e : deltas) {
             if (e.key == comm_v) { continue; }
 
@@ -291,10 +294,19 @@ private:
             // remain - delta, to minimize map equation choose large deltas > 0
             if (delta > move.delta) {
                 move.delta = delta;
-                move.destination_community = destination_community;
-                move.delta_destination = delta_destination;
+                //move.destination_community = destination_community;
+                //move.delta_destination = delta_destination;
+                tied_best_communities.clear();
+                tied_best_communities.push_back(std::make_pair(destination_community, delta_destination));
+            } else if (delta == move.delta) {
+                tied_best_communities.push_back(std::make_pair(destination_community, delta_destination));
             }
         }
+
+        const auto best_community = tied_best_communities[utils::Randomize::instance().getRandomInt(0, static_cast<int>(tied_best_communities.size()) - 1, sched_getcpu())];
+        move.destination_community = best_community.first;
+        move.delta_destination = best_community.second;
+        tied_best_communities.clear();
         deltas.clear();
         return move;
     }
@@ -314,18 +326,13 @@ private:
         communities[node_to_move] = move.destination_community;
         _community_volumes[source_community] -= vol_v;
         _community_volumes[move.destination_community] += vol_v;
-        // for (const HyperedgeID& he : chg.incidentEdges(node_to_move)) {
-        //     // remove has to be before add to ensure the amount of distinct communities per edge < edgeSize
-        //     chg.removeCommunityFromHyperedge(he, source_community);
-        //     chg.addCommunityToHyperedge(he, move.destination_community);
-        // }
 
-        //recomputeExitProbability(chg, communities, source_community, move.destination_community);
-        _community_exit_probability_mul_vol_total[source_community] += move.delta_source;
-        _community_exit_probability_mul_vol_total[move.destination_community] += move.delta_destination;
+        recomputeExitProbability(chg, communities, source_community, move.destination_community);
+        //_community_exit_probability_mul_vol_total[source_community] += move.delta_source;
+        //_community_exit_probability_mul_vol_total[move.destination_community] += move.delta_destination;
         //ASSERT(_community_exit_probability_mul_vol_total[source_community] >= 0.0L, V(_community_exit_probability_mul_vol_total[source_community]));
         //ASSERT(_community_exit_probability_mul_vol_total[move.destination_community] >= 0.0L, V(_community_exit_probability_mul_vol_total[move.destination_community]));
-        _sum_exit_probability_mul_vol_total += move.delta_destination + move.delta_source;
+        //_sum_exit_probability_mul_vol_total += move.delta_destination + move.delta_source;
         ASSERT(_sum_exit_probability_mul_vol_total <= chg.totalVolume());
         ASSERT(_sum_exit_probability_mul_vol_total >= 0.0L);
 #ifdef KAHYPAR_ENABLE_HEAVY_PREPROCESSING_ASSERTIONS
@@ -408,6 +415,8 @@ private:
     //TODO: This is a temporary solution while there is no datastructure for the pincounts of a community in an edge
     ThreadLocalCacheEfficientDoubleMap _small_deltas_mul_vol_total;
     ThreadLocalLargeTmpDoubleMap _large_deltas_mul_vol_total;
+
+    tbb::enumerable_thread_specific<parallel::scalable_vector<std::pair<HypernodeID, Probability>>> _tied_best_communities;
 
     // ! deactivates random node order in local moving
     const bool _deactivate_random;
