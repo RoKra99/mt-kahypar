@@ -191,6 +191,8 @@ namespace mt_kahypar {
     LargeHyperedgeRemover large_he_remover(context);
     large_he_remover.removeLargeHyperedges(hypergraph);
     preprocess(hypergraph, context);
+    LOG << "done with my stuff";
+    large_he_remover.restoreLargeHyperedges(hypergraph);
     sanitize(hypergraph, context, degree_zero_hn_remover, large_he_remover);
     utils::Timer::instance().stop_timer("preprocessing");
 
