@@ -18,7 +18,7 @@ parallel::scalable_vector<HypernodeID> hypergraph_local_moving_contract_recurse(
         if (debug) {
             //Volume after = metrics::hyp_modularity(chg, communities, hlmm);
             Volume after = metrics::hyp_map_equation(chg, communities);
-            LOG << "after" << after;
+            LOG << std::fixed << std::setprecision(15) << "after" << after;
         }
         ds::CommunityHypergraph coarse_chg = chg.contract(coarse_hg, communities);
         if (debug) {
@@ -29,7 +29,7 @@ parallel::scalable_vector<HypernodeID> hypergraph_local_moving_contract_recurse(
             }
             // Volume contraction = metrics::hyp_modularity(coarse_chg, comm, hlmm);
             Volume contraction = metrics::hyp_map_equation(coarse_chg, comm);
-            LOG << "contraction" << contraction;
+            LOG << std::fixed << std::setprecision(15) << "contraction" << contraction;
         }
         parallel::scalable_vector<HypernodeID> coarse_communities = hypergraph_local_moving_contract_recurse(coarse_chg, hlmm);
         tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID i) {

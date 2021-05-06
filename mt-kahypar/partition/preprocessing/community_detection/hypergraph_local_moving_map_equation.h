@@ -207,7 +207,7 @@ private:
         _community_exit_probability_mul_vol_total[source].store(exit_prob_source);
         _community_exit_probability_mul_vol_total[destination].store(exit_prob_destination);
 
-        _sum_exit_probability_mul_vol_total.store(std::accumulate(_community_exit_probability_mul_vol_total.begin(), _community_exit_probability_mul_vol_total.end(), 0.0L));
+        _sum_exit_probability_mul_vol_total.store(std::accumulate(_community_exit_probability_mul_vol_total.begin(), _community_exit_probability_mul_vol_total.begin() + chg.initialNumNodes(), 0.0L));
     }
 
     // ! calculate the move wich improves the map equation the most and return this move
@@ -217,6 +217,7 @@ private:
         ASSERT(deltas.size() == 0);
         Probability community_independent_part = 0.0L;
         const HypernodeID comm_v = communities[v];
+        ASSERT(comm_v < chg.initialNumNodes());
         const HyperedgeWeight vol_v = chg.nodeVolume(v);
         HypernodeWeight pin_count_v = 0;
         //Probability sum_of_reciprocals = 0.0;
@@ -234,9 +235,11 @@ private:
 
             for (const auto& e : overlap) {
                 if (e.key != comm_v) {
-                    deltas[e.key] += static_cast<Probability>(edge_weight * pin_count_v * -2 * e.value) * reciprocal_edge_size;
+                    const Probability result = static_cast<Probability>(edge_weight * pin_count_v * -2 * e.value) * reciprocal_edge_size;;
+                    deltas[e.key] += result;
                 } else {
-                    deltas[comm_v] += static_cast<Probability>(edge_weight * pin_count_v * (2 * e.value - pin_count_v)) * reciprocal_edge_size;
+                    const Probability result = static_cast<Probability>(edge_weight * pin_count_v * (2 * e.value - pin_count_v)) * reciprocal_edge_size;
+                    deltas[comm_v] += result;
                 }
             }
             overlap.clear();
@@ -315,7 +318,6 @@ private:
         ASSERT(move.delta > 0);
 #ifdef KAHYPAR_ENABLE_HEAVY_PREPROCESSING_ASSERTIONS
         const Probability before = metrics::hyp_map_equation(chg, communities);
-        LOG << "before" << before;
 #endif
 
         const HypernodeID source_community = communities[node_to_move];
@@ -333,13 +335,11 @@ private:
         ASSERT(_sum_exit_probability_mul_vol_total <= chg.totalVolume());
         ASSERT(_sum_exit_probability_mul_vol_total >= 0.0L);
 #ifdef KAHYPAR_ENABLE_HEAVY_PREPROCESSING_ASSERTIONS
-        LOG << std::fixed << "delta" << std::setprecision(15) << move.delta;
         const Probability after = metrics::hyp_map_equation(chg, communities);
 
-        LOG << std::fixed << std::setprecision(15) << V(before - after);
         // In the sequential case this holds true
-        ASSERT(mt_kahypar::math::are_almost_equal_ld(move.delta, before - after, 1e-8L));
-        //ASSERT(before - after > 0.0L);
+        ASSERT(mt_kahypar::math::are_almost_equal_ld(move.delta, before - after, 1e-8L), std::fixed << std::setprecision(15) << V(move.delta) << V(before - after));
+                //ASSERT(before - after > 0.0L);
 #endif
     }
 
