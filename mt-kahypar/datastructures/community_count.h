@@ -7,6 +7,9 @@ namespace mt_kahypar {
 namespace ds {
 
 template <typename HashMap>
+
+// data structure to store the number of unique nodes an edge contains for each of the communities it connects
+// NOTE: It expects the number of connected communities to be <= edge size, if you try to add more communities behaviour is undefined
 class CommunityCount {
 
 public:

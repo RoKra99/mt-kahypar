@@ -68,6 +68,12 @@ class LargeHyperedgeRemover {
     }
   }
 
+  void restoreLargeHyperedges(Hypergraph& hypergraph) {
+    for (const HyperedgeID& he : _removed_hes) {
+      hypergraph.restoreLargeEdge(he);
+    }
+  }
+
   // ! Restores all previously removed large hyperedges
   void restoreLargeHyperedges(PartitionedHypergraph& hypergraph) {
     HyperedgeWeight delta = 0;
