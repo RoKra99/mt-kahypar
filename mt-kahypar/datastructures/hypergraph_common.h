@@ -86,10 +86,18 @@ using Clustering = vec<PartitionID>;
 }
 
 struct Move {
-  PartitionID from = -1;
-  PartitionID to = -1;
+  PartitionID from = kInvalidPartition;
+  PartitionID to = kInvalidPartition;
   HypernodeID node = invalidNode;
   Gain gain = invalidGain;
+
+  bool isValid() const {
+    return from != kInvalidPartition;
+  }
+
+  void invalidate() {
+    from = kInvalidPartition;
+  }
 };
 
 struct Memento {

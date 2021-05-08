@@ -51,7 +51,11 @@ class AInitialPartitionerTest : public Test {
     hypergraph(),
     context() {
 
-    parseIniToContext(context, "../config/speed_preset.ini");
+    if ( context.partition.paradigm == Paradigm::multilevel ) {
+      parseIniToContext(context, "../config/fast_preset.ini");
+    } else {
+      parseIniToContext(context, "../config/strong_preset.ini");
+    }
 
     context.partition.graph_filename = "../tests/instances/contracted_unweighted_ibm01.hgr";
     context.partition.graph_community_filename = "../tests/instances/contracted_ibm01.hgr.community";
@@ -65,10 +69,7 @@ class AInitialPartitionerTest : public Test {
     context.shared_memory.num_threads = num_threads;
 
     // Coarsening
-    if ( context.partition.paradigm == Paradigm::multilevel ) {
-      context.coarsening.algorithm = CoarseningAlgorithm::multilevel_coarsener;
-    } else {
-      context.coarsening.algorithm = CoarseningAlgorithm::nlevel_coarsener;
+    if ( context.partition.paradigm == Paradigm::nlevel ) {
       context.refinement.max_batch_size = 100;
     }
 
@@ -78,13 +79,16 @@ class AInitialPartitionerTest : public Test {
     context.sparsification.use_heavy_net_removal = false;
     context.sparsification.use_similiar_net_removal = false;
     context.sparsification.use_degree_zero_contractions = false;
-    context.initial_partitioning.use_adaptive_epsilon = false;
     context.initial_partitioning.mode = Config::MODE;
     context.initial_partitioning.remove_degree_zero_hns_before_ip = false;
 
     // Label Propagation
     context.refinement.label_propagation.algorithm = LabelPropagationAlgorithm::do_nothing;
     context.initial_partitioning.refinement.label_propagation.algorithm = LabelPropagationAlgorithm::do_nothing;
+
+    // FM
+    context.refinement.fm.algorithm = FMAlgorithm::do_nothing;
+    context.initial_partitioning.refinement.fm.algorithm = FMAlgorithm::do_nothing;
 
     // Read hypergraph
     hypergraph = io::readHypergraphFile(
@@ -144,6 +148,7 @@ TYPED_TEST(AInitialPartitionerTest, VerifiesThatPartSizesAndWeightsAreCorrect) {
   std::vector<HypernodeWeight> part_weight(this->context.partition.k, 0);
   for ( const HypernodeID& hn : this->hypergraph.nodes() ) {
     PartitionID part_id = this->partitioned_hypergraph.partID(hn);
+    ASSERT(part_id >= 0 && part_id < this->context.partition.k);
     part_weight[part_id] += this->partitioned_hypergraph.nodeWeight(hn);
   }
 
