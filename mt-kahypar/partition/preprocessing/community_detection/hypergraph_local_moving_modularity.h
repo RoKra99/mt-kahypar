@@ -177,12 +177,16 @@ public:
                 power_d_fraction_minus = destination_fraction_minus;
                 power_d_fraction = destination_fraction;
 
+                Volume error = 0.0L;
                 //actual calculation of the expected edge contribution for the given community
                 for (const size_t d : chg.edgeSizes()) {
                     const size_t remaining_d = d - biggest_d_yet; 
                     power_d_fraction_minus *= math::fast_power(destination_fraction_minus, remaining_d);
                     power_d_fraction *= math::fast_power(destination_fraction, remaining_d);
-                    delta += chg.edgeWeightBySize(d) * (powers_of_source_community[d] + power_d_fraction - power_d_fraction_minus);
+                    Volume old_delta = delta;
+                    Volume x = chg.edgeWeightBySize(d) * (powers_of_source_community[d] + power_d_fraction - power_d_fraction_minus) - error;
+                    delta += x;
+                    error = (delta - old_delta) -x;
                     biggest_d_yet = d;
                 }
                 // ASSERT((vol_c_minus_vol_v > vol_destination_minus && exp_edge_contribution < 0.0L)
