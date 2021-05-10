@@ -195,28 +195,29 @@ namespace mt_kahypar {
     sanitize(hypergraph, context, degree_zero_hn_remover, large_he_remover);
     utils::Timer::instance().stop_timer("preprocessing");
 
-    // ################## MULTILEVEL ##################
-    PartitionedHypergraph partitioned_hypergraph = multilevel::partition(
-            hypergraph, context, true, TBBNumaArena::GLOBAL_TASK_GROUP);
+    // // ################## MULTILEVEL ##################
+    // PartitionedHypergraph partitioned_hypergraph = multilevel::partition(
+    //         hypergraph, context, true, TBBNumaArena::GLOBAL_TASK_GROUP);
 
-    // ################## V-Cycle s##################
-    if ( context.partition.num_vcycles > 0 ) {
-      partitioned_hypergraph = partitionVCycle(
-        hypergraph, std::move(partitioned_hypergraph),
-        context, large_he_remover);
-    }
+    // // ################## V-Cycle s##################
+    // if ( context.partition.num_vcycles > 0 ) {
+    //   partitioned_hypergraph = partitionVCycle(
+    //     hypergraph, std::move(partitioned_hypergraph),
+    //     context, large_he_remover);
+    // }
 
-    // ################## POSTPROCESSING ##################
-    utils::Timer::instance().start_timer("postprocessing", "Postprocessing");
-    large_he_remover.restoreLargeHyperedges(partitioned_hypergraph);
-    degree_zero_hn_remover.restoreDegreeZeroHypernodes(partitioned_hypergraph);
-    utils::Timer::instance().stop_timer("postprocessing");
+    // // ################## POSTPROCESSING ##################
+    // utils::Timer::instance().start_timer("postprocessing", "Postprocessing");
+    // large_he_remover.restoreLargeHyperedges(partitioned_hypergraph);
+    // degree_zero_hn_remover.restoreDegreeZeroHypernodes(partitioned_hypergraph);
+    // utils::Timer::instance().stop_timer("postprocessing");
 
-    if (context.partition.verbose_output) {
-      io::printHypergraphInfo(partitioned_hypergraph.hypergraph(), "Uncoarsened Hypergraph",
-                              context.partition.show_memory_consumption);
-      io::printStripe();
-    }
+    // if (context.partition.verbose_output) {
+    //   io::printHypergraphInfo(partitioned_hypergraph.hypergraph(), "Uncoarsened Hypergraph",
+    //                           context.partition.show_memory_consumption);
+    //   io::printStripe();
+    // } 
+    PartitionedHypergraph partitioned_hypergraph;
 
     return partitioned_hypergraph;
   }

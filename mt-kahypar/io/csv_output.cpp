@@ -56,11 +56,11 @@ namespace mt_kahypar::io::csv {
     s << context.partition.seed << sep;
 
     s << context.partition.epsilon << sep;
-    s << metrics::imbalance(phg, context) << sep;
+    s << "gelöscht" << sep;
 
     s << context.partition.objective << sep;
-    s << metrics::km1(phg) << sep;
-    s << metrics::hyperedgeCut(phg) << sep;
+    s << "gelöscht" << sep;
+    s << "gelöscht" << sep;
     s << elapsed_seconds.count() << sep;
 
     utils::Timer& timer = utils::Timer::instance(context.partition.show_detailed_timings);

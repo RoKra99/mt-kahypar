@@ -146,7 +146,7 @@ public:
             const HyperedgeWeight destination_edge_contribution = e.value + sum_of_edgeweights_minus_edgecontribution_c;
 
             // delta will not be < 0
-            if (best_delta <= destination_edge_contribution && vol_c_minus_vol_v <= vol_destination_minus) {
+            if (destination_edge_contribution > 0 || (best_delta <= destination_edge_contribution && vol_c_minus_vol_v <= vol_destination_minus)) {
                 //++pruned_by_old;
                 continue;
             }
