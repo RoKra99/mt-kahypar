@@ -21,7 +21,7 @@ public:
 
     CommunityCount() = default;
 
-    explicit CommunityCount(const HypernodeID pincount, IteratorRange<IncidenceIterator> pins, const bool multipins = false) : _communities(pincount / 2) {
+    explicit CommunityCount(const HypernodeID pincount, IteratorRange<IncidenceIterator> pins, const bool multipins = false) : _communities(2 * pincount) {
         _single_cut_communities.reserve(pincount);
         if (!multipins) {
             // since there are no duplicate pins in the initial Hypergraph
@@ -41,7 +41,7 @@ public:
         end_of_single_cuts = _single_cut_communities.size();
     }
 
-    explicit CommunityCount(const HypernodeID pincount, IteratorRange<MultipinIterator> multipins) : _communities(pincount / 2) {
+    explicit CommunityCount(const HypernodeID pincount, IteratorRange<MultipinIterator> multipins) : _communities(2 * pincount) {
         _single_cut_communities.reserve(pincount);
         // since there are no duplicate pins in the initial Hypergraph
         // and every pin is in its own community
