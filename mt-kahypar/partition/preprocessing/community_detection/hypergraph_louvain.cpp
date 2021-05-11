@@ -49,6 +49,12 @@ parallel::scalable_vector<HypernodeID> hypergraph_louvain(ds::CommunityHypergrap
     //LOG << V(hlmm.success);
     //LOG << V(hlmm.tries);
     //LOG << *std::max_element(communities.begin(), communities.end());
+    parallel::scalable_vector<double> percentiles = {0.7, 0.75, 0.8, 0.85, 0.9, 0.91, 0.92, 0.93, 0.94, 0.95, 0.96, 0.97, 0.98, 0.99};
+    std::sort(hlmm.distance.begin(), hlmm.distance.end());
+    int size = hlmm.distance.size() - 1;
+    for (const auto p : percentiles) {
+        std:: cout << hlmm.distance[static_cast<int>(p * size)] << ",";
+    }
     return communities;
 }
 }

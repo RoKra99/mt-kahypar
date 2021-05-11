@@ -101,15 +101,15 @@ public:
         const HyperedgeWeight edge_contribution_c = -community_edge_contribution[comm_v];
         //edge_con_time += (tbb::tick_count::now() - t).seconds();
         // ------------------------- Selection --------------------------------------
-        // const auto end = community_edge_contribution.end();
-        const auto end = _community_neighbour_sampling_threshold < community_edge_contribution.size()
-            ? community_edge_contribution.begin() + _community_neighbour_samples : community_edge_contribution.end();
-        if (end != community_edge_contribution.end()) {
-            // sorting on the dense part of the map => the sparse part isn't correct anymore
-            std::nth_element(community_edge_contribution.begin(), end, community_edge_contribution.end(), [&](const auto a, const auto b) {
-                return a.value < b.value;
-            });
-        }
+        const auto end = community_edge_contribution.end();
+        // const auto end = _community_neighbour_sampling_threshold < community_edge_contribution.size()
+        //     ? community_edge_contribution.begin() + _community_neighbour_samples : community_edge_contribution.end();
+        // if (end != community_edge_contribution.end()) {
+        //     // sorting on the dense part of the map => the sparse part isn't correct anymore
+        //     std::nth_element(community_edge_contribution.begin(), end, community_edge_contribution.end(), [&](const auto a, const auto b) {
+        //         return a.value < b.value;
+        //     });
+        // }
         // -------------------------------------------------------------------------
         //t = tbb::tick_count::now();
         const HyperedgeWeight vol_v = chg.nodeVolume(v);
@@ -127,7 +127,7 @@ public:
         Volume best_delta = 0.0L;
         const HyperedgeWeight sum_of_edgeweights_minus_edgecontribution_c = sum_of_edgeweights - edge_contribution_c;
         parallel::scalable_vector<PartitionID>& tied_best_communities = _tied_best_communities.local();
-        if (_tie_breaking_rule == TieBreakingRule::random) {    
+        if (_tie_breaking_rule == TieBreakingRule::random) {
             tied_best_communities.clear();
             tied_best_communities.push_back(comm_v);
         }
@@ -137,13 +137,14 @@ public:
             //++overall_checks;
             const auto& e = *it;
             const PartitionID community = e.key;
-
+            ranking_after_km1.local().push_back(std::pair<PartitionID, Volume>(community, e.value));
             if (community == comm_v) {
                 continue;
             }
             const HyperedgeWeight vol_destination_minus = _community_volumes[community];
             const HyperedgeWeight vol_destination = vol_destination_minus + vol_v;
             const HyperedgeWeight destination_edge_contribution = e.value + sum_of_edgeweights_minus_edgecontribution_c;
+
 
             // delta will not be < 0
             if (destination_edge_contribution > 0 || (best_delta <= destination_edge_contribution && vol_c_minus_vol_v <= vol_destination_minus)) {
@@ -179,7 +180,7 @@ public:
 
                 //actual calculation of the expected edge contribution for the given community
                 for (const size_t d : chg.edgeSizes()) {
-                    const size_t remaining_d = d - biggest_d_yet; 
+                    const size_t remaining_d = d - biggest_d_yet;
                     power_d_fraction_minus *= math::fast_power(destination_fraction_minus, remaining_d);
                     power_d_fraction *= math::fast_power(destination_fraction, remaining_d);
                     delta += chg.edgeWeightBySize(d) * (powers_of_source_community[d] + power_d_fraction - power_d_fraction_minus);
@@ -189,7 +190,7 @@ public:
                 //     || (vol_c_minus_vol_v < vol_destination_minus && exp_edge_contribution > 0.0L)
                 //     || (vol_c_minus_vol_v == vol_destination_minus));
             }
-            
+
             if (_tie_breaking_rule == TieBreakingRule::random) {
                 if (delta < best_delta) {
                     best_delta = delta;
@@ -211,6 +212,15 @@ public:
             best_community = tied_best_communities[utils::Randomize::instance().getRandomInt(0, static_cast<int>(tied_best_communities.size()) - 1, sched_getcpu())];
         }
         community_edge_contribution.clear();
+        std::sort(ranking_after_km1.local().begin(), ranking_after_km1.local().end(), [&](const auto a, const auto b) {
+            return a.second < b.second;
+        });
+        int i = 0;
+        while(ranking_after_km1.local()[i].first != best_community) {
+            ++i;
+        }
+        ranking_after_km1.local().clear();
+        distance.push_back(i);
         //exp_edge_con_time += (tbb::tick_count::now() - t).seconds();
         return best_community;
     }
@@ -294,6 +304,9 @@ public:
     // parallel::AtomicWrapper<double> edge_con_time;
     // parallel::AtomicWrapper<double> exp_edge_con_time;
     // parallel::AtomicWrapper<double> move_time;
+    tbb::enumerable_thread_specific<parallel::scalable_vector<std::pair<PartitionID, Volume>>> ranking_after_km1;
+    tbb::concurrent_vector<int> distance;
+
 
 
 private:
