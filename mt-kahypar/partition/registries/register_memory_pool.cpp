@@ -56,6 +56,7 @@ namespace mt_kahypar {
       pool.register_memory_chunk("Preprocessing", "multipin_indexes", num_hyperedges + 1, sizeof(size_t));
       pool.register_memory_chunk("Preprocessing", "tmp_node_volumes", num_hypernodes, sizeof(HyperedgeWeight));
       pool.register_memory_chunk("Preprocessing", "tmp_exit_probs", num_hypernodes, sizeof(size_t));
+      pool.register_memory_chunk("Preprocessing", "community_locks", num_hypernodes, sizeof(SpinLock));
 
       // Old Modualrity
       // pool.register_memory_chunk("Preprocessing", "indices", num_star_expansion_nodes + 1, sizeof(size_t));
