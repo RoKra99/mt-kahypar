@@ -63,34 +63,9 @@ public:
             communities[i] = i;
             nodes[i] = i;
             _community_volumes[i].store(chg.nodeVolume(i));
-            _community_exit_probability_mul_vol_total[i].store(0.0);
         });
 
-        tbb::enumerable_thread_specific<parallel::scalable_vector<HypernodeWeight>> overlap_local(chg.initialNumNodes(), 0);
-        tbb::enumerable_thread_specific<parallel::scalable_vector<HypernodeID>> neighbouring_communities;
-
-        tbb::parallel_for(0U, chg.initialNumEdges(), [&](const HyperedgeID he) {
-            //for (HyperedgeID he = 0; he < chg.initialNumEdges(); ++he) {
-            for (const auto& mp : chg.multipins(he)) {
-                const size_t community_mp = communities[mp.id];
-                if (overlap_local.local()[community_mp] == 0) {
-                    neighbouring_communities.local().push_back(community_mp);
-                }
-                overlap_local.local()[community_mp] += mp.multiplicity;
-            }
-
-            for (const HypernodeID comm : neighbouring_communities.local()) {
-                const HypernodeWeight pincount_in_edge = overlap_local.local()[comm];
-                const HypernodeWeight edge_size = static_cast<HypernodeWeight>(chg.edgeSize(he));
-                _community_exit_probability_mul_vol_total[comm] += static_cast<Probability>(pincount_in_edge * chg.edgeWeight(he) * (edge_size - pincount_in_edge)) / edge_size;
-                overlap_local.local()[comm] = 0;
-            }
-            neighbouring_communities.local().clear();
-        });
-        _sum_exit_probability_mul_vol_total.store(0.0);
-        tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID hn) {
-            _sum_exit_probability_mul_vol_total += _community_exit_probability_mul_vol_total[hn];
-        });
+        recalculateAllExitProbabilities(chg, communities);
 
         bool changed_clustering = false;
         size_t nr_nodes_moved = chg.initialNumNodes();
@@ -124,6 +99,10 @@ public:
                 }
             });
             changed_clustering |= nr_nodes_moved > 0;
+            const Probability before =  _sum_exit_probability_mul_vol_total;
+            recalculateAllExitProbabilities(chg, communities);
+            const Probability after = _sum_exit_probability_mul_vol_total;
+            ASSERT(math::are_almost_equal_d(before, after, 1e-8), std::fixed << std::setprecision(15) << V(before) << V(after)) ;
         }
         return changed_clustering;
     }
@@ -149,7 +128,7 @@ private:
         return 0.0L;
     }
 
-    Probability caclulateDelta(const HypernodeID v, const HyperedgeWeight vol_v, const HypernodeID source_community, const HypernodeID destination_community, const Probability delta_source, const Probability delta_destination, const Probability sum_exit_probability) {
+    bool caclulateDelta(const HypernodeID v, const HyperedgeWeight vol_v, const HypernodeID source_community, const HypernodeID destination_community, const Probability delta_source, const Probability delta_destination, const Probability sum_exit_probability) {
 
         const Probability remain_plogp_sum_exit_prob = plogp_rel(sum_exit_probability);
         // summands of map equation if we don't move the node at all and only depend on the source node/community
@@ -174,7 +153,40 @@ private:
             - 2 * (remain_plogp_exit_prob_source + remain_plogp_exit_prob_destination - move_plogp_exit_prob_source - move_plogp_exit_prob_destination)
             + (remain_plogp_exit_prob_plus_vol_source + remain_plogp_exit_plus_vol_destination - move_plogp_exit_prob_plus_vol_source - move_plogp_exit_prob_plus_vol_destination);
 
-        return delta;
+
+        return delta > 0;
+    }
+
+    void recalculateAllExitProbabilities(const ds::CommunityHypergraph& chg, const parallel::scalable_vector<HypernodeID>& communities) {
+
+        tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID i) {
+            _community_exit_probability_mul_vol_total[i].store(0.0);
+        });
+        tbb::enumerable_thread_specific<parallel::scalable_vector<HypernodeWeight>> overlap_local(chg.initialNumNodes(), 0);
+        tbb::enumerable_thread_specific<parallel::scalable_vector<HypernodeID>> neighbouring_communities;
+
+        tbb::parallel_for(0U, chg.initialNumEdges(), [&](const HyperedgeID he) {
+            //for (HyperedgeID he = 0; he < chg.initialNumEdges(); ++he) {
+            for (const auto& mp : chg.multipins(he)) {
+                const size_t community_mp = communities[mp.id];
+                if (overlap_local.local()[community_mp] == 0) {
+                    neighbouring_communities.local().push_back(community_mp);
+                }
+                overlap_local.local()[community_mp] += mp.multiplicity;
+            }
+
+            for (const HypernodeID comm : neighbouring_communities.local()) {
+                const HypernodeWeight pincount_in_edge = overlap_local.local()[comm];
+                const HypernodeWeight edge_size = static_cast<HypernodeWeight>(chg.edgeSize(he));
+                _community_exit_probability_mul_vol_total[comm] += static_cast<Probability>(pincount_in_edge * chg.edgeWeight(he) * (edge_size - pincount_in_edge)) / (edge_size);
+                overlap_local.local()[comm] = 0;
+            }
+            neighbouring_communities.local().clear();
+        });
+        _sum_exit_probability_mul_vol_total.store(0.0);
+        tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID hn) {
+            _sum_exit_probability_mul_vol_total += _community_exit_probability_mul_vol_total[hn];
+        });
     }
 
 
@@ -191,7 +203,7 @@ private:
         //Probability sum_of_reciprocals = 0.0;
         for (const HyperedgeID& he : chg.incidentEdges(v)) {
             ASSERT(overlap.size() == 0);
-            const Probability reciprocal_edge_size = 1.0L / chg.edgeSize(he);
+            const Probability reciprocal_edge_size = 1.0L / (chg.edgeSize(he));
             const HypernodeWeight edge_weight = chg.edgeWeight(he);
             for (const auto& mp : chg.multipins(he)) {
                 const HypernodeID community = communities[mp.id];
@@ -215,7 +227,7 @@ private:
             //sum_of_reciprocals += edge_weight * pin_count_v * reciprocal_edge_size;
         }
 
-        Probability delta_source = deltas[comm_v] - vol_v; //- sum_of_reciprocals;
+        Probability delta_source = deltas[comm_v] - vol_v;// - sum_of_reciprocals;
 
         const Probability remain_plogp_sum_exit_prob = plogp_rel(_sum_exit_probability_mul_vol_total);
         // summands of map equation if we don't move the node at all and only depend on the source node/community
@@ -227,14 +239,15 @@ private:
         const Probability move_plogp_exit_prob_plus_vol_source = plogp_rel(_community_exit_probability_mul_vol_total[comm_v] + delta_source + _community_volumes[comm_v] - vol_v);
 
         Probability best_delta = 0.0;
-        parallel::scalable_vector<HypernodeID>& tied_best_communities = _tied_best_communities.local();
-        tied_best_communities.push_back(comm_v);
+        HypernodeID best_community = comm_v;
+        //parallel::scalable_vector<HypernodeID>& tied_best_communities = _tied_best_communities.local();
+        //tied_best_communities.push_back(comm_v);
 
         for (const auto& e : deltas) {
             if (e.key == comm_v) { continue; }
 
             const HypernodeID destination_community = e.key;
-            const Probability delta_destination = community_independent_part + e.value + vol_v; //+ sum_of_reciprocals;
+            const Probability delta_destination = community_independent_part + e.value + vol_v;// + sum_of_reciprocals;
             // summands if we don't move the node at all and depend on destination
             const Probability remain_plogp_exit_prob_destination = plogp_rel(_community_exit_probability_mul_vol_total[destination_community]);
             const Probability remain_plogp_exit_plus_vol_destination = plogp_rel(_community_exit_probability_mul_vol_total[destination_community] + _community_volumes[destination_community]);
@@ -250,18 +263,23 @@ private:
                 + (remain_plogp_exit_prob_plus_vol_source + remain_plogp_exit_plus_vol_destination - move_plogp_exit_prob_plus_vol_source - move_plogp_exit_prob_plus_vol_destination);
 
             // remain - move, to minimize map equation choose large deltas > 0
-            if (delta > best_delta) {
+            // if (delta > best_delta) {
+            //     best_delta = delta;
+            //     tied_best_communities.clear();
+            //     tied_best_communities.push_back(destination_community);
+            // } else if (delta == best_delta) {
+            //     tied_best_communities.push_back(destination_community);
+            // }
+            if (delta > best_delta || (delta == best_delta && destination_community < best_community)) {
                 best_delta = delta;
-                tied_best_communities.clear();
-                tied_best_communities.push_back(destination_community);
-            } else if (delta == best_delta) {
-                tied_best_communities.push_back(destination_community);
+                best_community = destination_community;
             }
+
         }
 
-        const HypernodeID best_community = tied_best_communities[utils::Randomize::instance().getRandomInt(0, static_cast<int>(tied_best_communities.size()) - 1, sched_getcpu())];
+        //const HypernodeID best_community = tied_best_communities[utils::Randomize::instance().getRandomInt(0, static_cast<int>(tied_best_communities.size()) - 1, sched_getcpu())];
 
-        tied_best_communities.clear();
+        //tied_best_communities.clear();
         deltas.clear();
         return best_community;
     }
@@ -280,9 +298,11 @@ private:
         Probability delta_source = -vol_v;
         Probability delta_destination = vol_v;
 
+        //Probability sum_of_reciprocals = 0.0;
+
         // calculate exit probability deltas
         for (const HyperedgeID& he : chg.incidentEdges(v)) {
-            const Probability reciprocal_edge_size = 1.0L / chg.edgeSize(he);
+            const Probability reciprocal_edge_size = 1.0L / (chg.edgeSize(he));
             const HypernodeWeight edge_weight = chg.edgeWeight(he);
             HypernodeWeight pin_count_v = 0;
             HypernodeWeight overlap_source = 0;
@@ -305,17 +325,16 @@ private:
             //sum_of_reciprocals += edge_weight * pin_count_v * reciprocal_edge_size;
         }
 
+        // delta_source += sum_of_reciprocals;
+        // delta_destination += sum_of_reciprocals;
+
         // check if the move actually improves the map equation
         bool moved = true;
-        Probability change_source = caclulateDelta(v, vol_v, source_community, source_community, delta_source, delta_source, _sum_exit_probability_mul_vol_total);
-        Probability change_destination = caclulateDelta(v, vol_v, source_community, destination_community, delta_source, delta_destination, _sum_exit_probability_mul_vol_total);
-        if (change_source <= change_destination) {
-            moved = false;
-        }
+        //moved = caclulateDelta(v, vol_v, source_community, destination_community, delta_source, delta_destination, _sum_exit_probability_mul_vol_total);
 
         if (moved) {
-            const Probability before = metrics::hyp_map_equation(chg, communities);
-            LOG << "before" << before;
+            // const Probability before = metrics::hyp_map_equation(chg, communities);
+            // LOG << "before" << std::fixed << std::setprecision(15) << before;
             // update volumes
             _community_volumes[source_community] -= vol_v;
             _community_volumes[destination_community] += vol_v;
@@ -327,9 +346,10 @@ private:
 
             // update community 
             communities[v] = destination_community;
-            const Probability after = metrics::hyp_map_equation(chg, communities);
-            LOG << "after" << after;
-            ASSERT(after < before);
+            // const Probability after = metrics::hyp_map_equation(chg, communities);
+            // LOG << "after" << std::fixed << std::setprecision(15) << after;
+            // ASSERT(after <= before);
+            // LOG << "moved";
         }
         // release locks
         _community_locks[std::max(source_community, destination_community)].unlock();
