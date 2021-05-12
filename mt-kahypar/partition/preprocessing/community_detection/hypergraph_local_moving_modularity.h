@@ -52,7 +52,7 @@ public:
     // ! calculates the best modularity move for the given node
     template<typename Map>
     PartitionID calculateBestMove(ds::CommunityHypergraph& chg, parallel::scalable_vector<HypernodeID>& communities, const HypernodeID v, Map& community_edge_contribution) {
-        auto t = tbb::tick_count::now();
+        //auto t = tbb::tick_count::now();
         ASSERT(community_edge_contribution.size() == 0);
         const PartitionID comm_v = communities[v];
         // sum of all edgeweights incident to v
@@ -99,7 +99,7 @@ public:
             }
         }
         const HyperedgeWeight edge_contribution_c = -community_edge_contribution[comm_v];
-        edge_con_time += (tbb::tick_count::now() - t).seconds();
+        //edge_con_time += (tbb::tick_count::now() - t).seconds();
         // ------------------------- Selection --------------------------------------
         // const auto end = community_edge_contribution.end();
         const auto end = _community_neighbour_sampling_threshold < community_edge_contribution.size()
@@ -111,7 +111,7 @@ public:
             });
         }
         // -------------------------------------------------------------------------
-        t = tbb::tick_count::now();
+        //t = tbb::tick_count::now();
         const HyperedgeWeight vol_v = chg.nodeVolume(v);
         const HyperedgeWeight vol_c = _community_volumes[comm_v];
         const HyperedgeWeight vol_c_minus_vol_v = vol_c - vol_v;
@@ -183,10 +183,7 @@ public:
                     const size_t remaining_d = d - biggest_d_yet; 
                     power_d_fraction_minus *= math::fast_power(destination_fraction_minus, remaining_d);
                     power_d_fraction *= math::fast_power(destination_fraction, remaining_d);
-                    Volume old_delta = delta;
-                    Volume x = chg.edgeWeightBySize(d) * (powers_of_source_community[d] + power_d_fraction - power_d_fraction_minus) - error;
-                    delta += x;
-                    error = (delta - old_delta) -x;
+                    delta += chg.edgeWeightBySize(d) * (powers_of_source_community[d] + power_d_fraction - power_d_fraction_minus);
                     biggest_d_yet = d;
                 }
                 // ASSERT((vol_c_minus_vol_v > vol_destination_minus && exp_edge_contribution < 0.0L)
@@ -215,7 +212,7 @@ public:
             best_community = tied_best_communities[utils::Randomize::instance().getRandomInt(0, static_cast<int>(tied_best_communities.size()) - 1, sched_getcpu())];
         }
         community_edge_contribution.clear();
-        exp_edge_con_time += (tbb::tick_count::now() - t).seconds();
+        //exp_edge_con_time += (tbb::tick_count::now() - t).seconds();
         return best_community;
     }
 
@@ -295,8 +292,8 @@ public:
     // parallel::AtomicWrapper<size_t> pruned_by_old;
     // parallel::AtomicWrapper<size_t> tries;
     // parallel::AtomicWrapper<size_t> success;
-    parallel::AtomicWrapper<double> edge_con_time;
-    parallel::AtomicWrapper<double> exp_edge_con_time;
+    //parallel::AtomicWrapper<double> edge_con_time;
+    //parallel::AtomicWrapper<double> exp_edge_con_time;
     //parallel::AtomicWrapper<double> move_time;
 
 
