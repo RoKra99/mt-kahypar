@@ -46,7 +46,7 @@ Probability hyp_map_equation(
             const HypernodeWeight pincount_in_edge = overlap_local.local()[comm];
             const HypernodeWeight edge_size = static_cast<HypernodeWeight>(chg.edgeSize(he));
             //TODO: Not sure if / (edge_size - 1) is better (since that results in an equal model to the original map equation)
-            exit_prob_vol_total[comm] += static_cast<Probability>(pincount_in_edge * chg.edgeWeight(he) * (edge_size - pincount_in_edge)) / edge_size; //(edge_size - 1);
+            exit_prob_vol_total[comm] += static_cast<Probability>(pincount_in_edge * chg.edgeWeight(he) * (edge_size - pincount_in_edge)) / (edge_size); //(edge_size - 1);
             ASSERT(exit_prob_vol_total[comm] >= 0.0);
             overlap_local.local()[comm] = 0;
         }

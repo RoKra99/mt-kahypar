@@ -68,6 +68,12 @@ class LargeHyperedgeRemover {
     }
   }
 
+  void restoreLargeHyperedges(Hypergraph& hypergraph) {
+    for ( const HyperedgeID& he : _removed_hes ) {
+      hypergraph.restoreLargeEdge(he);
+    }
+  }
+
   // ! Restores all previously removed large hyperedges
   void restoreLargeHyperedges(PartitionedHypergraph& hypergraph) {
     HyperedgeWeight delta = 0;
@@ -88,7 +94,7 @@ class LargeHyperedgeRemover {
   }
 
   HypernodeID largeHyperedgeThreshold() const {
-    return std::max(_context.partition.large_hyperedge_size_threshold, LARGE_HE_THRESHOLD);
+    return _context.partition.large_hyperedge_size_threshold;//std::max(_context.partition.large_hyperedge_size_threshold, LARGE_HE_THRESHOLD);
   }
 
   void reset() {
