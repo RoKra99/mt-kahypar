@@ -99,10 +99,12 @@ public:
                 }
             });
             changed_clustering |= nr_nodes_moved > 0;
-            const Probability before =  _sum_exit_probability_mul_vol_total;
+            #ifndef KAHYPAR_ENABLE_HEAVY_PREPROCESSING_ASSERTIONS
             recalculateAllExitProbabilities(chg, communities);
-            const Probability after = _sum_exit_probability_mul_vol_total;
-            ASSERT(math::are_almost_equal_d(before, after, 1e-8), std::fixed << std::setprecision(15) << V(before) << V(after)) ;
+            #endif
+            #ifdef KAHYPAR_ENABLE_HEAVY_PREPROCESSING_ASSERTIONS
+            checkUpdatedValuesAgainstRecomputation(chg, communities);
+            #endif
         }
         return changed_clustering;
     }
@@ -128,7 +130,7 @@ private:
         return 0.0L;
     }
 
-    bool caclulateDelta(const HypernodeID v, const HyperedgeWeight vol_v, const HypernodeID source_community, const HypernodeID destination_community, const Probability delta_source, const Probability delta_destination, const Probability sum_exit_probability) {
+    Probability caclulateDelta(const HypernodeID v, const HyperedgeWeight vol_v, const HypernodeID source_community, const HypernodeID destination_community, const Probability delta_source, const Probability delta_destination, const Probability sum_exit_probability) {
 
         const Probability remain_plogp_sum_exit_prob = plogp_rel(sum_exit_probability);
         // summands of map equation if we don't move the node at all and only depend on the source node/community
@@ -154,7 +156,7 @@ private:
             + (remain_plogp_exit_prob_plus_vol_source + remain_plogp_exit_plus_vol_destination - move_plogp_exit_prob_plus_vol_source - move_plogp_exit_prob_plus_vol_destination);
 
 
-        return delta > 0;
+        return delta;
     }
 
     void recalculateAllExitProbabilities(const ds::CommunityHypergraph& chg, const parallel::scalable_vector<HypernodeID>& communities) {
@@ -329,12 +331,14 @@ private:
         // delta_destination += sum_of_reciprocals;
 
         // check if the move actually improves the map equation
-        bool moved = true;
-        //moved = caclulateDelta(v, vol_v, source_community, destination_community, delta_source, delta_destination, _sum_exit_probability_mul_vol_total);
+        Probability moved = 0.0;
+        moved = caclulateDelta(v, vol_v, source_community, destination_community, delta_source, delta_destination, _sum_exit_probability_mul_vol_total);
 
-        if (moved) {
-            // const Probability before = metrics::hyp_map_equation(chg, communities);
-            // LOG << "before" << std::fixed << std::setprecision(15) << before;
+        if (moved > 0.0) {
+#ifdef KAHYPAR_ENABLE_HEAVY_PREPROCESSING_ASSERTIONS
+            const Probability before = metrics::hyp_map_equation(chg, communities);
+            LOG << "before" << std::fixed << std::setprecision(15) << before;
+#endif
             // update volumes
             _community_volumes[source_community] -= vol_v;
             _community_volumes[destination_community] += vol_v;
@@ -346,10 +350,13 @@ private:
 
             // update community 
             communities[v] = destination_community;
-            // const Probability after = metrics::hyp_map_equation(chg, communities);
-            // LOG << "after" << std::fixed << std::setprecision(15) << after;
-            // ASSERT(after <= before);
+#ifdef KAHYPAR_ENABLE_HEAVY_PREPROCESSING_ASSERTIONS
+            const Probability after = metrics::hyp_map_equation(chg, communities);
+            LOG << "after" << std::fixed << std::setprecision(15) << after;
+            //ASSERT(after <= before);
+            ASSERT(math::are_almost_equal_d(moved, before - after, 1e-8), std::fixed << std::setprecision(15) << V(moved) << V(before - after));
             // LOG << "moved";
+#endif
         }
         // release locks
         _community_locks[std::max(source_community, destination_community)].unlock();
@@ -399,6 +406,34 @@ private:
         return LargeTmpDoubleMap(3UL * std::min(num_nodes, _vertex_degree_sampling_threshold));
     }
 
+    void checkUpdatedValuesAgainstRecomputation(ds::CommunityHypergraph& chg, parallel::scalable_vector<HypernodeID>& communities) {
+        parallel::scalable_vector<AtomicHyperedgeWeight> recalc_volumes(chg.initialNumNodes());
+
+        tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID i) {
+            recalc_volumes[i].store(0);
+        });
+
+
+        parallel::scalable_vector<AtomicProbability> old_exit_probs(chg.initialNumNodes());
+        tbb::parallel_for(0U, chg.initialNumNodes(), [&](const HypernodeID i) {
+            old_exit_probs[i].store(_community_exit_probability_mul_vol_total[i]);
+            recalc_volumes[communities[i]] += chg.nodeVolume(i);
+        });
+
+        for (size_t i = 0; i < chg.initialNumNodes(); ++i) {
+            ASSERT(recalc_volumes[i] == _community_volumes[i], V(i) << V(recalc_volumes[i]) << V(_community_volumes[i]));
+        }
+        AtomicProbability old_sum = _sum_exit_probability_mul_vol_total;
+
+        recalculateAllExitProbabilities(chg, communities);
+
+        for (size_t i = 0; i < chg.initialNumNodes(); ++i) {
+            ASSERT(math::are_almost_equal_d(old_exit_probs[i], _community_exit_probability_mul_vol_total[i], 1e-8), std::fixed << std::setprecision(15) << V(i) << V(old_exit_probs[i]) << V(_community_exit_probability_mul_vol_total[i]));
+        }
+        ASSERT(math::are_almost_equal_d(old_sum, _sum_exit_probability_mul_vol_total, 1e-4), std::fixed << std::setprecision(15) << V(old_sum) << V(_sum_exit_probability_mul_vol_total));
+        LOG << "all good";
+    }
+
     const size_t _vertex_degree_sampling_threshold;
 
     const size_t _hyperedge_size_caching_threshold;
@@ -413,6 +448,7 @@ private:
     parallel::scalable_vector<AtomicHyperedgeWeight> _community_volumes;
 
     // ! contains the exit probability of each community multiplied by vol(V) (qi_exit * vol(V))
+    // ! this is atomic so we can initialize/recompute them in parallel
     parallel::scalable_vector<AtomicProbability> _community_exit_probability_mul_vol_total;
 
     // ! the sum of all exit probabilities multiplied by vol(V)
