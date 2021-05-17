@@ -64,7 +64,6 @@ public:
             nodes[i] = i;
             _community_volumes[i].store(chg.nodeVolume(i));
         });
-
         recalculateAllExitProbabilities(chg, communities);
 
         bool changed_clustering = false;
@@ -98,13 +97,14 @@ public:
                     }
                 }
             });
+            //LOG << nr_nodes_moved;
             changed_clustering |= nr_nodes_moved > 0;
-            #ifndef KAHYPAR_ENABLE_HEAVY_PREPROCESSING_ASSERTIONS
+#ifndef KAHYPAR_ENABLE_HEAVY_PREPROCESSING_ASSERTIONS
             recalculateAllExitProbabilities(chg, communities);
-            #endif
-            #ifdef KAHYPAR_ENABLE_HEAVY_PREPROCESSING_ASSERTIONS
+#endif
+#ifdef KAHYPAR_ENABLE_HEAVY_PREPROCESSING_ASSERTIONS
             checkUpdatedValuesAgainstRecomputation(chg, communities);
-            #endif
+#endif
         }
         return changed_clustering;
     }
@@ -130,7 +130,7 @@ private:
         return 0.0L;
     }
 
-    Probability caclulateDelta(const HypernodeID v, const HyperedgeWeight vol_v, const HypernodeID source_community, const HypernodeID destination_community, const Probability delta_source, const Probability delta_destination, const Probability sum_exit_probability) {
+    Probability caclulateDelta(const HyperedgeWeight vol_v, const HypernodeID source_community, const HypernodeID destination_community, const Probability delta_source, const Probability delta_destination, const Probability sum_exit_probability) {
 
         const Probability remain_plogp_sum_exit_prob = plogp_rel(sum_exit_probability);
         // summands of map equation if we don't move the node at all and only depend on the source node/community
@@ -180,7 +180,7 @@ private:
             for (const HypernodeID comm : neighbouring_communities.local()) {
                 const HypernodeWeight pincount_in_edge = overlap_local.local()[comm];
                 const HypernodeWeight edge_size = static_cast<HypernodeWeight>(chg.edgeSize(he));
-                _community_exit_probability_mul_vol_total[comm] += static_cast<Probability>(pincount_in_edge * chg.edgeWeight(he) * (edge_size - pincount_in_edge)) / (edge_size);
+                _community_exit_probability_mul_vol_total[comm] += static_cast<Probability>(pincount_in_edge * chg.edgeWeight(he) * (edge_size - pincount_in_edge)) / (edge_size - 1);
                 overlap_local.local()[comm] = 0;
             }
             neighbouring_communities.local().clear();
@@ -202,10 +202,10 @@ private:
         ASSERT(comm_v < chg.initialNumNodes());
         const HyperedgeWeight vol_v = chg.nodeVolume(v);
         HypernodeWeight pin_count_v = 0;
-        //Probability sum_of_reciprocals = 0.0;
+        Probability sum_of_reciprocals = 0.0;
         for (const HyperedgeID& he : chg.incidentEdges(v)) {
             ASSERT(overlap.size() == 0);
-            const Probability reciprocal_edge_size = 1.0L / (chg.edgeSize(he));
+            const Probability reciprocal_edge_size = 1.0L / (chg.edgeSize(he) - 1);
             const HypernodeWeight edge_weight = chg.edgeWeight(he);
             for (const auto& mp : chg.multipins(he)) {
                 const HypernodeID community = communities[mp.id];
@@ -226,10 +226,10 @@ private:
             }
             overlap.clear();
             community_independent_part -= static_cast<Probability>(edge_weight * pin_count_v * pin_count_v) * reciprocal_edge_size;
-            //sum_of_reciprocals += edge_weight * pin_count_v * reciprocal_edge_size;
+            sum_of_reciprocals += edge_weight * pin_count_v * reciprocal_edge_size;
         }
 
-        Probability delta_source = deltas[comm_v] - vol_v;// - sum_of_reciprocals;
+        Probability delta_source = deltas[comm_v] - vol_v - sum_of_reciprocals;
 
         const Probability remain_plogp_sum_exit_prob = plogp_rel(_sum_exit_probability_mul_vol_total);
         // summands of map equation if we don't move the node at all and only depend on the source node/community
@@ -249,7 +249,7 @@ private:
             if (e.key == comm_v) { continue; }
 
             const HypernodeID destination_community = e.key;
-            const Probability delta_destination = community_independent_part + e.value + vol_v;// + sum_of_reciprocals;
+            const Probability delta_destination = community_independent_part + e.value + vol_v + sum_of_reciprocals;
             // summands if we don't move the node at all and depend on destination
             const Probability remain_plogp_exit_prob_destination = plogp_rel(_community_exit_probability_mul_vol_total[destination_community]);
             const Probability remain_plogp_exit_plus_vol_destination = plogp_rel(_community_exit_probability_mul_vol_total[destination_community] + _community_volumes[destination_community]);
@@ -300,11 +300,11 @@ private:
         Probability delta_source = -vol_v;
         Probability delta_destination = vol_v;
 
-        //Probability sum_of_reciprocals = 0.0;
+        Probability sum_of_reciprocals = 0.0;
 
         // calculate exit probability deltas
         for (const HyperedgeID& he : chg.incidentEdges(v)) {
-            const Probability reciprocal_edge_size = 1.0L / (chg.edgeSize(he));
+            const Probability reciprocal_edge_size = 1.0L / (chg.edgeSize(he) - 1);
             const HypernodeWeight edge_weight = chg.edgeWeight(he);
             HypernodeWeight pin_count_v = 0;
             HypernodeWeight overlap_source = 0;
@@ -324,15 +324,15 @@ private:
             delta_destination += static_cast<Probability>(edge_weight * pin_count_v * (-2 * overlap_destination - pin_count_v)) * reciprocal_edge_size;
             delta_source += static_cast<Probability>(edge_weight * pin_count_v * (2 * overlap_source - pin_count_v)) * reciprocal_edge_size;
 
-            //sum_of_reciprocals += edge_weight * pin_count_v * reciprocal_edge_size;
+            sum_of_reciprocals += edge_weight * pin_count_v * reciprocal_edge_size;
         }
 
-        // delta_source += sum_of_reciprocals;
-        // delta_destination += sum_of_reciprocals;
+        delta_source -= sum_of_reciprocals;
+        delta_destination += sum_of_reciprocals;
 
         // check if the move actually improves the map equation
         Probability moved = 0.0;
-        moved = caclulateDelta(v, vol_v, source_community, destination_community, delta_source, delta_destination, _sum_exit_probability_mul_vol_total);
+        moved = caclulateDelta(vol_v, source_community, destination_community, delta_source, delta_destination, _sum_exit_probability_mul_vol_total);
 
         if (moved > 0.0) {
 #ifdef KAHYPAR_ENABLE_HEAVY_PREPROCESSING_ASSERTIONS
@@ -406,6 +406,7 @@ private:
         return LargeTmpDoubleMap(3UL * std::min(num_nodes, _vertex_degree_sampling_threshold));
     }
 
+#ifdef KAHYPAR_ENABLE_HEAVY_PREPROCESSING_ASSERTIONS
     void checkUpdatedValuesAgainstRecomputation(ds::CommunityHypergraph& chg, parallel::scalable_vector<HypernodeID>& communities) {
         parallel::scalable_vector<AtomicHyperedgeWeight> recalc_volumes(chg.initialNumNodes());
 
@@ -433,7 +434,7 @@ private:
         ASSERT(math::are_almost_equal_d(old_sum, _sum_exit_probability_mul_vol_total, 1e-4), std::fixed << std::setprecision(15) << V(old_sum) << V(_sum_exit_probability_mul_vol_total));
         LOG << "all good";
     }
-
+#endif
     const size_t _vertex_degree_sampling_threshold;
 
     const size_t _hyperedge_size_caching_threshold;
