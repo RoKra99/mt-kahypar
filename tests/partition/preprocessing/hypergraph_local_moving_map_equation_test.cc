@@ -143,13 +143,14 @@ TEST_F(AHypergraphLocalMovingMapEquation, ComputesTheBestNeighboringCommunity0) 
         communities[i] = i;
     }
     hlmme.initializeCommunityVolumes(*chg, communities);
-    hlmme.recomputeExitProbability(*chg, communities);
+    hlmme.recalculateAllExitProbabilities(*chg, communities);
     Probability before = metrics::hyp_map_equation(*chg, communities);
     const auto move = hlmme.calculateBestMove(*chg, communities, 0, hlmme._large_overlap_map.local(), hlmme._large_deltas_mul_vol_total.local());
-    communities[0] = move.destination_community;
+    communities[0] = move;
     Probability after = metrics::hyp_map_equation(*chg, communities);
-    ASSERT_EQ(move.destination_community, 2);
-    ASSERT_DOUBLE_EQ(move.delta, before - after);
+    ASSERT_EQ(move, 2);
+    ASSERT_GT(before - after, 0);
+    //ASSERT_DOUBLE_EQ(move.delta, before - after);
 }
 
 TEST_F(AHypergraphLocalMovingMapEquation, ComputesTheBestNeighboringCommunity1) {
@@ -159,13 +160,14 @@ TEST_F(AHypergraphLocalMovingMapEquation, ComputesTheBestNeighboringCommunity1) 
         communities[i] = i;
     }
     hlmme.initializeCommunityVolumes(*chg, communities);
-    hlmme.recomputeExitProbability(*chg, communities);
+    hlmme.recalculateAllExitProbabilities(*chg, communities);
     Probability before = metrics::hyp_map_equation(*chg, communities);
     const auto move = hlmme.calculateBestMove(*chg, communities, 1, hlmme._large_overlap_map.local(), hlmme._large_deltas_mul_vol_total.local());
-    communities[1] = move.destination_community;
+    communities[1] = move;
     Probability after = metrics::hyp_map_equation(*chg, communities);
-    ASSERT_TRUE(move.destination_community == 0 || move.destination_community == 3 || move.destination_community == 4);
-    ASSERT_DOUBLE_EQ(move.delta, before - after);
+    ASSERT_TRUE(move == 0 || move == 3 || move == 4);
+    ASSERT_GT(before - after, 0);
+    //ASSERT_DOUBLE_EQ(move.delta, before - after);
 }
 TEST_F(AHypergraphLocalMovingMapEquation, ComputesTheBestNeighboringCommunity2) {
     HypergraphLocalMovingMapEquation hlmme(*chg, context);
@@ -174,13 +176,14 @@ TEST_F(AHypergraphLocalMovingMapEquation, ComputesTheBestNeighboringCommunity2) 
         communities[i] = i;
     }
     hlmme.initializeCommunityVolumes(*chg, communities);
-    hlmme.recomputeExitProbability(*chg, communities);
+    hlmme.recalculateAllExitProbabilities(*chg, communities);
     Probability before = metrics::hyp_map_equation(*chg, communities);
     const auto move = hlmme.calculateBestMove(*chg, communities, 2, hlmme._large_overlap_map.local(), hlmme._large_deltas_mul_vol_total.local());
-    communities[2] = move.destination_community;
+    communities[2] = move;
     Probability after = metrics::hyp_map_equation(*chg, communities);
-    ASSERT_EQ(move.destination_community, 0);
-    ASSERT_DOUBLE_EQ(move.delta, before - after);
+    ASSERT_EQ(move, 0);
+    ASSERT_GT(before - after, 0);
+    //ASSERT_DOUBLE_EQ(move.delta, before - after);
 }
 TEST_F(AHypergraphLocalMovingMapEquation, ComputesTheBestNeighboringCommunity3) {
     HypergraphLocalMovingMapEquation hlmme(*chg, context);
@@ -189,13 +192,14 @@ TEST_F(AHypergraphLocalMovingMapEquation, ComputesTheBestNeighboringCommunity3) 
         communities[i] = i;
     }
     hlmme.initializeCommunityVolumes(*chg, communities);
-    hlmme.recomputeExitProbability(*chg, communities);
+    hlmme.recalculateAllExitProbabilities(*chg, communities);
     Probability before = metrics::hyp_map_equation(*chg, communities);
     const auto move = hlmme.calculateBestMove(*chg, communities, 3, hlmme._large_overlap_map.local(), hlmme._large_deltas_mul_vol_total.local());
-    communities[3] = move.destination_community;
+    communities[3] = move;
     Probability after = metrics::hyp_map_equation(*chg, communities);
-    ASSERT_EQ(move.destination_community, 4);
-    ASSERT_DOUBLE_EQ(move.delta, before - after);
+    ASSERT_EQ(move, 4);
+    ASSERT_GT(before - after, 0);
+    //ASSERT_DOUBLE_EQ(move.delta, before - after);
 }
 TEST_F(AHypergraphLocalMovingMapEquation, ComputesTheBestNeighboringCommunity4) {
     HypergraphLocalMovingMapEquation hlmme(*chg, context);
@@ -204,13 +208,14 @@ TEST_F(AHypergraphLocalMovingMapEquation, ComputesTheBestNeighboringCommunity4) 
         communities[i] = i;
     }
     hlmme.initializeCommunityVolumes(*chg, communities);
-    hlmme.recomputeExitProbability(*chg, communities);
+    hlmme.recalculateAllExitProbabilities(*chg, communities);
     Probability before = metrics::hyp_map_equation(*chg, communities);
     const auto move = hlmme.calculateBestMove(*chg, communities, 4, hlmme._large_overlap_map.local(), hlmme._large_deltas_mul_vol_total.local());
-    communities[4] = move.destination_community;
+    communities[4] = move;
     Probability after = metrics::hyp_map_equation(*chg, communities);
-    ASSERT_EQ(move.destination_community, 3);
-    ASSERT_DOUBLE_EQ(move.delta, before - after);
+    ASSERT_EQ(move, 3);
+    ASSERT_GT(before - after, 0);
+    //ASSERT_DOUBLE_EQ(move.delta, before - after);
 }
 TEST_F(AHypergraphLocalMovingMapEquation, ComputesTheBestNeighboringCommunity5) {
     HypergraphLocalMovingMapEquation hlmme(*chg, context);
@@ -219,13 +224,14 @@ TEST_F(AHypergraphLocalMovingMapEquation, ComputesTheBestNeighboringCommunity5) 
         communities[i] = i;
     }
     hlmme.initializeCommunityVolumes(*chg, communities);
-    hlmme.recomputeExitProbability(*chg, communities);
+    hlmme.recalculateAllExitProbabilities(*chg, communities);
     Probability before = metrics::hyp_map_equation(*chg, communities);
     const auto move = hlmme.calculateBestMove(*chg, communities, 5, hlmme._large_overlap_map.local(), hlmme._large_deltas_mul_vol_total.local());
-    communities[5] = move.destination_community;
+    communities[5] = move;
     Probability after = metrics::hyp_map_equation(*chg, communities);
-    ASSERT_EQ(move.destination_community, 2);
-    ASSERT_DOUBLE_EQ(move.delta, before - after);
+    ASSERT_EQ(move, 2);
+    ASSERT_GT(before - after, 0);
+    //ASSERT_DOUBLE_EQ(move.delta, before - after);
 }
 TEST_F(AHypergraphLocalMovingMapEquation, ComputesTheBestNeighboringCommunity6) {
     HypergraphLocalMovingMapEquation hlmme(*chg, context);
@@ -235,13 +241,14 @@ TEST_F(AHypergraphLocalMovingMapEquation, ComputesTheBestNeighboringCommunity6) 
         communities[i] = i;
     }
     hlmme.initializeCommunityVolumes(*chg, communities);
-    hlmme.recomputeExitProbability(*chg, communities);
+    hlmme.recalculateAllExitProbabilities(*chg, communities);
     Probability before = metrics::hyp_map_equation(*chg, communities);
     const auto move = hlmme.calculateBestMove(*chg, communities, 6, hlmme._large_overlap_map.local(), hlmme._large_deltas_mul_vol_total.local());
-    communities[6] = move.destination_community;
+    communities[6] = move;
     Probability after = metrics::hyp_map_equation(*chg, communities);
-    ASSERT_EQ(move.destination_community, 5);
-    ASSERT_DOUBLE_EQ(move.delta, before - after);
+    ASSERT_EQ(move, 5);
+    ASSERT_GT(before - after, 0);
+    //ASSERT_DOUBLE_EQ(move.delta, before - after);
 }
 }
 }

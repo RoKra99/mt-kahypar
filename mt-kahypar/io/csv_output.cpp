@@ -32,7 +32,7 @@ namespace mt_kahypar::io::csv {
 
   std::string header() {
     return "algorithm,threads,graph,k,seed,epsilon,imbalance,"
-           "objective,km1,cut,partitionTime,fmTime,lpTime,coarseningTime,ipTime,preprocessingTime"
+           "objective,km1,cut,partitionTime,fmTime,lpTime,coarseningTime,ipTime,preprocessingTime,lmRound0,kmRound1,lmRound2,lmRound3,kmRound4"
            "\n";
   }
 
