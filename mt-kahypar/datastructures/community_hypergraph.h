@@ -31,12 +31,6 @@ class CommunityHypergraph {
         Array<HypernodeID> multipin_mapping;
     };
 
-    struct EdgeSizeObject {
-        const size_t index;
-        const size_t remaining_d;
-        const Volume weight;
-    };
-
 public:
 
     using EdgeSizes = parallel::scalable_vector<size_t>;
@@ -317,10 +311,13 @@ private:
         _multipin_indexes[_hg->initialNumEdges()] = _hg->initialNumPins();
     }
 
+    // ! when turned on pins are represented by id and multiplicity
     const bool _use_multipins;
 
+    // ! incidence array for multipins
     Array<Multipin> _multipin_incidence_array;
 
+    // ! indices for each hyperedge in the multipin incidence array
     Array<size_t> _multipin_indexes;
 
     // ! contains the cut communities for each hyperedge
@@ -350,6 +347,7 @@ private:
     // ! contains structures used in contaction to avoid allocations
     TmpCommunityHypergraphBuffer* _tmp_community_hypergraph_buffer;
 
+    // ! spinlocks to synchronize access to community count data structure
     Array<SpinLock> _community_count_locks;
 
 };

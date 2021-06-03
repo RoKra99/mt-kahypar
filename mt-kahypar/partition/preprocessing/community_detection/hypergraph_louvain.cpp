@@ -7,9 +7,7 @@ parallel::scalable_vector<HypernodeID> hypergraph_local_moving_contract_recurse(
     static constexpr bool debug = false;
     parallel::scalable_vector<HypernodeID> communities(chg.initialNumNodes());
     utils::Timer::instance().start_timer("local_moving " + std::to_string(local_moving_round), "Local Moving" + std::to_string(local_moving_round));
-    //utils::Timer::instance().start_timer("hyp_local_moving", "Hypergraph Local Moving");
     bool clustering_changed = hlmm.localMoving(chg, communities);
-    //utils::Timer::instance().stop_timer("hyp_local_moving");
     utils::Timer::instance().stop_timer("local_moving " + std::to_string(local_moving_round));
     local_moving_round++;
     if (clustering_changed) {
@@ -40,15 +38,6 @@ parallel::scalable_vector<HypernodeID> hypergraph_local_moving_contract_recurse(
 parallel::scalable_vector<HypernodeID> hypergraph_louvain(ds::CommunityHypergraph& chg, const Context& context, const bool deactivate_random) {
     HypergraphLocalMovingModularity hlmm(chg, context, deactivate_random);
     parallel::scalable_vector<HypernodeID> communities = community_detection::hypergraph_local_moving_contract_recurse(chg, hlmm);
-    // for (size_t i = local_moving_round; i <= 5; ++i) {
-    //     std::cout << 0 << ',' << 0 << ',';
-    // }
-    // LOG << V(hlmm.edge_con_time);
-    // LOG << V(hlmm.exp_edge_con_time);
-    // LOG << V(hlmm.move_time);
-    //LOG << V(hlmm.success);
-    //LOG << V(hlmm.tries);
-    //LOG << *std::max_element(communities.begin(), communities.end());
     return communities;
 }
 }
